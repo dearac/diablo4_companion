@@ -1,10 +1,30 @@
+# Dependencies
 node_modules
+
+# Build output
 dist
 out
+
+# Runtime data
 data
+
+# OS files
 .DS_Store
+Thumbs.db
+
+# Editor/IDE caches
 .eslintcache
 *.log*
 
+# Test artifacts
 playwright-report
 test-results
+
+# Agent / AI tooling
+.agents/
+SAVEPOINT.md
+TESTING_RULES.md
+docs/plans/
+
+# Large generated files
+tree.txt
