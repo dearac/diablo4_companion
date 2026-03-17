@@ -7,6 +7,8 @@ import { HotkeyService } from './services/HotkeyService'
 import { getDataPaths } from './services/StorageService'
 import { BuildImportService } from './services/BuildImportService'
 import { MaxrollScraper } from './scrapers/MaxrollScraper'
+import { D4BuildsScraper } from './scrapers/D4BuildsScraper'
+import { IcyVeinsScraper } from './scrapers/IcyVeinsScraper'
 
 // ============================================================
 // PORTABLE DATA DIRECTORY SETUP
@@ -74,6 +76,8 @@ function initServices(): void {
 
   // Register supported scrapers here
   buildService.registerScraper(new MaxrollScraper())
+  buildService.registerScraper(new D4BuildsScraper())
+  buildService.registerScraper(new IcyVeinsScraper())
 }
 
 // ============================================================
