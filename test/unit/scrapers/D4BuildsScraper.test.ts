@@ -89,17 +89,25 @@ const { mockPage } = vi.hoisted(() => {
         !selector.includes('name') &&
         !selector.includes('tile')
       ) {
-        const makeTile = (alt: string, tileClass: string = '') => ({
-          className: `paragon__board__tile active r5 c5 ${tileClass}`,
+        const makeTile = (alt: string, bgAlt: string = 'Common', row = 5, col = 5) => ({
+          className: `paragon__board__tile active r${row} c${col} enabled`,
+          classList: { contains: (c: string) => c === 'active' },
           getAttribute: (a: string) => (a === 'style' ? 'transform: rotate(0deg)' : null),
           querySelector: (sel: string) => {
-            if (sel === 'img') return { getAttribute: (a: string) => (a === 'alt' ? alt : null) }
-            if (sel === 'img.paragon__board__tile__icon.active') return { getAttribute: () => 'active.png' }
-            if (sel === 'img.paragon__board__tile__bg') return { getAttribute: () => 'bg.png' }
+            if (sel === 'img.paragon__board__tile__icon.active')
+              return { getAttribute: () => 'active.png' }
+            if (sel === 'img.paragon__board__tile__bg')
+              return { getAttribute: (a: string) => (a === 'alt' ? bgAlt : 'bg.png') }
             return null
           },
           querySelectorAll: (sel: string) => {
-            if (sel === 'img.paragon__board__tile__icon') return [{ getAttribute: () => 'icon.png', classList: { contains: () => false } }]
+            if (sel === 'img.paragon__board__tile__icon')
+              return [
+                {
+                  getAttribute: (a: string) => (a === 'alt' ? alt : 'icon.png'),
+                  classList: { contains: () => false }
+                }
+              ]
             return []
           }
         })
@@ -119,11 +127,11 @@ const { mockPage } = vi.hoisted(() => {
               return null
             },
             querySelectorAll: (sel: string) => {
-              if (sel.includes('.active'))
+              if (sel === '.paragon__board__tile')
                 return [
-                  makeTile('Str'),
-                  makeTile('DamageToElite', 'rare'),
-                  makeTile('HPPercent', 'magic')
+                  makeTile('Str', 'Common', 5, 5),
+                  makeTile('DamageToElite', 'Rare', 5, 6),
+                  makeTile('HPPercent', 'Magic', 6, 5)
                 ]
               return []
             }
@@ -259,10 +267,10 @@ describe('D4BuildsScraper', () => {
     expect(data.paragonBoards[0].boardName).toBe('Warbringer')
     expect(data.paragonBoards[0].boardIndex).toBe(0)
     expect(data.paragonBoards[0].glyph).toEqual({ glyphName: 'Spirit', level: 15 })
-    // Should have summary + significant nodes (Str is filtered as generic)
-    expect(data.paragonBoards[0].allocatedNodes.length).toBeGreaterThanOrEqual(1)
-    // First node is always the summary
-    expect(data.paragonBoards[0].allocatedNodes[0].nodeName).toContain('total nodes')
+    // Should have nodes from the board (3 in mock)
+    expect(data.paragonBoards[0].allocatedNodes.length).toBe(3)
+    // First node should be a real tile (no more summary node)
+    expect(data.paragonBoards[0].allocatedNodes[0].allocated).toBe(true)
 
     expect(data.paragonBoards[1].boardName).toBe('Blood Rage')
     expect(data.paragonBoards[1].boardIndex).toBe(1)

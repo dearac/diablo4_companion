@@ -269,7 +269,6 @@ export class D4BuildsScraper extends BuildScraper {
 
           // Collect ALL nodes for full board representation
           const allTiles = board.querySelectorAll('.paragon__board__tile')
-          const totalActive = board.querySelectorAll('.paragon__board__tile.active').length
 
           // Board background and rotation
           const boardStyle = board.getAttribute('style') || ''
@@ -313,16 +312,24 @@ export class D4BuildsScraper extends BuildScraper {
             const row = matchRow ? parseInt(matchRow[1], 10) : undefined
             const col = matchCol ? parseInt(matchCol[1], 10) : undefined
 
-            // Determine node type
+            // Determine node type — PRIMARY: use the bg tile image alt text
+            // which tells us Common, Magic, Rare, or Legendary. The CSS
+            // classes do NOT reliably carry type info on d4builds.gg.
+            // Fallback: check for 'radius' class (rare node indicator on d4builds).
+            const bgAlt = bgImg?.getAttribute('alt')?.toLowerCase() || ''
             let nodeType: 'normal' | 'magic' | 'rare' | 'legendary' | 'gate' = 'normal'
-            if (tileClasses.includes('legendary')) nodeType = 'legendary'
-            else if (tileClasses.includes('rare')) nodeType = 'rare'
-            else if (tileClasses.includes('magic')) nodeType = 'magic'
-            else if (altText.toLowerCase() === 'gate') nodeType = 'gate'
+            if (bgAlt.includes('legendary')) nodeType = 'legendary'
+            else if (bgAlt.includes('rare')) nodeType = 'rare'
+            else if (bgAlt.includes('magic')) nodeType = 'magic'
+            else if (tileClasses.includes('radius')) nodeType = 'rare'
+            else if (altText.toLowerCase() === 'gate' || tileClasses.includes('gate'))
+              nodeType = 'gate'
 
-            // Format the name nicely
+            // Format the name nicely — split PascalCase and known stat
+            // abbreviations into human-readable text
             const nodeName = altText
-              .replace(/([a-z])([A-Z])/g, '$1 $2')
+              .replace(/([a-z])([A-Z])/g, '$1 $2') // Split camelCase
+              .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2') // Split consecutive caps
               .replace(/\b\w/g, (c) => c.toUpperCase())
 
             allocatedNodes.push({
@@ -336,13 +343,6 @@ export class D4BuildsScraper extends BuildScraper {
               bgUrl,
               styleTransform
             })
-          })
-
-          // Add a summary node with total count
-          allocatedNodes.unshift({
-            nodeName: `${totalActive} total nodes`,
-            nodeType: 'normal',
-            allocated: true
           })
 
           return {
