@@ -1,6 +1,19 @@
-import { chromium } from 'playwright'
+import { chromium, Page } from 'playwright'
 import { BuildScraper, RawBuildData } from './BuildScraper'
-import { BuildSourceSite, D4Class } from '../../shared/types'
+import { BuildSourceSite, D4Class, ISkillAllocation } from '../../shared/types'
+
+// ============================================================
+// MaxrollScraper — Scraper for maxroll.gg D4 build planner
+// ============================================================
+// Maxroll's planner is a single-page app with tabbed panels.
+// The Skills tab renders a visual skill tree where allocated
+// skills are highlighted. We click tabs and read the DOM to
+// extract build data.
+//
+// SELECTORS NOTE: Maxroll uses CSS modules, so class names
+// are hashed (e.g., "skillTree_SkillNode__abc123"). We use
+// [class*="..."] partial matches to tolerate hash changes.
+// ============================================================
 
 /**
  * Scraper for maxroll.gg builds.
@@ -53,14 +66,16 @@ export class MaxrollScraper extends BuildScraper {
 
       const d4Class = this.normalizeClass(d4ClassRaw)
 
-      // TODO: Implement Skill and Paragon tab switching and scraping
-      // This requires clicking specific tab buttons and waiting for the tree to render.
+      // 4. Extract Skills
+      const skills = await this.scrapeSkills(page)
+
+      // TODO: Implement Paragon tab switching and scraping
 
       return {
         name: buildName,
         d4Class: d4Class,
         level: 100,
-        skills: [],
+        skills,
         paragonBoards: [],
         gearSlots: []
       }
@@ -71,6 +86,87 @@ export class MaxrollScraper extends BuildScraper {
     } finally {
       await browser.close()
     }
+  }
+
+  /**
+   * Switches to the Skills tab and extracts all allocated skill nodes.
+   *
+   * Maxroll's skill tree renders each node as a div with a class like
+   * "skillTree_SkillNode__..." and marks allocated nodes with an
+   * "allocated" or "active" modifier class. Each node contains the
+   * skill name and point allocation (e.g., "5/5").
+   *
+   * @param page - The Playwright page, already on the planner
+   * @returns Array of skill allocations found in the tree
+   */
+  private async scrapeSkills(page: Page): Promise<ISkillAllocation[]> {
+    // Click the "Skills" tab to switch to the skill tree panel
+    // Maxroll uses tabs with text labels like "Skills", "Paragon", etc.
+    const skillsTab = await page.$(
+      'button[class*="skillTree"], [data-tab="skills"], button:has-text("Skills")'
+    )
+    if (skillsTab) {
+      await skillsTab.click()
+      // Wait for the skill tree container to render
+      await page
+        .waitForSelector('[class*="skillTree_SkillTree"], [class*="skill-tree"]', {
+          timeout: 10000
+        })
+        .catch(() => {
+          // Skill tree may already be visible on some layouts
+        })
+    }
+
+    // Extract all skill nodes that have points allocated
+    // Each node has a name, allocated points, and max points displayed
+    const skills = await page.$$eval(
+      '[class*="skillTree_SkillNode"][class*="allocated"], [class*="skillTree_SkillNode"][class*="active"], [class*="skill-node"][class*="allocated"]',
+      (nodes) => {
+        return nodes.map((node) => {
+          // The skill name is typically in a span or the node's text
+          const nameEl = node.querySelector('[class*="name"], [class*="label"], span')
+          const skillName =
+            nameEl?.textContent?.trim() || node.textContent?.trim() || 'Unknown Skill'
+
+          // Point allocation is displayed as "X/Y" (e.g., "5/5")
+          const pointsEl = node.querySelector('[class*="points"], [class*="rank"]')
+          const pointsText = pointsEl?.textContent?.trim() || ''
+          const pointsMatch = pointsText.match(/(\d+)\s*\/\s*(\d+)/)
+
+          const points = pointsMatch ? parseInt(pointsMatch[1], 10) : 1
+          const maxPoints = pointsMatch ? parseInt(pointsMatch[2], 10) : 1
+
+          // Determine the tier from the node's position or parent container
+          const tier =
+            node.closest('[class*="tier"]')?.getAttribute('data-tier') ||
+            node.getAttribute('data-tier') ||
+            'core'
+
+          // Determine the node type from CSS classes or attributes
+          const classStr = node.className || ''
+          let nodeType: 'active' | 'passive' | 'keystone' = 'active'
+          if (classStr.includes('passive') || classStr.includes('Passive')) {
+            nodeType = 'passive'
+          } else if (
+            classStr.includes('keystone') ||
+            classStr.includes('Keystone') ||
+            classStr.includes('ultimate')
+          ) {
+            nodeType = 'keystone'
+          }
+
+          return {
+            skillName,
+            points,
+            maxPoints,
+            tier,
+            nodeType
+          }
+        })
+      }
+    )
+
+    return skills
   }
 
   /**
