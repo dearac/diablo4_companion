@@ -246,20 +246,6 @@ export class D4BuildsScraper extends BuildScraper {
 
     try {
       return await page.$$eval('.paragon__board', (boards) => {
-        // Skip generic stat names when listing significant nodes
-        const genericStats = new Set([
-          'str',
-          'dex',
-          'int',
-          'will',
-          'point',
-          'gate',
-          'start',
-          'socket',
-          'blank',
-          'empty'
-        ])
-
         return boards.map((board, index) => {
           // Get board name — extract ONLY direct text nodes
           const nameEl = board.querySelector('.paragon__board__name')
@@ -281,36 +267,75 @@ export class D4BuildsScraper extends BuildScraper {
           const glyphText = glyphEl?.textContent?.trim() || null
           const glyphName = glyphText ? glyphText.replace(/[()]/g, '').trim() : null
 
-          // Extract allocated nodes with meaningful names
-          // Active tiles use class '.active' (NOT '--active')
-          const activeTiles = board.querySelectorAll('.paragon__board__tile.active')
-          const totalActive = activeTiles.length
+          // Collect ALL nodes for full board representation
+          const allTiles = board.querySelectorAll('.paragon__board__tile')
+          const totalActive = board.querySelectorAll('.paragon__board__tile.active').length
 
-          // Collect significant node names from img alt text
+          // Board background and rotation
+          const boardStyle = board.getAttribute('style') || ''
+          const boardRotMatch = boardStyle.match(/rotate\(([-0-9]+)deg\)/)
+          const boardRotation = boardRotMatch ? parseInt(boardRotMatch[1], 10) : 0
+          const boardBgUrl = 'https://sunderarmor.com/DIABLO4/Paragon/board_bg.png' // Default bg from site
+
+          // Collect ALL nodes for visual path rendering
           const allocatedNodes: Array<{
             nodeName: string
-            nodeType: 'normal' | 'magic' | 'rare' | 'legendary'
+            nodeType: 'normal' | 'magic' | 'rare' | 'legendary' | 'gate'
             allocated: boolean
+            row?: number
+            col?: number
+            iconUrl?: string
+            activeIconUrl?: string
+            bgUrl?: string
+            styleTransform?: string
           }> = []
 
-          activeTiles.forEach((tile) => {
-            const imgEl = tile.querySelector('img')
-            const altText = imgEl?.getAttribute('alt')?.trim() || ''
-            if (!altText || genericStats.has(altText.toLowerCase())) return
+          allTiles.forEach((tile) => {
+            // Find images (icon, active icon, background)
+            const iconImg = Array.from(
+              tile.querySelectorAll('img.paragon__board__tile__icon')
+            ).find((img) => !img.classList.contains('active'))
+            const activeIconImg = tile.querySelector('img.paragon__board__tile__icon.active')
+            const bgImg = tile.querySelector('img.paragon__board__tile__bg')
 
-            // Determine node type from tile classes
+            const iconUrl = iconImg?.getAttribute('src') || undefined
+            const activeIconUrl = activeIconImg?.getAttribute('src') || undefined
+            const bgUrl = bgImg?.getAttribute('src') || undefined
+
+            const altText = iconImg?.getAttribute('alt')?.trim() || 'Node'
+            const styleTransform = tile.getAttribute('style') || undefined // e.g. transform: rotate(-90deg)
+            const allocated = tile.classList.contains('active')
+
+            // Extract row/col from CSS (e.g., "r5 c10")
             const tileClasses = tile.className.toLowerCase()
-            let nodeType: 'normal' | 'magic' | 'rare' | 'legendary' = 'normal'
+            const matchRow = tileClasses.match(/\br(\d+)\b/)
+            const matchCol = tileClasses.match(/\bc(\d+)\b/)
+            const row = matchRow ? parseInt(matchRow[1], 10) : undefined
+            const col = matchCol ? parseInt(matchCol[1], 10) : undefined
+
+            // Determine node type
+            let nodeType: 'normal' | 'magic' | 'rare' | 'legendary' | 'gate' = 'normal'
             if (tileClasses.includes('legendary')) nodeType = 'legendary'
             else if (tileClasses.includes('rare')) nodeType = 'rare'
             else if (tileClasses.includes('magic')) nodeType = 'magic'
+            else if (altText.toLowerCase() === 'gate') nodeType = 'gate'
 
             // Format the name nicely
             const nodeName = altText
               .replace(/([a-z])([A-Z])/g, '$1 $2')
               .replace(/\b\w/g, (c) => c.toUpperCase())
 
-            allocatedNodes.push({ nodeName, nodeType, allocated: true })
+            allocatedNodes.push({
+              nodeName,
+              nodeType,
+              allocated,
+              row,
+              col,
+              iconUrl,
+              activeIconUrl,
+              bgUrl,
+              styleTransform
+            })
           })
 
           // Add a summary node with total count
@@ -324,7 +349,9 @@ export class D4BuildsScraper extends BuildScraper {
             boardName,
             boardIndex: index,
             glyph: glyphName ? { glyphName, level: 15 } : null,
-            allocatedNodes
+            allocatedNodes,
+            boardRotation,
+            boardBgUrl
           }
         })
       })

@@ -90,15 +90,23 @@ const { mockPage } = vi.hoisted(() => {
         !selector.includes('tile')
       ) {
         const makeTile = (alt: string, tileClass: string = '') => ({
-          className: `paragon__board__tile active ${tileClass}`,
+          className: `paragon__board__tile active r5 c5 ${tileClass}`,
+          getAttribute: (a: string) => (a === 'style' ? 'transform: rotate(0deg)' : null),
           querySelector: (sel: string) => {
             if (sel === 'img') return { getAttribute: (a: string) => (a === 'alt' ? alt : null) }
+            if (sel === 'img.paragon__board__tile__icon.active') return { getAttribute: () => 'active.png' }
+            if (sel === 'img.paragon__board__tile__bg') return { getAttribute: () => 'bg.png' }
             return null
+          },
+          querySelectorAll: (sel: string) => {
+            if (sel === 'img.paragon__board__tile__icon') return [{ getAttribute: () => 'icon.png', classList: { contains: () => false } }]
+            return []
           }
         })
 
         const mockBoards = [
           {
+            getAttribute: (a: string) => (a === 'style' ? 'transform: rotate(90deg)' : null),
             querySelector: (sel: string) => {
               if (sel.includes('paragon__board__name__glyph')) return { textContent: '(Spirit)' }
               if (sel.includes('paragon__board__name'))
@@ -121,6 +129,7 @@ const { mockPage } = vi.hoisted(() => {
             }
           },
           {
+            getAttribute: (a: string) => (a === 'style' ? '' : null),
             querySelector: (sel: string) => {
               if (sel.includes('paragon__board__name__glyph')) return null
               if (sel.includes('paragon__board__name'))

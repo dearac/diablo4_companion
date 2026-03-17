@@ -104,8 +104,8 @@ function initServices(): void {
  */
 function createConfigWindow(): void {
   configWindow = new BrowserWindow({
-    width: 650,
-    height: 500,
+    width: 1280,
+    height: 760,
     center: true,
     resizable: false,
     autoHideMenuBar: true,

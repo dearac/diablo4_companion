@@ -61,6 +61,8 @@ export interface IParagonBoard {
   boardIndex: number
   glyph: IGlyphInfo | null
   allocatedNodes: IParagonNode[]
+  boardRotation?: number // e.g. 0, 90, 180, 270
+  boardBgUrl?: string // URL for the board's background image
 }
 
 /**
@@ -68,8 +70,14 @@ export interface IParagonBoard {
  */
 export interface IParagonNode {
   nodeName: string
-  nodeType: 'normal' | 'magic' | 'rare' | 'legendary'
+  nodeType: 'normal' | 'magic' | 'rare' | 'legendary' | 'gate'
   allocated: boolean
+  row?: number
+  col?: number
+  iconUrl?: string // Custom icon URL from the site
+  activeIconUrl?: string // The glowing active version
+  bgUrl?: string // The tile background (common, rare, etc)
+  styleTransform?: string // e.g. "rotate(-90deg)"
 }
 
 /**
