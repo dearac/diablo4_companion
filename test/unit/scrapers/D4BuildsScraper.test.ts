@@ -48,6 +48,8 @@ const { mockPage } = vi.hoisted(() => {
               'skill__tree__item r1 c1 large after_bottom skill__tree__item--active skill__tree__item--cap blessed_shield',
             querySelector: (sel: string) => {
               if (sel.includes('count')) return { textContent: '5/5' }
+              if (sel === 'img')
+                return { getAttribute: (a: string) => (a === 'alt' ? 'Blessed Shield' : null) }
               return null
             }
           },
@@ -56,6 +58,10 @@ const { mockPage } = vi.hoisted(() => {
               'skill__tree__item r3 c2 diamond skill__tree__item--active skill__tree__item--cap enhanced_blessed_shield',
             querySelector: (sel: string) => {
               if (sel.includes('count')) return { textContent: '1/1' }
+              if (sel === 'img')
+                return {
+                  getAttribute: (a: string) => (a === 'alt' ? 'Enhanced Blessed Shield' : null)
+                }
               return null
             }
           },
@@ -63,6 +69,8 @@ const { mockPage } = vi.hoisted(() => {
             className: 'skill__tree__item r2 c3 small skill__tree__item--active iron_skin',
             querySelector: (sel: string) => {
               if (sel.includes('count')) return { textContent: '0/5' }
+              if (sel === 'img')
+                return { getAttribute: (a: string) => (a === 'alt' ? 'Iron Skin' : null) }
               return null
             }
           }
@@ -81,6 +89,14 @@ const { mockPage } = vi.hoisted(() => {
         !selector.includes('name') &&
         !selector.includes('tile')
       ) {
+        const makeTile = (alt: string, tileClass: string = '') => ({
+          className: `paragon__board__tile active ${tileClass}`,
+          querySelector: (sel: string) => {
+            if (sel === 'img') return { getAttribute: (a: string) => (a === 'alt' ? alt : null) }
+            return null
+          }
+        })
+
         const mockBoards = [
           {
             querySelector: (sel: string) => {
@@ -94,10 +110,19 @@ const { mockPage } = vi.hoisted(() => {
                 }
               return null
             },
-            querySelectorAll: () => Array(41).fill({})
+            querySelectorAll: (sel: string) => {
+              if (sel.includes('.active'))
+                return [
+                  makeTile('Str'),
+                  makeTile('DamageToElite', 'rare'),
+                  makeTile('HPPercent', 'magic')
+                ]
+              return []
+            }
           },
           {
             querySelector: (sel: string) => {
+              if (sel.includes('paragon__board__name__glyph')) return null
               if (sel.includes('paragon__board__name'))
                 return {
                   childNodes: [
@@ -105,7 +130,6 @@ const { mockPage } = vi.hoisted(() => {
                     { nodeType: 3, textContent: 'Blood Rage' }
                   ]
                 }
-              if (sel.includes('paragon__board__name__glyph')) return null
               return null
             },
             querySelectorAll: () => []
@@ -226,6 +250,10 @@ describe('D4BuildsScraper', () => {
     expect(data.paragonBoards[0].boardName).toBe('Warbringer')
     expect(data.paragonBoards[0].boardIndex).toBe(0)
     expect(data.paragonBoards[0].glyph).toEqual({ glyphName: 'Spirit', level: 15 })
+    // Should have summary + significant nodes (Str is filtered as generic)
+    expect(data.paragonBoards[0].allocatedNodes.length).toBeGreaterThanOrEqual(1)
+    // First node is always the summary
+    expect(data.paragonBoards[0].allocatedNodes[0].nodeName).toContain('total nodes')
 
     expect(data.paragonBoards[1].boardName).toBe('Blood Rage')
     expect(data.paragonBoards[1].boardIndex).toBe(1)

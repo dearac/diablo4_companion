@@ -186,36 +186,16 @@ export class D4BuildsScraper extends BuildScraper {
 
     try {
       const rawSkills = await page.$$eval('.skill__tree__item--active', (nodes) => {
-        const skipClasses = new Set([
-          'skill__tree__item',
-          'skill__tree__item--active',
-          'skill__tree__item--cap',
-          'large',
-          'small',
-          'diamond',
-          'after_bottom',
-          'after_bottom_long',
-          'after_top',
-          'after_left',
-          'after_right',
-          'before_bottom',
-          'before_top',
-          'before_left',
-          'before_right'
-        ])
-
         return nodes
           .map((node) => {
-            const classes = node.className.split(/\s+/)
-            const nameClasses = classes.filter(
-              (c) =>
-                !skipClasses.has(c) && !c.match(/^r\d+$/) && !c.match(/^c\d+$/) && c.trim() !== ''
-            )
-            const rawName = nameClasses[nameClasses.length - 1] || ''
-            if (!rawName) return null
+            // PRIMARY: Use img alt text for clean skill name
+            // e.g., alt="Punishment" instead of CSS class "punishment_clash"
+            const imgEl = node.querySelector('img')
+            const altText = imgEl?.getAttribute('alt') || ''
+            if (!altText) return null
 
-            const skillName = rawName
-              .replace(/_/g, ' ')
+            // Convert camelCase/PascalCase to spaced
+            const skillName = altText
               .replace(/([a-z])([A-Z])/g, '$1 $2')
               .replace(/\b\w/g, (c) => c.toUpperCase())
 
@@ -227,6 +207,7 @@ export class D4BuildsScraper extends BuildScraper {
 
             if (points === 0) return null
 
+            const classes = node.className.split(/\s+/)
             const isDiamond = classes.includes('diamond')
             const isLarge = classes.includes('large')
             let nodeType: 'active' | 'passive' | 'keystone' = 'passive'
@@ -265,12 +246,25 @@ export class D4BuildsScraper extends BuildScraper {
 
     try {
       return await page.$$eval('.paragon__board', (boards) => {
+        // Skip generic stat names when listing significant nodes
+        const genericStats = new Set([
+          'str',
+          'dex',
+          'int',
+          'will',
+          'point',
+          'gate',
+          'start',
+          'socket',
+          'blank',
+          'empty'
+        ])
+
         return boards.map((board, index) => {
-          // Get board name — extract ONLY the direct text, ignoring child elements
+          // Get board name — extract ONLY direct text nodes
           const nameEl = board.querySelector('.paragon__board__name')
           let boardName = `Board ${index + 1}`
           if (nameEl) {
-            // Walk child nodes to find just the text nodes (not child element text)
             const textParts: string[] = []
             nameEl.childNodes.forEach((node) => {
               if (node.nodeType === Node.TEXT_NODE) {
@@ -278,33 +272,59 @@ export class D4BuildsScraper extends BuildScraper {
                 if (text) textParts.push(text)
               }
             })
-            // The text nodes typically contain the board number and name
-            // e.g., "1" + "Starting Board" or just "Starting Board"
             const rawName = textParts.join(' ').trim()
-            // Strip leading digits (board number prefix like "1", "2", etc.)
             boardName = rawName.replace(/^\d+\s*/, '').trim() || rawName
           }
 
-          // Get glyph name from .paragon__board__name__glyph
+          // Get glyph name
           const glyphEl = board.querySelector('.paragon__board__name__glyph')
           const glyphText = glyphEl?.textContent?.trim() || null
-          // Extract glyph name — format is "(GlyphName)" or "GlyphName"
           const glyphName = glyphText ? glyphText.replace(/[()]/g, '').trim() : null
 
-          // Count active tiles
-          const activeTiles = board.querySelectorAll('.paragon__board__tile--active').length
+          // Extract allocated nodes with meaningful names
+          // Active tiles use class '.active' (NOT '--active')
+          const activeTiles = board.querySelectorAll('.paragon__board__tile.active')
+          const totalActive = activeTiles.length
+
+          // Collect significant node names from img alt text
+          const allocatedNodes: Array<{
+            nodeName: string
+            nodeType: 'normal' | 'magic' | 'rare' | 'legendary'
+            allocated: boolean
+          }> = []
+
+          activeTiles.forEach((tile) => {
+            const imgEl = tile.querySelector('img')
+            const altText = imgEl?.getAttribute('alt')?.trim() || ''
+            if (!altText || genericStats.has(altText.toLowerCase())) return
+
+            // Determine node type from tile classes
+            const tileClasses = tile.className.toLowerCase()
+            let nodeType: 'normal' | 'magic' | 'rare' | 'legendary' = 'normal'
+            if (tileClasses.includes('legendary')) nodeType = 'legendary'
+            else if (tileClasses.includes('rare')) nodeType = 'rare'
+            else if (tileClasses.includes('magic')) nodeType = 'magic'
+
+            // Format the name nicely
+            const nodeName = altText
+              .replace(/([a-z])([A-Z])/g, '$1 $2')
+              .replace(/\b\w/g, (c) => c.toUpperCase())
+
+            allocatedNodes.push({ nodeName, nodeType, allocated: true })
+          })
+
+          // Add a summary node with total count
+          allocatedNodes.unshift({
+            nodeName: `${totalActive} total nodes`,
+            nodeType: 'normal',
+            allocated: true
+          })
 
           return {
             boardName,
             boardIndex: index,
             glyph: glyphName ? { glyphName, level: 15 } : null,
-            allocatedNodes: [
-              {
-                nodeName: `${activeTiles} nodes allocated`,
-                nodeType: 'normal' as const,
-                allocated: true
-              }
-            ]
+            allocatedNodes
           }
         })
       })

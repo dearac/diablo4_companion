@@ -246,6 +246,212 @@
   color: var(--d4-text-primary);
 }
 
+/* ---- Expandable Detail Sections ---- */
+
+.build-summary__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 16px;
+}
+
+.build-summary__section-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--d4-border);
+  border-radius: 4px;
+  color: var(--d4-text-primary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.build-summary__section-toggle:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--d4-border-ornate);
+}
+
+.build-summary__section-toggle.active {
+  background: rgba(212, 169, 74, 0.08);
+  border-color: var(--d4-accent-gold);
+}
+
+.build-summary__badge {
+  font-size: 11px;
+  color: var(--d4-text-muted);
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.build-summary__detail {
+  max-height: 250px;
+  overflow-y: auto;
+  border: 1px solid var(--d4-border);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+  }
+
+  to {
+    opacity: 1;
+    max-height: 250px;
+  }
+}
+
+.build-summary__empty {
+  color: var(--d4-text-dim);
+  font-size: 12px;
+  text-align: center;
+  padding: 12px;
+}
+
+.build-summary__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* Skills */
+.build-summary__skill {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  transition: background var(--transition-fast);
+}
+
+.build-summary__skill:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.build-summary__skill.active {
+  border-left: 2px solid var(--d4-accent-gold);
+}
+
+.build-summary__skill.passive {
+  border-left: 2px solid #6a9bd8;
+}
+
+.build-summary__skill.keystone {
+  border-left: 2px solid #c96eff;
+}
+
+.build-summary__skill-name {
+  color: var(--d4-text-primary);
+}
+
+.build-summary__skill-pts {
+  color: var(--d4-text-muted);
+  font-size: 11px;
+  font-family: var(--font-mono, monospace);
+}
+
+/* Paragon */
+.build-summary__board {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.build-summary__board:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.build-summary__board-name {
+  color: var(--d4-text-primary);
+  font-weight: 500;
+}
+
+.build-summary__glyph {
+  color: #6ecbf5;
+  font-size: 11px;
+}
+
+/* Gear */
+.build-summary__gear {
+  display: grid;
+  grid-template-columns: 90px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.build-summary__gear:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.build-summary__gear-slot {
+  color: var(--d4-text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.build-summary__gear-name {
+  color: var(--d4-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.build-summary__gear-name.unique {
+  color: #d4a94a;
+}
+
+.build-summary__gear-name.legendary {
+  color: #e88b3e;
+}
+
+.build-summary__gear-name.rare {
+  color: #f5e35b;
+}
+
+.build-summary__gear-type {
+  color: var(--d4-text-dim);
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+/* Scrollbar for detail panels */
+.build-summary__detail::-webkit-scrollbar {
+  width: 4px;
+}
+
+.build-summary__detail::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.build-summary__detail::-webkit-scrollbar-thumb {
+  background: var(--d4-border-ornate);
+  border-radius: 2px;
+}
+
 /* ---- Launch Button ---- */
 
 .launch-button {
