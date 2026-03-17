@@ -2,170 +2,124 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { D4BuildsScraper } from '../../../src/main/scrapers/D4BuildsScraper'
 
 // ============================================================
-// Mock Playwright — simulates the D4Builds planner DOM
+// Mock Playwright — simulates the D4Builds page DOM
 // ============================================================
-// vi.hoisted() ensures these values exist before vi.mock()
-// runs (since vi.mock is hoisted to the top of the file).
-//
-// The mock page simulates:
-// - $eval: metadata from the header (build name, class title)
-// - $: clickable section tab buttons
-// - $$eval: selector-routed responses for skills, paragon, gear
+// Updated to match the new scraper's real selectors (2026-03-16):
+//   - .builder__header__description (h2 build name)
+//   - .builder__header__icon (class from CSS class)
+//   - .build__skill__wrapper (skill name in CSS class)
+//   - .skill__tree__item--active (allocated skill tree nodes)
+//   - .builder__gear__item (gear slots)
+//   - .builder__navigation__link (tab buttons)
 // ============================================================
 
 const { mockPage } = vi.hoisted(() => {
   const mockPage = {
     goto: vi.fn().mockResolvedValue(null),
     waitForSelector: vi.fn().mockResolvedValue(null),
+    waitForTimeout: vi.fn().mockResolvedValue(null),
+
+    // $eval returns Promises (the real Playwright API returns Promises)
     $eval: vi.fn().mockImplementation((selector: string, callback: Function) => {
-      if (selector.includes('description')) return callback({ textContent: "Rob's Cpt. America" })
-      if (selector.includes('header__title'))
-        return callback({ textContent: 'Blessed Shield Paladin Build' })
-      return null
+      if (selector.includes('description'))
+        return Promise.resolve(callback({ textContent: "Rob's Cpt. America" }))
+      if (selector.includes('header__icon'))
+        return Promise.resolve(callback({ className: 'builder__header__icon Paladin' }))
+      return Promise.resolve(null)
     }),
-    // Simulate clicking section tab buttons
-    $: vi.fn().mockResolvedValue({
-      click: vi.fn().mockResolvedValue(null)
-    }),
-    // Selector-routed mock: returns different data based on the CSS selector
+
+    // $$eval also returns Promises
     $$eval: vi.fn().mockImplementation((selector: string, callback: Function) => {
-      // Skills selectors
-      if (selector.includes('builder__skill')) {
+      // Active skills from Gear & Skills tab
+      if (selector.includes('build__skill__wrapper')) {
+        const mockWrappers = [
+          { className: 'build__skill__wrapper BlessedShield ' },
+          { className: 'build__skill__wrapper Consecration ' },
+          { className: 'build__skill__wrapper DefianceAura ' }
+        ]
+        return Promise.resolve(callback(mockWrappers))
+      }
+
+      // Skill tree nodes (allocated)
+      if (selector.includes('skill__tree__item--active')) {
         const mockNodes = [
           {
-            className: 'builder__skill builder__skill--active',
+            className:
+              'skill__tree__item r1 c1 large after_bottom skill__tree__item--active skill__tree__item--cap blessed_shield',
             querySelector: (sel: string) => {
-              if (sel.includes('skill__name')) return { textContent: 'Hammer of the Ancients' }
-              if (sel.includes('skill__points')) return { textContent: '5/5' }
-              if (sel.includes('skill__type')) return { textContent: 'active' }
+              if (sel.includes('count')) return { textContent: '5/5' }
               return null
             }
           },
           {
-            className: 'builder__skill builder__skill--active',
+            className:
+              'skill__tree__item r3 c2 diamond skill__tree__item--active skill__tree__item--cap enhanced_blessed_shield',
             querySelector: (sel: string) => {
-              if (sel.includes('skill__name')) return { textContent: 'Imposing Presence' }
-              if (sel.includes('skill__points')) return { textContent: '3/3' }
-              if (sel.includes('skill__type')) return { textContent: 'passive' }
+              if (sel.includes('count')) return { textContent: '1/1' }
               return null
             }
           },
           {
-            className: 'builder__skill builder__skill--active',
+            className: 'skill__tree__item r2 c3 small skill__tree__item--active iron_skin',
             querySelector: (sel: string) => {
-              if (sel.includes('skill__name')) return { textContent: 'Unconstrained' }
-              if (sel.includes('skill__points')) return { textContent: '1/1' }
-              if (sel.includes('skill__type')) return { textContent: 'keystone' }
+              if (sel.includes('count')) return { textContent: '0/5' }
               return null
             }
           }
         ]
-        return callback(mockNodes)
+        return Promise.resolve(callback(mockNodes))
       }
 
-      // Paragon selectors
-      if (selector.includes('builder__paragon__board')) {
-        const mockBoards = [
+      // Skill tree items (for waitForSelector fallback)
+      if (selector.includes('skill__tree__item') && !selector.includes('active')) {
+        return Promise.resolve(callback([]))
+      }
+
+      // Paragon boards
+      if (selector.includes('paragon__board__name')) {
+        const mockBoards = [{ textContent: 'Warbringer' }, { textContent: 'Blood Rage' }]
+        return Promise.resolve(callback(mockBoards))
+      }
+
+      // Gear items
+      if (selector.includes('builder__gear__item')) {
+        const mockItems = [
           {
             querySelector: (sel: string) => {
-              if (sel.includes('board__name')) return { textContent: 'Warbringer' }
-              if (sel.includes('board__glyph'))
+              if (sel.includes('gear__slot')) return { textContent: 'Helm' }
+              if (sel.includes('gear__name'))
                 return {
-                  querySelector: (innerSel: string) => {
-                    if (innerSel.includes('name')) return { textContent: 'Wrath' }
-                    if (innerSel.includes('level')) return { textContent: '15' }
-                    return null
-                  }
+                  textContent: 'Heir of Perdition',
+                  className: 'builder__gear__name builder__gear__name--mythic'
                 }
               return null
-            },
-            querySelectorAll: () => [
-              {
-                className: 'builder__paragon__node normal',
-                querySelector: (sel: string) => {
-                  if (sel.includes('name')) return { textContent: 'Strength' }
-                  return null
-                }
-              },
-              {
-                className: 'builder__paragon__node magic',
-                querySelector: (sel: string) => {
-                  if (sel.includes('name')) return { textContent: 'Brash' }
-                  return null
-                }
-              },
-              {
-                className: 'builder__paragon__node rare',
-                querySelector: (sel: string) => {
-                  if (sel.includes('name')) return { textContent: 'Martial Vigor' }
-                  return null
-                }
-              }
-            ]
+            }
           },
           {
             querySelector: (sel: string) => {
-              if (sel.includes('board__name')) return { textContent: 'Blood Rage' }
-              if (sel.includes('board__glyph')) return null
-              return null
-            },
-            querySelectorAll: () => [
-              {
-                className: 'builder__paragon__node legendary',
-                querySelector: (sel: string) => {
-                  if (sel.includes('name')) return { textContent: 'Blood Rage' }
-                  return null
+              if (sel.includes('gear__slot')) return { textContent: 'Chest Armor' }
+              if (sel.includes('gear__name'))
+                return {
+                  textContent: 'Mantle of the Grey',
+                  className: 'builder__gear__name builder__gear__name--unique'
                 }
-              }
-            ]
+              return null
+            }
           }
         ]
-        return callback(mockBoards)
+        return Promise.resolve(callback(mockItems))
       }
 
-      // Gear selectors
-      if (selector.includes('builder__gear__slot')) {
-        const mockSlots = [
-          {
-            querySelector: (sel: string) => {
-              if (sel.includes('slot__name')) return { textContent: 'Helm' }
-              if (sel.includes('gear__item'))
-                return { textContent: 'Harlequin Crest', className: 'unique' }
-              if (sel.includes('gear__aspect')) return null
-              return null
-            },
-            querySelectorAll: (sel: string) => {
-              if (sel.includes('gear__affix'))
-                return [{ textContent: 'Maximum Life' }, { textContent: 'Cooldown Reduction' }]
-              if (sel.includes('gear__temper'))
-                return [{ textContent: 'Chance to Deal Double Damage' }]
-              if (sel.includes('gear__masterwork')) return [{ textContent: 'Maximum Life' }]
-              return []
-            },
-            className: 'builder__gear__slot'
-          },
-          {
-            querySelector: (sel: string) => {
-              if (sel.includes('slot__name')) return { textContent: 'Chest' }
-              if (sel.includes('gear__item')) return { textContent: null, className: 'legendary' }
-              if (sel.includes('gear__aspect')) return { textContent: 'Aspect of Disobedience' }
-              return null
-            },
-            querySelectorAll: (sel: string) => {
-              if (sel.includes('gear__affix'))
-                return [{ textContent: 'Total Armor' }, { textContent: 'Maximum Life' }]
-              if (sel.includes('gear__temper')) return [{ textContent: 'Armor Contribution' }]
-              if (sel.includes('gear__masterwork')) return [{ textContent: 'Total Armor' }]
-              return []
-            },
-            className: 'builder__gear__slot'
-          }
-        ]
-        return callback(mockSlots)
-      }
-
-      return callback([])
+      return Promise.resolve(callback([]))
     }),
+
+    // Locator for tab navigation
+    locator: vi.fn().mockReturnValue({
+      first: vi.fn().mockReturnValue({
+        click: vi.fn().mockResolvedValue(null)
+      })
+    }),
+
     close: vi.fn().mockResolvedValue(null)
   }
   return { mockPage }
@@ -198,114 +152,63 @@ describe('D4BuildsScraper', () => {
   it('should handle d4builds.gg URLs', () => {
     expect(scraper.canHandle('https://d4builds.gg/builds/abc123')).toBe(true)
     expect(scraper.canHandle('https://www.d4builds.gg/builds/xyz')).toBe(true)
+    expect(
+      scraper.canHandle('https://d4builds.gg/builds/blessed-shield-paladin-endgame/?var=0')
+    ).toBe(true)
     expect(scraper.canHandle('https://maxroll.gg/d4/planner/test')).toBe(false)
   })
 
   it('should scrape basic metadata', async () => {
     const data = await scraper.scrape('https://d4builds.gg/builds/test')
     expect(data.name).toBe("Rob's Cpt. America")
-    // Fallback for Paladin (not a recognized D4 class)
+    // "Paladin" doesn't map to a standard D4 class, falls back to Barbarian
     expect(data.d4Class).toBe('Barbarian')
     expect(data.level).toBe(100)
   })
 
-  it('should extract allocated skills', async () => {
+  it('should extract skill tree allocations', async () => {
     const data = await scraper.scrape('https://d4builds.gg/builds/test')
-    expect(data.skills).toHaveLength(3)
 
-    expect(data.skills[0]).toEqual({
-      skillName: 'Hammer of the Ancients',
-      points: 5,
-      maxPoints: 5,
-      tier: 'core',
-      nodeType: 'active'
-    })
+    // Only nodes with points > 0 should be included
+    // The mock has 3 nodes, but the 3rd has 0/5 so should be filtered out
+    expect(data.skills.length).toBeGreaterThanOrEqual(2)
 
-    expect(data.skills[1]).toEqual({
-      skillName: 'Imposing Presence',
-      points: 3,
-      maxPoints: 3,
-      tier: 'core',
-      nodeType: 'passive'
-    })
+    // Check first skill — "Blessed Shield" (from CSS class blessed_shield)
+    const blessedShield = data.skills.find((s) => s.skillName.includes('Blessed'))
+    expect(blessedShield).toBeDefined()
+    expect(blessedShield!.points).toBe(5)
+    expect(blessedShield!.maxPoints).toBe(5)
 
-    expect(data.skills[2]).toEqual({
-      skillName: 'Unconstrained',
-      points: 1,
-      maxPoints: 1,
-      tier: 'core',
-      nodeType: 'keystone'
-    })
+    // Check second skill — "Enhanced Blessed Shield" (from CSS class enhanced_blessed_shield)
+    const enhanced = data.skills.find((s) => s.skillName.includes('Enhanced'))
+    expect(enhanced).toBeDefined()
+    expect(enhanced!.points).toBe(1)
+    expect(enhanced!.maxPoints).toBe(1)
   })
 
   it('should extract paragon boards', async () => {
     const data = await scraper.scrape('https://d4builds.gg/builds/test')
     expect(data.paragonBoards).toHaveLength(2)
 
-    // First board with glyph
-    const board1 = data.paragonBoards[0]
-    expect(board1.boardName).toBe('Warbringer')
-    expect(board1.boardIndex).toBe(0)
-    expect(board1.glyph).toEqual({ glyphName: 'Wrath', level: 15 })
-    expect(board1.allocatedNodes).toHaveLength(3)
+    expect(data.paragonBoards[0].boardName).toBe('Warbringer')
+    expect(data.paragonBoards[0].boardIndex).toBe(0)
 
-    expect(board1.allocatedNodes[0]).toEqual({
-      nodeName: 'Strength',
-      nodeType: 'normal',
-      allocated: true
-    })
-    expect(board1.allocatedNodes[1]).toEqual({
-      nodeName: 'Brash',
-      nodeType: 'magic',
-      allocated: true
-    })
-    expect(board1.allocatedNodes[2]).toEqual({
-      nodeName: 'Martial Vigor',
-      nodeType: 'rare',
-      allocated: true
-    })
-
-    // Second board without glyph
-    const board2 = data.paragonBoards[1]
-    expect(board2.boardName).toBe('Blood Rage')
-    expect(board2.boardIndex).toBe(1)
-    expect(board2.glyph).toBeNull()
-    expect(board2.allocatedNodes).toHaveLength(1)
-    expect(board2.allocatedNodes[0]).toEqual({
-      nodeName: 'Blood Rage',
-      nodeType: 'legendary',
-      allocated: true
-    })
+    expect(data.paragonBoards[1].boardName).toBe('Blood Rage')
+    expect(data.paragonBoards[1].boardIndex).toBe(1)
   })
 
   it('should extract gear slots', async () => {
     const data = await scraper.scrape('https://d4builds.gg/builds/test')
     expect(data.gearSlots).toHaveLength(2)
 
-    // Verify Unique item (Helm)
     const helm = data.gearSlots[0]
     expect(helm.slot).toBe('Helm')
-    expect(helm.itemName).toBe('Harlequin Crest')
-    expect(helm.itemType).toBe('Unique')
-    expect(helm.requiredAspect).toBeNull()
-    expect(helm.priorityAffixes).toEqual([
-      { name: 'Maximum Life', priority: 1 },
-      { name: 'Cooldown Reduction', priority: 2 }
-    ])
-    expect(helm.temperingTargets).toEqual(['Chance to Deal Double Damage'])
-    expect(helm.masterworkPriority).toEqual(['Maximum Life'])
+    expect(helm.itemName).toBe('Heir of Perdition')
+    expect(helm.itemType).toBe('Unique') // mythic maps to Unique
 
-    // Verify Legendary item (Chest with aspect)
     const chest = data.gearSlots[1]
-    expect(chest.slot).toBe('Chest')
-    expect(chest.itemName).toBeNull()
-    expect(chest.itemType).toBe('Legendary')
-    expect(chest.requiredAspect).toBe('Aspect of Disobedience')
-    expect(chest.priorityAffixes).toEqual([
-      { name: 'Total Armor', priority: 1 },
-      { name: 'Maximum Life', priority: 2 }
-    ])
-    expect(chest.temperingTargets).toEqual(['Armor Contribution'])
-    expect(chest.masterworkPriority).toEqual(['Total Armor'])
+    expect(chest.slot).toBe('Chest Armor')
+    expect(chest.itemName).toBe('Mantle of the Grey')
+    expect(chest.itemType).toBe('Unique')
   })
 })

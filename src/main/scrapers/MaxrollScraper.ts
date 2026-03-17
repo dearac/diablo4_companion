@@ -53,7 +53,7 @@ export class MaxrollScraper extends BuildScraper {
 
     try {
       // 1. Navigate to the planner
-      await page.goto(url, { waitUntil: 'networkidle' })
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 })
 
       // 2. Wait for the title to appear (signals hydration)
       // Maxroll uses CSS modules so we use a contains selector for buildTitle

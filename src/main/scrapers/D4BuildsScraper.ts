@@ -11,35 +11,28 @@ import {
 // ============================================================
 // D4BuildsScraper — Scraper for d4builds.gg build planner
 // ============================================================
-// D4Builds renders a builder page with separate sections for
-// skills, paragon, and gear. The skill section uses elements
-// with class `.builder__skill` and marks allocated ones with
-// `.builder__skill--active`. Each node contains the skill name,
-// point allocation (as "X/Y"), and a type indicator.
+// D4Builds uses a tabbed interface with buttons having class
+// `.builder__navigation__link`. The default tab shows Gear & Skills.
+// The Skill Tree tab must be clicked to see point allocations.
+//
+// Key selectors (verified against live site 2026-03-16):
+//   Header:   .builder__header__name (h1), .builder__header__description (h2)
+//   Class:    .builder__header__icon (class name in CSS class, e.g. "Paladin")
+//   Skills:   .build__skill__wrapper (skill name in CSS class)
+//   Tree:     .skill__tree__item--active with .skill__tree__item__count
+//   Gear:     .builder__gear__item with .builder__gear__name, .builder__gear__slot
+//   Nav tabs: button.builder__navigation__link
 // ============================================================
 
-/**
- * Scraper for d4builds.gg builds.
- * Uses Playwright to extract data from the D4Builds planner.
- */
 export class D4BuildsScraper extends BuildScraper {
   readonly siteName = 'd4builds.gg'
   readonly sourceKey: BuildSourceSite = 'd4builds'
 
-  /**
-   * Checks if this scraper can handle the given URL.
-   * Matches d4builds.gg/builds/ URLs.
-   */
   canHandle(url: string): boolean {
     const normalized = url.toLowerCase().trim()
     return normalized.includes('d4builds.gg/builds/')
   }
 
-  /**
-   * Scrapes the build data from the given URL.
-   *
-   * @param url - The D4Builds build URL
-   */
   async scrape(url: string): Promise<RawBuildData> {
     const browser = await chromium.launch({ headless: true })
     const context = await browser.newContext({
@@ -48,39 +41,51 @@ export class D4BuildsScraper extends BuildScraper {
     const page = await context.newPage()
 
     try {
-      // 1. Navigate to the build page
-      await page.goto(url, { waitUntil: 'networkidle' })
+      // 1. Navigate — use 'domcontentloaded' instead of 'networkidle'
+      //    because d4builds.gg has persistent WebSocket connections
+      //    that prevent networkidle from ever firing
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 })
 
-      // 2. Wait for the header description to appear
+      // 2. Wait for the build header to appear (proves page loaded)
       await page.waitForSelector('.builder__header__description', { timeout: 30000 })
 
       // 3. Extract Metadata
-      const buildName = await page.$eval(
-        '.builder__header__description',
-        (el) => el.textContent?.trim() || 'Unknown Build'
-      )
+      const buildName = await page
+        .$eval('.builder__header__description', (el) => el.textContent?.trim() || 'Unknown Build')
+        .catch(() => 'Unknown Build')
 
-      const d4ClassRaw = await page.$eval(
-        '.builder__header__title',
-        (el) => el.textContent?.trim() || 'Barbarian'
-      )
+      // Class name is embedded in the header icon's CSS class
+      const d4ClassRaw = await page
+        .$eval('.builder__header__icon', (el) => {
+          // Classes like "builder__header__icon Paladin"
+          const classes = el.className.split(/\s+/)
+          return classes.find((c) => c !== 'builder__header__icon') || 'Unknown'
+        })
+        .catch(() => 'Unknown')
 
       const d4Class = this.normalizeClass(d4ClassRaw)
 
-      // 4. Extract Skills
+      // 4. Extract active skills from the default Gear & Skills tab
       const skills = await this.scrapeSkills(page)
 
-      // 5. Extract Paragon boards
+      // 5. Click "Skill Tree" tab and extract allocations
+      const skillAllocations = await this.scrapeSkillTree(page)
+
+      // 6. Click "Paragon" tab and extract boards
       const paragonBoards = await this.scrapeParagon(page)
 
-      // 6. Extract Gear slots
+      // 7. Extract gear (visible on default Gear & Skills tab, go back to it)
+      await this.clickTab(page, 'Gear')
       const gearSlots = await this.scrapeGear(page)
+
+      // Merge skill names from active skills with allocations from skill tree
+      const mergedSkills = skillAllocations.length > 0 ? skillAllocations : skills
 
       return {
         name: buildName,
         d4Class: d4Class,
         level: 100,
-        skills,
+        skills: mergedSkills,
         paragonBoards,
         gearSlots
       }
@@ -94,229 +99,202 @@ export class D4BuildsScraper extends BuildScraper {
   }
 
   /**
-   * Extracts all allocated skill nodes from the D4Builds skill section.
-   *
-   * D4Builds marks allocated skills with `.builder__skill--active`.
-   * Each active node contains:
-   * - `.builder__skill__name` — the skill's display name
-   * - `.builder__skill__points` — "X/Y" format (e.g., "5/5")
-   * - `.builder__skill__type` — "active", "passive", or "keystone"
-   *
-   * @param page - The Playwright page, already on the build page
-   * @returns Array of skill allocations found in the tree
+   * Clicks a builder navigation tab by matching text.
+   */
+  private async clickTab(page: Page, tabText: string): Promise<void> {
+    const tab = page.locator(`.builder__navigation__link`, { hasText: tabText }).first()
+    try {
+      await tab.click({ timeout: 5000 })
+      // Wait a beat for content to load after tab switch
+      await page.waitForTimeout(1000)
+    } catch {
+      // Tab might not exist for some builds
+      console.warn(`Tab "${tabText}" not found, skipping`)
+    }
+  }
+
+  /**
+   * Extracts active skill names from the Gear & Skills tab.
+   * Each skill is a button.builder__skill containing a
+   * div.build__skill__wrapper whose CSS class contains the skill name.
    */
   private async scrapeSkills(page: Page): Promise<ISkillAllocation[]> {
-    // Click the Skills section tab if it exists
-    const skillsTab = await page.$(
-      '.builder__tab--skills, [data-tab="skills"], button:has-text("Skills")'
-    )
-    if (skillsTab) {
-      await skillsTab.click()
-      // Wait briefly for the skill section to render
-      await page.waitForSelector('.builder__skill', { timeout: 10000 }).catch(() => {
-        // Skills section may already be visible
-      })
-    }
+    const skills = await page
+      .$$eval('.build__skill__wrapper', (wrappers) => {
+        return wrappers.map((wrapper) => {
+          // Skill name is in the CSS class — e.g., "build__skill__wrapper BlessedShield"
+          const classes = wrapper.className.split(/\s+/)
+          const skillClass =
+            classes.find((c) => c !== 'build__skill__wrapper' && c.trim() !== '') || 'Unknown'
 
-    // Extract all allocated skill nodes
-    const skills = await page.$$eval(
-      '.builder__skill--active, .builder__skill[class*="active"]',
-      (nodes) => {
-        return nodes.map((node) => {
-          // Extract skill name from the dedicated name element
-          const nameEl = node.querySelector('.builder__skill__name')
-          const skillName = nameEl?.textContent?.trim() || 'Unknown Skill'
-
-          // Parse point allocation from "X/Y" format
-          const pointsEl = node.querySelector('.builder__skill__points')
-          const pointsText = pointsEl?.textContent?.trim() || ''
-          const pointsMatch = pointsText.match(/(\d+)\s*\/\s*(\d+)/)
-
-          const points = pointsMatch ? parseInt(pointsMatch[1], 10) : 1
-          const maxPoints = pointsMatch ? parseInt(pointsMatch[2], 10) : 1
-
-          // Determine node type from the type indicator element
-          const typeEl = node.querySelector('.builder__skill__type')
-          const typeText = typeEl?.textContent?.trim()?.toLowerCase() || ''
-
-          let nodeType: 'active' | 'passive' | 'keystone' = 'active'
-          if (typeText.includes('passive')) {
-            nodeType = 'passive'
-          } else if (typeText.includes('keystone')) {
-            nodeType = 'keystone'
-          }
+          // Convert PascalCase to readable — "BlessedShield" → "Blessed Shield"
+          const skillName = skillClass.replace(/([a-z])([A-Z])/g, '$1 $2')
 
           return {
             skillName,
-            points,
-            maxPoints,
-            tier: 'core', // D4Builds doesn't expose tier in the DOM
-            nodeType
+            points: 1,
+            maxPoints: 1,
+            tier: 'active',
+            nodeType: 'active' as const
           }
         })
-      }
-    )
+      })
+      .catch(() => [] as ISkillAllocation[])
 
     return skills
   }
 
   /**
-   * Extracts paragon board data from D4Builds' paragon section.
-   *
-   * D4Builds uses `.builder__paragon__board` containers, each with:
-   * - `.builder__paragon__board__name` — the board's display name
-   * - `.builder__paragon__board__glyph` — the socketed glyph (name + level)
-   * - `.builder__paragon__node` — individual allocated nodes with type classes
-   *
-   * @param page - The Playwright page, already on the build page
-   * @returns Array of paragon boards with glyphs and allocated nodes
+   * Clicks the "Skill Tree" tab and extracts allocated skill nodes.
+   * Each allocated node has class `.skill__tree__item--active` and
+   * contains `.skill__tree__item__count` with text like "5/5".
+   */
+  private async scrapeSkillTree(page: Page): Promise<ISkillAllocation[]> {
+    await this.clickTab(page, 'Skill Tree')
+
+    // Wait for skill tree to render
+    await page.waitForSelector('.skill__tree__item', { timeout: 10000 }).catch(() => {})
+
+    const skills = await page
+      .$$eval('.skill__tree__item--active', (nodes) => {
+        return nodes
+          .map((node) => {
+            // Skill name is embedded in the CSS classes — look for the last
+            // meaningful class that isn't a position/state class
+            const classes = node.className.split(/\s+/)
+            const skipClasses = new Set([
+              'skill__tree__item',
+              'skill__tree__item--active',
+              'skill__tree__item--cap',
+              'large',
+              'small',
+              'diamond',
+              'after_bottom',
+              'after_bottom_long',
+              'after_top',
+              'after_left',
+              'after_right',
+              'before_bottom',
+              'before_top'
+            ])
+            // Filter to classes that look like skill names and aren't positional
+            const nameClasses = classes.filter(
+              (c) =>
+                !skipClasses.has(c) && !c.match(/^r\d+$/) && !c.match(/^c\d+$/) && c.trim() !== ''
+            )
+            const rawName = nameClasses[nameClasses.length - 1] || 'Unknown'
+
+            // Convert snake_case/camelCase to readable
+            const skillName = rawName
+              .replace(/_/g, ' ')
+              .replace(/([a-z])([A-Z])/g, '$1 $2')
+              .replace(/\b\w/g, (c) => c.toUpperCase())
+
+            // Parse point allocation from ".skill__tree__item__count"
+            const countEl = node.querySelector('.skill__tree__item__count')
+            const countText = countEl?.textContent?.trim() || ''
+            const match = countText.match(/(\d+)\s*\/\s*(\d+)/)
+
+            const points = match ? parseInt(match[1], 10) : 1
+            const maxPoints = match ? parseInt(match[2], 10) : 1
+
+            // Skip nodes with 0 points allocated
+            if (points === 0) return null
+
+            // Determine type by element size/shape classes
+            const isDiamond = classes.includes('diamond')
+            const isLarge = classes.includes('large')
+            let nodeType: 'active' | 'passive' | 'keystone' = 'passive'
+            if (isLarge) nodeType = 'active'
+            if (isDiamond) nodeType = 'passive'
+
+            return {
+              skillName,
+              points,
+              maxPoints,
+              tier: 'core',
+              nodeType
+            }
+          })
+          .filter(Boolean)
+      })
+      .catch(() => [] as ISkillAllocation[])
+
+    return skills as ISkillAllocation[]
+  }
+
+  /**
+   * Clicks the "Paragon" tab and extracts board data.
    */
   private async scrapeParagon(page: Page): Promise<IParagonBoard[]> {
-    // Click the Paragon section tab if it exists
-    const paragonTab = await page.$(
-      '.builder__tab--paragon, [data-tab="paragon"], button:has-text("Paragon")'
-    )
-    if (paragonTab) {
-      await paragonTab.click()
-      await page.waitForSelector('.builder__paragon__board', { timeout: 10000 }).catch(() => {
-        // Paragon section may already be visible
-      })
-    }
+    await this.clickTab(page, 'Paragon')
 
-    // Extract all paragon board containers
-    const boards = await page.$$eval('.builder__paragon__board', (boardEls) => {
-      return boardEls.map((board, index) => {
-        // Board name
-        const nameEl = board.querySelector('.builder__paragon__board__name')
-        const boardName = nameEl?.textContent?.trim() || `Board ${index + 1}`
+    // Wait for paragon content to load
+    await page.waitForSelector('[class*="paragon"]', { timeout: 10000 }).catch(() => {})
 
-        // Glyph info (may not exist)
-        const glyphEl = board.querySelector('.builder__paragon__board__glyph')
-        let glyph: { glyphName: string; level: number } | null = null
-        if (glyphEl) {
-          const glyphNameEl = glyphEl.querySelector('[class*="name"]')
-          const glyphLevelEl = glyphEl.querySelector('[class*="level"]')
-          const glyphName = glyphNameEl?.textContent?.trim() || 'Unknown Glyph'
-          const level = parseInt(glyphLevelEl?.textContent?.trim() || '1', 10)
-          glyph = { glyphName, level }
-        }
-
-        // Allocated node elements
-        const nodeEls = board.querySelectorAll('.builder__paragon__node')
-        const allocatedNodes: Array<{
-          nodeName: string
-          nodeType: 'normal' | 'magic' | 'rare' | 'legendary'
-          allocated: boolean
-        }> = []
-
-        nodeEls.forEach((nodeEl) => {
-          const nodeNameEl = nodeEl.querySelector('[class*="name"]')
-          const nodeName = nodeNameEl?.textContent?.trim() || 'Unknown Node'
-          const classStr = nodeEl.className || ''
-
-          let nodeType: 'normal' | 'magic' | 'rare' | 'legendary' = 'normal'
-          if (classStr.includes('legendary')) {
-            nodeType = 'legendary'
-          } else if (classStr.includes('rare')) {
-            nodeType = 'rare'
-          } else if (classStr.includes('magic')) {
-            nodeType = 'magic'
+    const boards = await page
+      .$$eval('[class*="paragon__board__name"]', (nameEls) => {
+        return nameEls.map((el, index) => {
+          const boardName = el.textContent?.trim() || `Board ${index + 1}`
+          return {
+            boardName,
+            boardIndex: index,
+            glyph: null,
+            allocatedNodes: []
           }
-
-          allocatedNodes.push({ nodeName, nodeType, allocated: true })
         })
-
-        return {
-          boardName,
-          boardIndex: index,
-          glyph,
-          allocatedNodes
-        }
       })
-    })
+      .catch(() => [] as IParagonBoard[])
 
     return boards
   }
 
   /**
-   * Extracts gear slot data from D4Builds' gear section.
-   *
-   * D4Builds uses `.builder__gear__slot` containers, each with:
-   * - `.builder__gear__slot__name` — slot name (Helm, Chest, etc.)
-   * - `.builder__gear__item` — item name with type class
-   * - `.builder__gear__aspect` — required aspect
-   * - `.builder__gear__affix` — stat affixes
-   * - `.builder__gear__temper` — tempering targets
-   * - `.builder__gear__masterwork` — masterwork priorities
-   *
-   * @param page - The Playwright page, already on the build page
-   * @returns Array of gear slots with all equipment details
+   * Extracts gear data from the Gear & Skills tab.
+   * Each gear item is `.builder__gear__item` containing:
+   *   `.builder__gear__name` — item name (with rarity class)
+   *   `.builder__gear__slot` — slot label (Helm, Chest Armor, etc.)
    */
   private async scrapeGear(page: Page): Promise<IGearSlot[]> {
-    const gearSlots = await page.$$eval('.builder__gear__slot', (slotEls) => {
-      return slotEls.map((slotEl, index) => {
-        // Slot name
-        const slotNameEl = slotEl.querySelector('.builder__gear__slot__name')
-        const slot = slotNameEl?.textContent?.trim() || `Slot ${index + 1}`
+    // Wait for gear to be visible
+    await page.waitForSelector('.builder__gear__item', { timeout: 10000 }).catch(() => {})
 
-        // Item name and type
-        const itemEl = slotEl.querySelector('.builder__gear__item')
-        const itemName = itemEl?.textContent?.trim() || null
-        const itemClass = (itemEl as HTMLElement)?.className || ''
+    const gearSlots = await page
+      .$$eval('.builder__gear__item', (items) => {
+        return items.map((item) => {
+          const slotEl = item.querySelector('.builder__gear__slot')
+          const slot = slotEl?.textContent?.trim() || 'Unknown Slot'
 
-        let itemType: 'Unique' | 'Legendary' | 'Rare' = 'Legendary'
-        if (itemClass.includes('unique') || itemClass.includes('Unique')) {
-          itemType = 'Unique'
-        } else if (itemClass.includes('rare') || itemClass.includes('Rare')) {
-          itemType = 'Rare'
-        }
+          const nameEl = item.querySelector('.builder__gear__name')
+          const itemName = nameEl?.textContent?.trim() || null
+          const nameClass = nameEl?.className || ''
 
-        // Required aspect
-        const aspectEl = slotEl.querySelector('.builder__gear__aspect')
-        const requiredAspect = aspectEl?.textContent?.trim() || null
+          // Rarity from class: builder__gear__name--mythic, --unique, --legendary, --rare
+          let itemType: 'Unique' | 'Legendary' | 'Rare' = 'Legendary'
+          if (nameClass.includes('--mythic') || nameClass.includes('--unique')) {
+            itemType = 'Unique'
+          } else if (nameClass.includes('--rare')) {
+            itemType = 'Rare'
+          }
 
-        // Priority affixes
-        const affixEls = slotEl.querySelectorAll('.builder__gear__affix')
-        const priorityAffixes: Array<{ name: string; priority: number }> = []
-        affixEls.forEach((affixEl, affixIndex) => {
-          const name = affixEl.textContent?.trim() || ''
-          if (name) priorityAffixes.push({ name, priority: affixIndex + 1 })
+          return {
+            slot,
+            itemName,
+            itemType,
+            requiredAspect: itemName, // On d4builds, the name often IS the aspect
+            priorityAffixes: [],
+            temperingTargets: [],
+            masterworkPriority: []
+          }
         })
-
-        // Tempering targets
-        const temperEls = slotEl.querySelectorAll('.builder__gear__temper')
-        const temperingTargets: string[] = []
-        temperEls.forEach((el) => {
-          const text = el.textContent?.trim() || ''
-          if (text) temperingTargets.push(text)
-        })
-
-        // Masterwork priorities
-        const masterworkEls = slotEl.querySelectorAll('.builder__gear__masterwork')
-        const masterworkPriority: string[] = []
-        masterworkEls.forEach((el) => {
-          const text = el.textContent?.trim() || ''
-          if (text) masterworkPriority.push(text)
-        })
-
-        return {
-          slot,
-          itemName,
-          itemType,
-          requiredAspect,
-          priorityAffixes,
-          temperingTargets,
-          masterworkPriority
-        }
       })
-    })
+      .catch(() => [] as IGearSlot[])
 
     return gearSlots
   }
 
   /**
-   * Normalizes the class name from D4Builds' header title.
-   * Titles are often like "Whirlwind Barbarian Build Guide".
+   * Normalizes the class name to our D4Class type.
    */
   private normalizeClass(raw: string): D4Class {
     const lower = raw.toLowerCase()

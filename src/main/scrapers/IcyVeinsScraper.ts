@@ -52,7 +52,7 @@ export class IcyVeinsScraper extends BuildScraper {
 
     try {
       // 1. Navigate to the build guide
-      await page.goto(url, { waitUntil: 'networkidle' })
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 })
 
       // 2. Wait for the main heading to appear
       // Icy Veins uses a standard <h1> for the build guide title
