@@ -8,9 +8,19 @@ export default defineConfig({
   renderer: {
     resolve: {
       alias: {
-        '@renderer': resolve('src/renderer/src')
+        '@renderer': resolve('src/renderer/src'),
+        '@overlay': resolve('src/overlay/src')
       }
     },
-    plugins: [react()]
+    plugins: [react()],
+    build: {
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'src/renderer/index.html'),
+          overlay: resolve(__dirname, 'src/renderer/overlay.html')
+        }
+      }
+    }
   }
 })
+

@@ -15,6 +15,7 @@ import type { RawBuildData } from '../shared/types'
 //   - Listen for scan/report triggers from global hotkeys
 //   - Quit the app
 //   - Import builds from URLs
+//   - Launch and control the overlay window
 // ============================================================
 
 /**
@@ -80,6 +81,41 @@ const api = {
    */
   importBuild: (url: string): Promise<RawBuildData> => {
     return ipcRenderer.invoke('import-build', url)
+  },
+
+  /**
+   * Tells the main process to spawn the overlay window.
+   */
+  launchOverlay: (): void => {
+    ipcRenderer.send('launch-overlay')
+  },
+
+  /**
+   * Signals the main process that the overlay is ready to receive data.
+   */
+  overlayReady: (): void => {
+    ipcRenderer.send('overlay-ready')
+  },
+
+  /**
+   * Listens for build data sent from the main process to the overlay.
+   */
+  onBuildData: (callback: (data: RawBuildData) => void): void => {
+    ipcRenderer.on('send-build-to-overlay', (_event, data) => callback(data))
+  },
+
+  /**
+   * Tells the main process to close the overlay window.
+   */
+  closeOverlay: (): void => {
+    ipcRenderer.send('close-overlay')
+  },
+
+  /**
+   * Tells the main process to re-show the config window.
+   */
+  openConfig: (): void => {
+    ipcRenderer.send('open-config')
   }
 }
 

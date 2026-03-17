@@ -1,0 +1,14 @@
+/* Overlay uses a transparent background — the game shows through */
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  overflow: hidden;
+  font-family: 'Segoe UI', sans-serif;
+  color: #e8dcc8;
+}
+
+#root {
+  width: 100vw;
+  height: 100vh;
+}

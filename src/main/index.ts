@@ -9,6 +9,7 @@ import { BuildImportService } from './services/BuildImportService'
 import { MaxrollScraper } from './scrapers/MaxrollScraper'
 import { D4BuildsScraper } from './scrapers/D4BuildsScraper'
 import { IcyVeinsScraper } from './scrapers/IcyVeinsScraper'
+import type { RawBuildData } from '../shared/types'
 
 // ============================================================
 // PORTABLE DATA DIRECTORY SETUP
@@ -56,7 +57,17 @@ app.setPath('userData', dataPaths.userData)
 let store: Store
 let hotkeyService: HotkeyService
 let buildService: BuildImportService
-let mainWindow: BrowserWindow | null = null
+
+/**
+ * Two-window architecture:
+ * - configWindow: Normal desktop window for importing builds (650×500)
+ * - overlayWindow: Transparent, frameless, always-on-top overlay for in-game HUD
+ */
+let configWindow: BrowserWindow | null = null
+let overlayWindow: BrowserWindow | null = null
+
+/** Holds the most recently imported build data, shared between windows */
+let currentBuildData: RawBuildData | null = null
 
 /**
  * Initializes electron-store using dynamic import (ESM compatibility).
@@ -81,24 +92,67 @@ function initServices(): void {
 }
 
 // ============================================================
-// OVERLAY WINDOW
+// CONFIG WINDOW — Normal desktop window for build import
 // ============================================================
 
 /**
- * Creates the main overlay window.
+ * Creates the Config Window — a standard 650×500 desktop window
+ * where the user pastes build URLs and launches the overlay.
+ */
+function createConfigWindow(): void {
+  configWindow = new BrowserWindow({
+    width: 650,
+    height: 500,
+    center: true,
+    resizable: false,
+    autoHideMenuBar: true,
+    title: 'Diablo IV Companion',
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false
+    }
+  })
+
+  configWindow.on('ready-to-show', () => {
+    configWindow?.show()
+  })
+
+  configWindow.webContents.setWindowOpenHandler((details) => {
+    shell.openExternal(details.url)
+    return { action: 'deny' }
+  })
+
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    configWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+  } else {
+    configWindow.loadFile(join(__dirname, '../renderer/index.html'))
+  }
+}
+
+// ============================================================
+// OVERLAY WINDOW — Transparent in-game HUD
+// ============================================================
+
+/**
+ * Creates (or re-shows) the Overlay Window.
  *
  * This window is:
  * - Transparent: you can see the game/desktop through it
  * - Frameless: no title bar, no window controls
- * - Always on top: stays above the game
+ * - Always on top: stays above the game at 'screen-saver' level
  * - Full screen: covers the entire primary monitor
  * - Click-through by default: mouse clicks pass through to the game
  */
-function createWindow(): void {
+function createOverlayWindow(): void {
+  if (overlayWindow) {
+    overlayWindow.show()
+    return
+  }
+
   const primaryDisplay = screen.getPrimaryDisplay()
   const { width, height } = primaryDisplay.workAreaSize
 
-  mainWindow = new BrowserWindow({
+  overlayWindow = new BrowserWindow({
     width,
     height,
     x: 0,
@@ -116,26 +170,22 @@ function createWindow(): void {
     }
   })
 
-  // Show the window once it's ready (avoids a brief white flash)
-  mainWindow.on('ready-to-show', () => {
-    mainWindow?.show()
-    // 'screen-saver' level ensures we stay above full-screen borderless games
-    mainWindow?.setAlwaysOnTop(true, 'screen-saver')
-    // Start in click-through mode so the user can interact with the game
-    mainWindow?.setIgnoreMouseEvents(true, { forward: true })
+  overlayWindow.on('ready-to-show', () => {
+    overlayWindow?.show()
+    overlayWindow?.setAlwaysOnTop(true, 'screen-saver')
+    overlayWindow?.setIgnoreMouseEvents(true, { forward: true })
   })
 
-  // Open external links in the default browser, not in our overlay
-  mainWindow.webContents.setWindowOpenHandler((details) => {
-    shell.openExternal(details.url)
-    return { action: 'deny' }
+  overlayWindow.on('closed', () => {
+    overlayWindow = null
   })
 
-  // Load the app UI
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    // electron-vite dev serves overlay at /overlay.html
+    const devUrl = process.env['ELECTRON_RENDERER_URL']
+    overlayWindow.loadURL(`${devUrl}/overlay.html`)
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    overlayWindow.loadFile(join(__dirname, '../renderer/overlay.html'))
   }
 }
 
@@ -144,15 +194,21 @@ function createWindow(): void {
 // ============================================================
 
 /**
- * Lets the renderer tell us when to allow/block mouse clicks.
- * When the user hovers over our UI elements, we stop ignoring mouse events.
- * When they move away, we go back to click-through mode.
+ * Sets up all IPC communication between main and renderer processes.
+ *
+ * Handles:
+ * - Mouse click-through toggling for the overlay
+ * - Hotkey get/set
+ * - Build import with result caching
+ * - Overlay lifecycle (launch, ready, close)
+ * - Config window re-show
  */
 function setupIpcHandlers(): void {
+  // Toggle mouse click-through on the overlay window
   ipcMain.on(
     'set-ignore-mouse-events',
     (_event, ignore: boolean, options?: { forward: boolean }) => {
-      mainWindow?.setIgnoreMouseEvents(ignore, options)
+      overlayWindow?.setIgnoreMouseEvents(ignore, options)
     }
   )
 
@@ -171,14 +227,45 @@ function setupIpcHandlers(): void {
   /**
    * Imports a build from a URL.
    * Hands off to BuildImportService which uses the correct scraper.
+   * Stores the result so the overlay can receive it when it's ready.
    */
   ipcMain.handle('import-build', async (_event, url: string) => {
     try {
-      return await buildService.importFromUrl(url)
+      const result = await buildService.importFromUrl(url)
+      currentBuildData = result // Store for overlay
+      return result
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
       console.error('Import failed:', message)
       throw error
+    }
+  })
+
+  // Launch the overlay window
+  ipcMain.on('launch-overlay', () => {
+    createOverlayWindow()
+  })
+
+  // Overlay signals it finished loading — send build data
+  ipcMain.on('overlay-ready', () => {
+    if (overlayWindow && currentBuildData) {
+      overlayWindow.webContents.send('send-build-to-overlay', currentBuildData)
+    }
+  })
+
+  // Close overlay
+  ipcMain.on('close-overlay', () => {
+    if (overlayWindow) {
+      overlayWindow.close()
+      overlayWindow = null
+    }
+  })
+
+  // Re-show config window from overlay
+  ipcMain.on('open-config', () => {
+    if (configWindow) {
+      configWindow.show()
+      configWindow.focus()
     }
   })
 
@@ -210,12 +297,12 @@ function registerGlobalHotkeys(): void {
     // Toggle overlay visibility
     if (hotkeys.toggle) {
       globalShortcut.register(hotkeys.toggle, () => {
-        if (!mainWindow) return
-        if (mainWindow.isVisible()) {
-          mainWindow.hide()
+        if (!overlayWindow) return
+        if (overlayWindow.isVisible()) {
+          overlayWindow.hide()
         } else {
-          mainWindow.show()
-          mainWindow.setAlwaysOnTop(true, 'screen-saver')
+          overlayWindow.show()
+          overlayWindow.setAlwaysOnTop(true, 'screen-saver')
         }
       })
     }
@@ -223,14 +310,14 @@ function registerGlobalHotkeys(): void {
     // Scan a gear tooltip (captures screen, sends to OCR)
     if (hotkeys.scan) {
       globalShortcut.register(hotkeys.scan, () => {
-        mainWindow?.webContents.send('trigger-scan')
+        overlayWindow?.webContents.send('trigger-scan')
       })
     }
 
     // Open/close the gear report panel
     if (hotkeys.report) {
       globalShortcut.register(hotkeys.report, () => {
-        mainWindow?.webContents.send('trigger-report')
+        overlayWindow?.webContents.send('trigger-report')
       })
     }
   } catch (error) {
@@ -258,8 +345,8 @@ app.whenReady().then(async () => {
   // Set up IPC communication between main and renderer
   setupIpcHandlers()
 
-  // Create the overlay window
-  createWindow()
+  // Create the config window (overlay is launched on demand)
+  createConfigWindow()
 
   // Register keyboard shortcuts
   registerGlobalHotkeys()
