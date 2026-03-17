@@ -1,6 +1,12 @@
 import { chromium, Page } from 'playwright'
 import { BuildScraper, RawBuildData } from './BuildScraper'
-import { BuildSourceSite, D4Class, ISkillAllocation, IParagonBoard } from '../../shared/types'
+import {
+  BuildSourceSite,
+  D4Class,
+  ISkillAllocation,
+  IParagonBoard,
+  IGearSlot
+} from '../../shared/types'
 
 // ============================================================
 // D4BuildsScraper — Scraper for d4builds.gg build planner
@@ -67,13 +73,16 @@ export class D4BuildsScraper extends BuildScraper {
       // 5. Extract Paragon boards
       const paragonBoards = await this.scrapeParagon(page)
 
+      // 6. Extract Gear slots
+      const gearSlots = await this.scrapeGear(page)
+
       return {
         name: buildName,
         d4Class: d4Class,
         level: 100,
         skills,
         paragonBoards,
-        gearSlots: []
+        gearSlots
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
@@ -227,6 +236,82 @@ export class D4BuildsScraper extends BuildScraper {
     })
 
     return boards
+  }
+
+  /**
+   * Extracts gear slot data from D4Builds' gear section.
+   *
+   * D4Builds uses `.builder__gear__slot` containers, each with:
+   * - `.builder__gear__slot__name` — slot name (Helm, Chest, etc.)
+   * - `.builder__gear__item` — item name with type class
+   * - `.builder__gear__aspect` — required aspect
+   * - `.builder__gear__affix` — stat affixes
+   * - `.builder__gear__temper` — tempering targets
+   * - `.builder__gear__masterwork` — masterwork priorities
+   *
+   * @param page - The Playwright page, already on the build page
+   * @returns Array of gear slots with all equipment details
+   */
+  private async scrapeGear(page: Page): Promise<IGearSlot[]> {
+    const gearSlots = await page.$$eval('.builder__gear__slot', (slotEls) => {
+      return slotEls.map((slotEl, index) => {
+        // Slot name
+        const slotNameEl = slotEl.querySelector('.builder__gear__slot__name')
+        const slot = slotNameEl?.textContent?.trim() || `Slot ${index + 1}`
+
+        // Item name and type
+        const itemEl = slotEl.querySelector('.builder__gear__item')
+        const itemName = itemEl?.textContent?.trim() || null
+        const itemClass = (itemEl as HTMLElement)?.className || ''
+
+        let itemType: 'Unique' | 'Legendary' | 'Rare' = 'Legendary'
+        if (itemClass.includes('unique') || itemClass.includes('Unique')) {
+          itemType = 'Unique'
+        } else if (itemClass.includes('rare') || itemClass.includes('Rare')) {
+          itemType = 'Rare'
+        }
+
+        // Required aspect
+        const aspectEl = slotEl.querySelector('.builder__gear__aspect')
+        const requiredAspect = aspectEl?.textContent?.trim() || null
+
+        // Priority affixes
+        const affixEls = slotEl.querySelectorAll('.builder__gear__affix')
+        const priorityAffixes: Array<{ name: string; priority: number }> = []
+        affixEls.forEach((affixEl, affixIndex) => {
+          const name = affixEl.textContent?.trim() || ''
+          if (name) priorityAffixes.push({ name, priority: affixIndex + 1 })
+        })
+
+        // Tempering targets
+        const temperEls = slotEl.querySelectorAll('.builder__gear__temper')
+        const temperingTargets: string[] = []
+        temperEls.forEach((el) => {
+          const text = el.textContent?.trim() || ''
+          if (text) temperingTargets.push(text)
+        })
+
+        // Masterwork priorities
+        const masterworkEls = slotEl.querySelectorAll('.builder__gear__masterwork')
+        const masterworkPriority: string[] = []
+        masterworkEls.forEach((el) => {
+          const text = el.textContent?.trim() || ''
+          if (text) masterworkPriority.push(text)
+        })
+
+        return {
+          slot,
+          itemName,
+          itemType,
+          requiredAspect,
+          priorityAffixes,
+          temperingTargets,
+          masterworkPriority
+        }
+      })
+    })
+
+    return gearSlots
   }
 
   /**
