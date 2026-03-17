@@ -1,6 +1,6 @@
-import { chromium } from 'playwright'
+import { chromium, Page } from 'playwright'
 import { BuildScraper, RawBuildData } from './BuildScraper'
-import { BuildSourceSite, D4Class } from '../../shared/types'
+import { BuildSourceSite, D4Class, ISkillAllocation } from '../../shared/types'
 
 // ============================================================
 // IcyVeinsScraper — Scraper for icy-veins.com D4 build guides
@@ -9,8 +9,9 @@ import { BuildSourceSite, D4Class } from '../../shared/types'
 //   https://www.icy-veins.com/d4/rogue-build-guide
 //
 // Their page structure uses semantic HTML with clear headings
-// and structured sections. This scraper extracts the metadata
-// (build name and class) from the page header.
+// and structured sections. Skills are listed in ordered or
+// unordered lists within a Skills section, with each item
+// containing the skill name and point allocation.
 // ============================================================
 
 /**
@@ -32,8 +33,7 @@ export class IcyVeinsScraper extends BuildScraper {
   }
 
   /**
-   * Scrapes the build metadata from the given URL.
-   * Currently extracts only name and class (metadata-only phase).
+   * Scrapes the build data from the given URL.
    *
    * @param url - The Icy Veins build guide URL
    */
@@ -65,13 +65,14 @@ export class IcyVeinsScraper extends BuildScraper {
       //   "Minion Necromancer Build Guide"
       const d4Class = this.normalizeClass(buildName)
 
-      // TODO: Implement Skill and Paragon scraping in future tasks
+      // 5. Extract Skills
+      const skills = await this.scrapeSkills(page)
 
       return {
         name: buildName,
         d4Class: d4Class,
         level: 100,
-        skills: [],
+        skills,
         paragonBoards: [],
         gearSlots: []
       }
@@ -82,6 +83,59 @@ export class IcyVeinsScraper extends BuildScraper {
     } finally {
       await browser.close()
     }
+  }
+
+  /**
+   * Extracts skill allocations from Icy Veins' editorial skill lists.
+   *
+   * Icy Veins uses semantic HTML for skills — typically an ordered or
+   * unordered list where each item contains:
+   * - The skill name (in a link, bold, or span element)
+   * - Point allocation as parenthetical text like "(5/5)"
+   *
+   * @param page - The Playwright page, already on the guide
+   * @returns Array of skill allocations found in the list
+   */
+  private async scrapeSkills(page: Page): Promise<ISkillAllocation[]> {
+    // Try to find and click a Skills section anchor/tab
+    const skillsSection = await page.$(
+      'a[href*="skills"], [data-section="skills"], h2:has-text("Skills")'
+    )
+    if (skillsSection) {
+      await skillsSection.click().catch(() => {
+        // Section link may not be clickable or may be a heading
+      })
+    }
+
+    // Extract skill list items from the skills section
+    // Icy Veins typically uses li elements inside a skills list
+    const skills = await page.$$eval(
+      '.skill-list__item, .skills-list li, .skill-entry, section.skills li',
+      (items) => {
+        return items.map((item) => {
+          // Try to get skill name from a dedicated element first
+          const nameEl = item.querySelector('.skill-name, a, strong') || item.querySelector('span')
+          const skillName = nameEl?.textContent?.trim() || 'Unknown Skill'
+
+          // Parse point allocation from text like "(5/5)" or "5/5"
+          const fullText = item.textContent || ''
+          const pointsMatch = fullText.match(/(\d+)\s*\/\s*(\d+)/)
+
+          const points = pointsMatch ? parseInt(pointsMatch[1], 10) : 1
+          const maxPoints = pointsMatch ? parseInt(pointsMatch[2], 10) : 1
+
+          return {
+            skillName,
+            points,
+            maxPoints,
+            tier: 'core', // Icy Veins editorial format doesn't expose tiers
+            nodeType: 'active' as const
+          }
+        })
+      }
+    )
+
+    return skills
   }
 
   /**
