@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import type { RawBuildData } from '../shared/types'
 
 // ============================================================
 // PRELOAD SCRIPT — The Bridge Between Main and Renderer
@@ -13,6 +14,7 @@ import { electronAPI } from '@electron-toolkit/preload'
 //   - Read and update hotkey settings
 //   - Listen for scan/report triggers from global hotkeys
 //   - Quit the app
+//   - Import builds from URLs
 // ============================================================
 
 /**
@@ -70,6 +72,14 @@ const api = {
    */
   quit: (): void => {
     ipcRenderer.send('quit-app')
+  },
+
+  /**
+   * Imports a build from a URL.
+   * @param url - The build URL to import
+   */
+  importBuild: (url: string): Promise<RawBuildData> => {
+    return ipcRenderer.invoke('import-build', url)
   }
 }
 

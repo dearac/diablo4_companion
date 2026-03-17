@@ -33,10 +33,14 @@ describe('BuildImportService URL routing', () => {
     try {
       service.detectSite('https://unknown.com/build')
       expect.unreachable('Should have thrown')
-    } catch (error: any) {
-      expect(error.message).toContain('d4builds.gg')
-      expect(error.message).toContain('maxroll.gg')
-      expect(error.message).toContain('icy-veins.com')
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        expect(error.message).toContain('d4builds.gg')
+        expect(error.message).toContain('maxroll.gg')
+        expect(error.message).toContain('icy-veins.com')
+      } else {
+        throw error
+      }
     }
   })
 })

@@ -1,4 +1,4 @@
-import type { BuildSourceSite } from '../../shared/types'
+import type { BuildSourceSite, ISkillAllocation, IParagonBoard, IGearSlot } from '../../shared/types'
 
 // ============================================================
 // BuildScraper — The base class for all site scrapers
@@ -21,9 +21,9 @@ export interface RawBuildData {
   name: string
   d4Class: string
   level: number
-  skills: any[]
-  paragonBoards: any[]
-  gearSlots: any[]
+  skills: ISkillAllocation[]
+  paragonBoards: IParagonBoard[]
+  gearSlots: IGearSlot[]
 }
 
 /**

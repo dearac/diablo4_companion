@@ -120,3 +120,16 @@ export interface IVerdictDetail {
   matched: boolean
   advice: string
 }
+
+/**
+ * Raw data scraped from a build website before normalization.
+ * Each scraper fills this in differently, but the structure is the same.
+ */
+export interface RawBuildData {
+  name: string
+  d4Class: string
+  level: number
+  skills: ISkillAllocation[]
+  paragonBoards: IParagonBoard[]
+  gearSlots: IGearSlot[]
+}

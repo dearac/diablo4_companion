@@ -88,15 +88,14 @@ export class D4Build implements ID4Build {
     if (!VALID_SOURCES.includes(params.sourceSite)) {
       throw new Error(
         `Invalid source site "${params.sourceSite}". ` +
-        `Must be one of: ${VALID_SOURCES.join(', ')}`
+          `Must be one of: ${VALID_SOURCES.join(', ')}`
       )
     }
 
     // Validate the class — must be a real D4 class
     if (!VALID_CLASSES.includes(params.d4Class)) {
       throw new Error(
-        `Invalid class "${params.d4Class}". ` +
-        `Must be one of: ${VALID_CLASSES.join(', ')}`
+        `Invalid class "${params.d4Class}". ` + `Must be one of: ${VALID_CLASSES.join(', ')}`
       )
     }
 

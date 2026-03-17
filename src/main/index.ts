@@ -2,8 +2,11 @@ import { app, shell, BrowserWindow, ipcMain, screen, globalShortcut } from 'elec
 import { join, dirname } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { existsSync, mkdirSync } from 'fs'
+import type Store from 'electron-store'
 import { HotkeyService } from './services/HotkeyService'
 import { getDataPaths } from './services/StorageService'
+import { BuildImportService } from './services/BuildImportService'
+import { MaxrollScraper } from './scrapers/MaxrollScraper'
 
 // ============================================================
 // PORTABLE DATA DIRECTORY SETUP
@@ -28,7 +31,13 @@ const appDir = getBaseDir()
 const dataPaths = getDataPaths(appDir)
 
 // Create all required data directories on startup
-const dirsToCreate = [dataPaths.userData, dataPaths.builds, dataPaths.classes, dataPaths.icons, dataPaths.scans]
+const dirsToCreate = [
+  dataPaths.userData,
+  dataPaths.builds,
+  dataPaths.classes,
+  dataPaths.icons,
+  dataPaths.scans
+]
 for (const dir of dirsToCreate) {
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true })
@@ -42,8 +51,9 @@ app.setPath('userData', dataPaths.userData)
 // STORE & SERVICES
 // ============================================================
 
-let store: any
+let store: Store
 let hotkeyService: HotkeyService
+let buildService: BuildImportService
 let mainWindow: BrowserWindow | null = null
 
 /**
@@ -54,6 +64,16 @@ async function initStore(): Promise<void> {
   const { default: Store } = await import('electron-store')
   store = new Store()
   hotkeyService = new HotkeyService(store)
+}
+
+/**
+ * Initializes all business services and scrapers.
+ */
+function initServices(): void {
+  buildService = new BuildImportService()
+
+  // Register supported scrapers here
+  buildService.registerScraper(new MaxrollScraper())
 }
 
 // ============================================================
@@ -125,9 +145,12 @@ function createWindow(): void {
  * When they move away, we go back to click-through mode.
  */
 function setupIpcHandlers(): void {
-  ipcMain.on('set-ignore-mouse-events', (_event, ignore: boolean, options?: { forward: boolean }) => {
-    mainWindow?.setIgnoreMouseEvents(ignore, options)
-  })
+  ipcMain.on(
+    'set-ignore-mouse-events',
+    (_event, ignore: boolean, options?: { forward: boolean }) => {
+      mainWindow?.setIgnoreMouseEvents(ignore, options)
+    }
+  )
 
   // Let the renderer request the current hotkey settings
   ipcMain.handle('get-hotkeys', () => {
@@ -139,6 +162,20 @@ function setupIpcHandlers(): void {
     hotkeyService.setHotkey(action, key)
     registerGlobalHotkeys() // Re-register with the new keybinding
     return hotkeyService.getAllHotkeys()
+  })
+
+  /**
+   * Imports a build from a URL.
+   * Hands off to BuildImportService which uses the correct scraper.
+   */
+  ipcMain.handle('import-build', async (_event, url: string) => {
+    try {
+      return await buildService.importFromUrl(url)
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error('Import failed:', message)
+      throw error
+    }
   })
 
   // Quit the app
@@ -212,6 +249,7 @@ app.whenReady().then(async () => {
 
   // Initialize persistent storage and services
   await initStore()
+  initServices()
 
   // Set up IPC communication between main and renderer
   setupIpcHandlers()
