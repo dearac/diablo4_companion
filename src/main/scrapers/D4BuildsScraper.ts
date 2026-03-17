@@ -1,6 +1,6 @@
 import { chromium, Page } from 'playwright'
 import { BuildScraper, RawBuildData } from './BuildScraper'
-import { BuildSourceSite, D4Class, ISkillAllocation } from '../../shared/types'
+import { BuildSourceSite, D4Class, ISkillAllocation, IParagonBoard } from '../../shared/types'
 
 // ============================================================
 // D4BuildsScraper — Scraper for d4builds.gg build planner
@@ -64,12 +64,15 @@ export class D4BuildsScraper extends BuildScraper {
       // 4. Extract Skills
       const skills = await this.scrapeSkills(page)
 
+      // 5. Extract Paragon boards
+      const paragonBoards = await this.scrapeParagon(page)
+
       return {
         name: buildName,
         d4Class: d4Class,
         level: 100,
         skills,
-        paragonBoards: [],
+        paragonBoards,
         gearSlots: []
       }
     } catch (error: unknown) {
@@ -146,6 +149,84 @@ export class D4BuildsScraper extends BuildScraper {
     )
 
     return skills
+  }
+
+  /**
+   * Extracts paragon board data from D4Builds' paragon section.
+   *
+   * D4Builds uses `.builder__paragon__board` containers, each with:
+   * - `.builder__paragon__board__name` — the board's display name
+   * - `.builder__paragon__board__glyph` — the socketed glyph (name + level)
+   * - `.builder__paragon__node` — individual allocated nodes with type classes
+   *
+   * @param page - The Playwright page, already on the build page
+   * @returns Array of paragon boards with glyphs and allocated nodes
+   */
+  private async scrapeParagon(page: Page): Promise<IParagonBoard[]> {
+    // Click the Paragon section tab if it exists
+    const paragonTab = await page.$(
+      '.builder__tab--paragon, [data-tab="paragon"], button:has-text("Paragon")'
+    )
+    if (paragonTab) {
+      await paragonTab.click()
+      await page.waitForSelector('.builder__paragon__board', { timeout: 10000 }).catch(() => {
+        // Paragon section may already be visible
+      })
+    }
+
+    // Extract all paragon board containers
+    const boards = await page.$$eval('.builder__paragon__board', (boardEls) => {
+      return boardEls.map((board, index) => {
+        // Board name
+        const nameEl = board.querySelector('.builder__paragon__board__name')
+        const boardName = nameEl?.textContent?.trim() || `Board ${index + 1}`
+
+        // Glyph info (may not exist)
+        const glyphEl = board.querySelector('.builder__paragon__board__glyph')
+        let glyph: { glyphName: string; level: number } | null = null
+        if (glyphEl) {
+          const glyphNameEl = glyphEl.querySelector('[class*="name"]')
+          const glyphLevelEl = glyphEl.querySelector('[class*="level"]')
+          const glyphName = glyphNameEl?.textContent?.trim() || 'Unknown Glyph'
+          const level = parseInt(glyphLevelEl?.textContent?.trim() || '1', 10)
+          glyph = { glyphName, level }
+        }
+
+        // Allocated node elements
+        const nodeEls = board.querySelectorAll('.builder__paragon__node')
+        const allocatedNodes: Array<{
+          nodeName: string
+          nodeType: 'normal' | 'magic' | 'rare' | 'legendary'
+          allocated: boolean
+        }> = []
+
+        nodeEls.forEach((nodeEl) => {
+          const nodeNameEl = nodeEl.querySelector('[class*="name"]')
+          const nodeName = nodeNameEl?.textContent?.trim() || 'Unknown Node'
+          const classStr = nodeEl.className || ''
+
+          let nodeType: 'normal' | 'magic' | 'rare' | 'legendary' = 'normal'
+          if (classStr.includes('legendary')) {
+            nodeType = 'legendary'
+          } else if (classStr.includes('rare')) {
+            nodeType = 'rare'
+          } else if (classStr.includes('magic')) {
+            nodeType = 'magic'
+          }
+
+          allocatedNodes.push({ nodeName, nodeType, allocated: true })
+        })
+
+        return {
+          boardName,
+          boardIndex: index,
+          glyph,
+          allocatedNodes
+        }
+      })
+    })
+
+    return boards
   }
 
   /**
