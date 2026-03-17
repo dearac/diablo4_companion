@@ -1,6 +1,6 @@
 import { chromium, Page } from 'playwright'
 import { BuildScraper, RawBuildData } from './BuildScraper'
-import { BuildSourceSite, D4Class, ISkillAllocation } from '../../shared/types'
+import { BuildSourceSite, D4Class, ISkillAllocation, IParagonBoard } from '../../shared/types'
 
 // ============================================================
 // IcyVeinsScraper — Scraper for icy-veins.com D4 build guides
@@ -68,12 +68,15 @@ export class IcyVeinsScraper extends BuildScraper {
       // 5. Extract Skills
       const skills = await this.scrapeSkills(page)
 
+      // 6. Extract Paragon boards
+      const paragonBoards = await this.scrapeParagon(page)
+
       return {
         name: buildName,
         d4Class: d4Class,
         level: 100,
         skills,
-        paragonBoards: [],
+        paragonBoards,
         gearSlots: []
       }
     } catch (error: unknown) {
@@ -136,6 +139,88 @@ export class IcyVeinsScraper extends BuildScraper {
     )
 
     return skills
+  }
+
+  /**
+   * Extracts paragon board data from Icy Veins' editorial paragon section.
+   *
+   * Icy Veins uses sections or div containers for paragon boards, each with:
+   * - A heading (h3/h4) or `.board-name` element for the board name
+   * - A glyph element with name and level
+   * - Node elements with type class modifiers
+   *
+   * @param page - The Playwright page, already on the guide
+   * @returns Array of paragon boards
+   */
+  private async scrapeParagon(page: Page): Promise<IParagonBoard[]> {
+    // Try to navigate to the paragon section
+    const paragonSection = await page.$(
+      'a[href*="paragon"], [data-section="paragon"], h2:has-text("Paragon")'
+    )
+    if (paragonSection) {
+      await paragonSection.click().catch(() => {
+        // Section link may not be clickable
+      })
+    }
+
+    // Extract paragon board containers
+    const boards = await page.$$eval(
+      '.paragon-board, .paragon_board, section.paragon .board',
+      (boardEls) => {
+        return boardEls.map((board, index) => {
+          // Board name from heading or dedicated element
+          const nameEl =
+            board.querySelector('.board-name, h3, h4') ||
+            board.querySelector('[class*="board-name"]')
+          const boardName = nameEl?.textContent?.trim() || `Board ${index + 1}`
+
+          // Glyph info (may not exist)
+          const glyphEl = board.querySelector('[class*="glyph"]')
+          let glyph: { glyphName: string; level: number } | null = null
+          if (glyphEl) {
+            const glyphNameEl = glyphEl.querySelector('[class*="name"]')
+            const glyphLevelEl = glyphEl.querySelector('[class*="level"]')
+            const glyphName = glyphNameEl?.textContent?.trim() || 'Unknown Glyph'
+            const level = parseInt(glyphLevelEl?.textContent?.trim() || '1', 10)
+            glyph = { glyphName, level }
+          }
+
+          // Allocated nodes
+          const nodeEls = board.querySelectorAll('[class*="paragon-node"], [class*="node"]')
+          const allocatedNodes: Array<{
+            nodeName: string
+            nodeType: 'normal' | 'magic' | 'rare' | 'legendary'
+            allocated: boolean
+          }> = []
+
+          nodeEls.forEach((nodeEl) => {
+            const nodeNameEl = nodeEl.querySelector('[class*="name"]')
+            const nodeName = nodeNameEl?.textContent?.trim() || 'Unknown Node'
+            const classStr = nodeEl.className || ''
+
+            let nodeType: 'normal' | 'magic' | 'rare' | 'legendary' = 'normal'
+            if (classStr.includes('legendary')) {
+              nodeType = 'legendary'
+            } else if (classStr.includes('rare')) {
+              nodeType = 'rare'
+            } else if (classStr.includes('magic')) {
+              nodeType = 'magic'
+            }
+
+            allocatedNodes.push({ nodeName, nodeType, allocated: true })
+          })
+
+          return {
+            boardName,
+            boardIndex: index,
+            glyph,
+            allocatedNodes
+          }
+        })
+      }
+    )
+
+    return boards
   }
 
   /**
