@@ -99,15 +99,19 @@ function initServices(): void {
 // ============================================================
 
 /**
- * Creates the Config Window — a standard 650×500 desktop window
+ * Creates the Config Window — a resizable desktop window
  * where the user pastes build URLs and launches the overlay.
+ * Defaults to 1280×800 with a minimum of 700×500.
+ * The user can resize freely; all content scales responsively.
  */
 function createConfigWindow(): void {
   configWindow = new BrowserWindow({
     width: 1280,
-    height: 760,
+    height: 800,
+    minWidth: 700,
+    minHeight: 500,
     center: true,
-    resizable: false,
+    resizable: true,
     autoHideMenuBar: true,
     title: 'Diablo IV Companion',
     webPreferences: {
