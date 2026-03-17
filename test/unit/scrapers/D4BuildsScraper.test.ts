@@ -75,9 +75,42 @@ const { mockPage } = vi.hoisted(() => {
         return Promise.resolve(callback([]))
       }
 
-      // Paragon boards
-      if (selector.includes('paragon__board__name')) {
-        const mockBoards = [{ textContent: 'Warbringer' }, { textContent: 'Blood Rage' }]
+      // Paragon boards (scraper uses .paragon__board containers)
+      if (
+        selector.includes('paragon__board') &&
+        !selector.includes('name') &&
+        !selector.includes('tile')
+      ) {
+        const mockBoards = [
+          {
+            querySelector: (sel: string) => {
+              if (sel.includes('paragon__board__name__glyph')) return { textContent: '(Spirit)' }
+              if (sel.includes('paragon__board__name'))
+                return {
+                  childNodes: [
+                    { nodeType: 3, textContent: '1' },
+                    { nodeType: 3, textContent: 'Warbringer' }
+                  ]
+                }
+              return null
+            },
+            querySelectorAll: () => Array(41).fill({})
+          },
+          {
+            querySelector: (sel: string) => {
+              if (sel.includes('paragon__board__name'))
+                return {
+                  childNodes: [
+                    { nodeType: 3, textContent: '2' },
+                    { nodeType: 3, textContent: 'Blood Rage' }
+                  ]
+                }
+              if (sel.includes('paragon__board__name__glyph')) return null
+              return null
+            },
+            querySelectorAll: () => []
+          }
+        ]
         return Promise.resolve(callback(mockBoards))
       }
 
@@ -161,8 +194,8 @@ describe('D4BuildsScraper', () => {
   it('should scrape basic metadata', async () => {
     const data = await scraper.scrape('https://d4builds.gg/builds/test')
     expect(data.name).toBe("Rob's Cpt. America")
-    // "Paladin" doesn't map to a standard D4 class, falls back to Barbarian
-    expect(data.d4Class).toBe('Barbarian')
+    // Paladin is now a recognized D4 class (Season 12)
+    expect(data.d4Class).toBe('Paladin')
     expect(data.level).toBe(100)
   })
 
@@ -192,9 +225,11 @@ describe('D4BuildsScraper', () => {
 
     expect(data.paragonBoards[0].boardName).toBe('Warbringer')
     expect(data.paragonBoards[0].boardIndex).toBe(0)
+    expect(data.paragonBoards[0].glyph).toEqual({ glyphName: 'Spirit', level: 15 })
 
     expect(data.paragonBoards[1].boardName).toBe('Blood Rage')
     expect(data.paragonBoards[1].boardIndex).toBe(1)
+    expect(data.paragonBoards[1].glyph).toBeNull()
   })
 
   it('should extract gear slots', async () => {

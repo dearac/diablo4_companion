@@ -14,6 +14,7 @@ export type D4Class =
   | 'Barbarian'
   | 'Druid'
   | 'Necromancer'
+  | 'Paladin'
   | 'Rogue'
   | 'Sorcerer'
   | 'Spiritborn'
