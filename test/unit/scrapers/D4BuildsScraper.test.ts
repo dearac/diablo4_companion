@@ -194,6 +194,9 @@ const { mockPage } = vi.hoisted(() => {
       })
     }),
 
+    // Phase B uses page.evaluate() to dispatch mouseenter events in-browser
+    evaluate: vi.fn().mockResolvedValue([]),
+
     close: vi.fn().mockResolvedValue(null)
   }
   return { mockPage }

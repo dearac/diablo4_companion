@@ -20,6 +20,7 @@ declare global {
       listBuilds: () => Promise<SavedBuild[]>
       loadBuild: (id: string) => Promise<SavedBuild>
       deleteBuild: (id: string) => Promise<boolean>
+      clearParagonCache: () => Promise<{ success: boolean }>
     }
   }
 }

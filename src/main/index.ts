@@ -59,6 +59,7 @@ let store: Store
 let hotkeyService: HotkeyService
 let buildService: BuildImportService
 let buildRepo: BuildRepository
+let d4BuildsScraper: D4BuildsScraper
 
 /**
  * Two-window architecture:
@@ -90,7 +91,8 @@ function initServices(): void {
 
   // Register supported scrapers here
   buildService.registerScraper(new MaxrollScraper())
-  buildService.registerScraper(new D4BuildsScraper())
+  d4BuildsScraper = new D4BuildsScraper(dataPaths.classes)
+  buildService.registerScraper(d4BuildsScraper)
   buildService.registerScraper(new IcyVeinsScraper())
 }
 
@@ -304,6 +306,12 @@ function setupIpcHandlers(): void {
   // Quit the app
   ipcMain.on('quit-app', () => {
     app.quit()
+  })
+
+  // Clear paragon board cache (call after game updates)
+  ipcMain.handle('clear-paragon-cache', () => {
+    d4BuildsScraper.clearCache()
+    return { success: true }
   })
 }
 

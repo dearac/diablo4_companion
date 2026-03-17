@@ -137,6 +137,14 @@ const api = {
    */
   deleteBuild: (id: string): Promise<boolean> => {
     return ipcRenderer.invoke('delete-build', id)
+  },
+
+  /**
+   * Clears the cached paragon board data.
+   * Call after a game update changes paragon boards.
+   */
+  clearParagonCache: (): Promise<{ success: boolean }> => {
+    return ipcRenderer.invoke('clear-paragon-cache')
   }
 }
 

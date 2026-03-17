@@ -157,8 +157,12 @@ body {
 
 .tab-content {
   flex: 1;
+  min-height: 0;
+  /* Allow flex shrinking — needed for height:100% children */
   overflow-y: auto;
   padding: 16px;
+  position: relative;
+  /* Anchor for paragon-panel absolute positioning */
 }
 
 /* Thin custom scrollbar */
@@ -269,62 +273,264 @@ body {
 }
 
 /* ============================================================
-   PARAGON PANEL (Task 7)
+   PARAGON PANEL — Interactive Canvas (Task 7)
    ============================================================ */
 
-.paragon-board {
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--d4-border);
+/* The panel wrapper — fills the tab content area via absolute positioning.
+   height:100% breaks inside flex children, so we use inset:0 instead. */
+.paragon-panel {
+  position: absolute;
+  inset: 0;
+  /* Fills entire .tab-content including padding area */
+  z-index: 1;
 }
 
-.paragon-board:last-child {
-  border-bottom: none;
+/* ---- Canvas Container ---- */
+
+.paragon-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 50%,
+      rgba(20, 20, 32, 0.95) 0%,
+      rgba(10, 10, 15, 1) 100%);
+  border-radius: 0 0 8px 8px;
+  user-select: none;
 }
 
-.paragon-board__name {
+/* Subtle grid pattern on the canvas background */
+.paragon-canvas::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(42, 42, 58, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(42, 42, 58, 0.15) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ---- World Layer (transformed by zoom/pan) ---- */
+
+.paragon-canvas__world {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* ---- SVG Connections ---- */
+
+.paragon-canvas__connections {
+  overflow: visible;
+}
+
+/* ---- Board Group (positioned + rotated container) ---- */
+
+.paragon-canvas__board-group {
+  transition: box-shadow 0.2s ease;
+}
+
+.paragon-canvas__board-group:hover {
+  z-index: 2;
+}
+
+/* ---- Individual Board ---- */
+
+.paragon-canvas-board {
+  box-shadow:
+    0 0 20px rgba(0, 0, 0, 0.5),
+    inset 0 0 1px rgba(212, 169, 74, 0.1);
+}
+
+/* Board name label — always visible above the board */
+.paragon-canvas-board__label {
+  position: absolute;
+  top: -28px;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.paragon-canvas-board__name {
   font-family: var(--font-display);
   font-size: 13px;
   color: var(--d4-text-primary);
   letter-spacing: 1px;
-  margin-bottom: 4px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
 }
 
-.paragon-board__glyph {
-  font-size: 12px;
+.paragon-canvas-board__glyph {
+  font-size: 11px;
   color: var(--d4-accent-gold);
-  margin-bottom: 6px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
 }
 
-.paragon-board__glyph--none {
-  color: var(--d4-text-dim);
+.paragon-canvas-board__count {
+  font-size: 11px;
+  color: var(--d4-text-muted);
+  margin-left: auto;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
 }
 
-.paragon-board__counts {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+/* ---- Tile Hover Effects ---- */
+
+.paragon-canvas-tile {
+  transition:
+    opacity 0.15s ease,
+    filter 0.15s ease,
+    transform 0.15s ease;
+}
+
+.paragon-canvas-tile:hover {
+  opacity: 1 !important;
+  z-index: 5 !important;
+  transform: scale(1.2);
+}
+
+.paragon-canvas-tile--active:hover {
+  filter: drop-shadow(0px 0px 6px rgba(196, 30, 58, 0.9));
+}
+
+.paragon-canvas-tile:not(.paragon-canvas-tile--active):hover {
+  filter: grayscale(40%) brightness(0.9) drop-shadow(0px 0px 4px rgba(100, 100, 200, 0.5));
+}
+
+/* ---- Zoom Badge ---- */
+
+.paragon-canvas__zoom-badge {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  z-index: 20;
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--d4-text-muted);
+  background: rgba(10, 10, 15, 0.7);
+  padding: 2px 8px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+/* ---- Zoom Toolbar ---- */
+
+.paragon-canvas__toolbar {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
   gap: 4px;
 }
 
-.node-count {
+.paragon-canvas__tool-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 20, 32, 0.85);
+  border: 1px solid var(--d4-border);
+  border-radius: 4px;
+  color: var(--d4-text-muted);
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.paragon-canvas__tool-btn:hover {
+  color: var(--d4-text-primary);
+  background: var(--d4-bg-elevated);
+  border-color: var(--d4-border-ornate);
+}
+
+.paragon-canvas__tool-btn--fit {
+  font-size: 14px;
+}
+
+/* ---- Paragon Tooltip ---- */
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.paragon-tooltip {
+  position: fixed;
+  z-index: 1000;
+  background: rgba(17, 17, 20, 0.96);
+  border: 1px solid #4a3a2a;
+  border-radius: 6px;
+  padding: 10px 14px;
+  min-width: 160px;
+  max-width: 280px;
+  pointer-events: none;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(212, 169, 74, 0.08);
+  animation: tooltipFadeIn 0.15s ease;
+  font-family: var(--font-body);
+}
+
+.paragon-tooltip__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.paragon-tooltip__type-icon {
   font-size: 12px;
-  padding: 2px 6px;
 }
 
-.node-count--normal {
-  color: #cccccc;
+.paragon-tooltip__type-label {
+  font-family: var(--font-display);
 }
 
-.node-count--magic {
-  color: #6888ff;
+.paragon-tooltip__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--d4-text-primary);
+  margin-bottom: 4px;
+  line-height: 1.3;
 }
 
-.node-count--rare {
-  color: #ffff77;
+.paragon-tooltip__desc {
+  font-size: 12px;
+  color: #b8a88a;
+  line-height: 1.4;
+  margin-bottom: 6px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(74, 58, 42, 0.4);
 }
 
-.node-count--legendary {
-  color: #ff8844;
+.paragon-tooltip__status {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
 }
 
 /* ============================================================

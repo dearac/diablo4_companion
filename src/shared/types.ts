@@ -63,6 +63,8 @@ export interface IParagonBoard {
   allocatedNodes: IParagonNode[]
   boardRotation?: number // e.g. 0, 90, 180, 270
   boardBgUrl?: string // URL for the board's background image
+  boardX?: number // CSS left position from d4builds (multiples of 1258)
+  boardY?: number // CSS top position from d4builds (multiples of 1258)
 }
 
 /**
@@ -72,6 +74,7 @@ export interface IParagonNode {
   nodeName: string
   nodeType: 'normal' | 'magic' | 'rare' | 'legendary' | 'gate'
   allocated: boolean
+  nodeDescription?: string // Stat text from tooltip, e.g. "+5 Willpower"
   row?: number
   col?: number
   iconUrl?: string // Custom icon URL from the site

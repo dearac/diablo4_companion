@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import type { RawBuildData } from '../../shared/types'
 import ImportForm from './components/ImportForm'
 import StatusIndicator from './components/StatusIndicator'
@@ -21,6 +21,7 @@ function App(): React.JSX.Element {
   const [buildData, setBuildData] = useState<RawBuildData | null>(null)
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [refreshCounter, setRefreshCounter] = useState<number>(0)
+  const [cacheCleared, setCacheCleared] = useState<boolean>(false)
 
   /** Called when the user clicks Import */
   const handleImportStart = (): void => {
@@ -53,6 +54,13 @@ function App(): React.JSX.Element {
     window.api.launchOverlay()
   }
 
+  /** Clear paragon board cache */
+  const handleClearCache = useCallback(async (): Promise<void> => {
+    await window.api.clearParagonCache()
+    setCacheCleared(true)
+    setTimeout(() => setCacheCleared(false), 3000)
+  }, [])
+
   return (
     <div className="config-window">
       <header className="config-header">
@@ -80,6 +88,13 @@ function App(): React.JSX.Element {
 
       <footer className="config-footer">
         <span>Toggle Overlay: F6</span>
+        <button
+          className="config-footer__clear-cache"
+          onClick={handleClearCache}
+          title="Clear cached board data (use after a game update)"
+        >
+          {cacheCleared ? '✓ Cache Cleared' : '🔄 Clear Board Cache'}
+        </button>
       </footer>
     </div>
   )

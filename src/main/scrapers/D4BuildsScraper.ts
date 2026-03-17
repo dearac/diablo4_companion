@@ -7,6 +7,7 @@ import {
   IParagonBoard,
   IGearSlot
 } from '../../shared/types'
+import { ParagonCacheService, type CachedNodeData } from '../services/ParagonCacheService'
 
 // ============================================================
 // D4BuildsScraper — Scraper for d4builds.gg build planner
@@ -44,6 +45,21 @@ import {
 export class D4BuildsScraper extends BuildScraper {
   readonly siteName = 'd4builds.gg'
   readonly sourceKey: BuildSourceSite = 'd4builds'
+
+  /** Cache service for board layouts + tooltips (skips Phase B on cache hit) */
+  private paragonCache: ParagonCacheService | null = null
+
+  constructor(cacheDir?: string) {
+    super()
+    if (cacheDir) {
+      this.paragonCache = new ParagonCacheService(cacheDir)
+    }
+  }
+
+  /** Clears the paragon board cache (call after game updates) */
+  clearCache(): void {
+    this.paragonCache?.clear()
+  }
 
   canHandle(url: string): boolean {
     const normalized = url.toLowerCase().trim()
@@ -245,9 +261,9 @@ export class D4BuildsScraper extends BuildScraper {
     await page.waitForSelector('.paragon__board', { timeout: 10000 }).catch(() => {})
 
     try {
-      return await page.$$eval('.paragon__board', (boards) => {
+      // ── Phase A: Extract tile metadata (fast, synchronous $$eval) ──
+      const boardsData = await page.$$eval('.paragon__board', (boards) => {
         return boards.map((board, index) => {
-          // Get board name — extract ONLY direct text nodes
           const nameEl = board.querySelector('.paragon__board__name')
           let boardName = `Board ${index + 1}`
           if (nameEl) {
@@ -262,25 +278,28 @@ export class D4BuildsScraper extends BuildScraper {
             boardName = rawName.replace(/^\d+\s*/, '').trim() || rawName
           }
 
-          // Get glyph name
           const glyphEl = board.querySelector('.paragon__board__name__glyph')
           const glyphText = glyphEl?.textContent?.trim() || null
           const glyphName = glyphText ? glyphText.replace(/[()]/g, '').trim() : null
 
-          // Collect ALL nodes for full board representation
           const allTiles = board.querySelectorAll('.paragon__board__tile')
-
-          // Board background and rotation
           const boardStyle = board.getAttribute('style') || ''
           const boardRotMatch = boardStyle.match(/rotate\(([-0-9]+)deg\)/)
           const boardRotation = boardRotMatch ? parseInt(boardRotMatch[1], 10) : 0
-          const boardBgUrl = 'https://sunderarmor.com/DIABLO4/Paragon/board_bg.png' // Default bg from site
+          const boardBgUrl = 'https://sunderarmor.com/DIABLO4/Paragon/board_bg.png'
 
-          // Collect ALL nodes for visual path rendering
+          // Extract CSS top/left positions (d4builds uses absolute positioning
+          // with multiples of 1258px to arrange boards spatially)
+          const topMatch = boardStyle.match(/top:\s*([-0-9.]+)px/)
+          const leftMatch = boardStyle.match(/left:\s*([-0-9.]+)px/)
+          const boardX = leftMatch ? parseFloat(leftMatch[1]) : 0
+          const boardY = topMatch ? parseFloat(topMatch[1]) : 0
+
           const allocatedNodes: Array<{
             nodeName: string
             nodeType: 'normal' | 'magic' | 'rare' | 'legendary' | 'gate'
             allocated: boolean
+            nodeDescription?: string
             row?: number
             col?: number
             iconUrl?: string
@@ -290,7 +309,6 @@ export class D4BuildsScraper extends BuildScraper {
           }> = []
 
           allTiles.forEach((tile) => {
-            // Find images (icon, active icon, background)
             const iconImg = Array.from(
               tile.querySelectorAll('img.paragon__board__tile__icon')
             ).find((img) => !img.classList.contains('active'))
@@ -302,20 +320,15 @@ export class D4BuildsScraper extends BuildScraper {
             const bgUrl = bgImg?.getAttribute('src') || undefined
 
             const altText = iconImg?.getAttribute('alt')?.trim() || 'Node'
-            const styleTransform = tile.getAttribute('style') || undefined // e.g. transform: rotate(-90deg)
+            const styleTransform = tile.getAttribute('style') || undefined
             const allocated = tile.classList.contains('active')
 
-            // Extract row/col from CSS (e.g., "r5 c10")
             const tileClasses = tile.className.toLowerCase()
             const matchRow = tileClasses.match(/\br(\d+)\b/)
             const matchCol = tileClasses.match(/\bc(\d+)\b/)
             const row = matchRow ? parseInt(matchRow[1], 10) : undefined
             const col = matchCol ? parseInt(matchCol[1], 10) : undefined
 
-            // Determine node type — PRIMARY: use the bg tile image alt text
-            // which tells us Common, Magic, Rare, or Legendary. The CSS
-            // classes do NOT reliably carry type info on d4builds.gg.
-            // Fallback: check for 'radius' class (rare node indicator on d4builds).
             const bgAlt = bgImg?.getAttribute('alt')?.toLowerCase() || ''
             let nodeType: 'normal' | 'magic' | 'rare' | 'legendary' | 'gate' = 'normal'
             if (bgAlt.includes('legendary')) nodeType = 'legendary'
@@ -325,11 +338,9 @@ export class D4BuildsScraper extends BuildScraper {
             else if (altText.toLowerCase() === 'gate' || tileClasses.includes('gate'))
               nodeType = 'gate'
 
-            // Format the name nicely — split PascalCase and known stat
-            // abbreviations into human-readable text
             const nodeName = altText
-              .replace(/([a-z])([A-Z])/g, '$1 $2') // Split camelCase
-              .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2') // Split consecutive caps
+              .replace(/([a-z])([A-Z])/g, '$1 $2')
+              .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
               .replace(/\b\w/g, (c) => c.toUpperCase())
 
             allocatedNodes.push({
@@ -351,10 +362,165 @@ export class D4BuildsScraper extends BuildScraper {
             glyph: glyphName ? { glyphName, level: 15 } : null,
             allocatedNodes,
             boardRotation,
-            boardBgUrl
+            boardBgUrl,
+            boardX,
+            boardY,
+            tileCount: allTiles.length
           }
         })
       })
+
+      // ── Phase B: Extract tooltip descriptions (with cache) ──
+      const uncachedBoardIndices: number[] = []
+
+      for (let bIdx = 0; bIdx < boardsData.length; bIdx++) {
+        const boardData = boardsData[bIdx]
+        const cachedNodes = this.paragonCache?.get(boardData.boardName)
+
+        if (cachedNodes) {
+          // CACHE HIT — merge descriptions from cache
+          for (const node of boardData.allocatedNodes) {
+            const cached = cachedNodes.find((c) => c.row === node.row && c.col === node.col)
+            if (cached) {
+              if (cached.nodeName) node.nodeName = cached.nodeName
+              if (cached.nodeDescription) node.nodeDescription = cached.nodeDescription
+            }
+          }
+        } else {
+          uncachedBoardIndices.push(bIdx)
+        }
+      }
+
+      // Only run expensive hover loop for uncached boards
+      if (uncachedBoardIndices.length > 0) {
+        const tileIndices: Array<{ boardIdx: number; tileIdx: number }> = []
+        for (const bIdx of uncachedBoardIndices) {
+          for (let tIdx = 0; tIdx < boardsData[bIdx].allocatedNodes.length; tIdx++) {
+            const n = boardsData[bIdx].allocatedNodes[tIdx]
+            if (
+              n.allocated ||
+              n.nodeType === 'rare' ||
+              n.nodeType === 'legendary' ||
+              n.nodeType === 'gate'
+            ) {
+              tileIndices.push({ boardIdx: bIdx, tileIdx: tIdx })
+            }
+          }
+        }
+
+        const allTooltipData = await page
+          .evaluate(async (indices: Array<{ boardIdx: number; tileIdx: number }>) => {
+            const delay = (ms: number): Promise<void> =>
+              new Promise((resolve) => setTimeout(resolve, ms))
+            const results: Array<{
+              boardIdx: number
+              tileIdx: number
+              name: string | null
+              description: string | null
+            }> = []
+            const boards = document.querySelectorAll('.paragon__board')
+            for (const { boardIdx, tileIdx } of indices) {
+              const board = boards[boardIdx]
+              if (!board) continue
+              const tiles = board.querySelectorAll('.paragon__board__tile')
+              const tile = tiles[tileIdx]
+              if (!tile) continue
+              tile.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, cancelable: true }))
+              await delay(50)
+              const tooltip = document.querySelector('.paragon__tile__tooltip')
+              if (!tooltip) {
+                tile.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, cancelable: true }))
+                await delay(10)
+                continue
+              }
+              const parts: string[] = []
+              const nameEl = tooltip.querySelector('.paragon__tile__tooltip__name')
+              const tooltipName = nameEl?.textContent?.trim()
+              let extractedName: string | null = null
+              if (tooltipName) {
+                const rarityEl = tooltip.querySelector('.paragon__tile__tooltip__rarity')
+                const nameOnly = tooltipName.replace(rarityEl?.textContent || '', '').trim()
+                if (nameOnly) extractedName = nameOnly
+              }
+              tooltip.querySelectorAll('.paragon__tile__tooltip__stat').forEach((stat) => {
+                const text = stat.textContent?.trim()
+                if (text) parts.push(text)
+              })
+              const descEl = tooltip.querySelector('.paragon__tile__tooltip__description')
+              if (descEl) {
+                const text = descEl.textContent?.trim()
+                if (text) parts.push(text)
+              }
+              tooltip
+                .querySelectorAll(
+                  '.paragon__tile__bonus__requirement, .paragon__tile__bonus__stats'
+                )
+                .forEach((el) => {
+                  const text = el.textContent?.trim()
+                  if (text) parts.push(text)
+                })
+              tile.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, cancelable: true }))
+              await delay(10)
+              if (parts.length > 0 || extractedName) {
+                results.push({
+                  boardIdx,
+                  tileIdx,
+                  name: extractedName,
+                  description: parts.length > 0 ? parts.join('\n') : null
+                })
+              }
+            }
+            return results
+          }, tileIndices)
+          .catch(
+            () =>
+              [] as Array<{
+                boardIdx: number
+                tileIdx: number
+                name: string | null
+                description: string | null
+              }>
+          )
+
+        // Merge hover results back into board nodes
+        for (const tip of allTooltipData) {
+          const board = boardsData[tip.boardIdx]
+          if (!board) continue
+          const node = board.allocatedNodes[tip.tileIdx]
+          if (!node) continue
+          if (tip.name) node.nodeName = tip.name
+          if (tip.description) node.nodeDescription = tip.description
+        }
+
+        // Save newly scraped boards to cache
+        for (const bIdx of uncachedBoardIndices) {
+          const boardData = boardsData[bIdx]
+          const cacheEntries: CachedNodeData[] = boardData.allocatedNodes.map((n) => ({
+            nodeName: n.nodeName,
+            nodeType: n.nodeType,
+            nodeDescription: n.nodeDescription,
+            row: n.row,
+            col: n.col,
+            iconUrl: n.iconUrl,
+            activeIconUrl: n.activeIconUrl,
+            bgUrl: n.bgUrl,
+            styleTransform: n.styleTransform
+          }))
+          this.paragonCache?.set(boardData.boardName, cacheEntries)
+        }
+      }
+
+      // Return cleaned board data (remove internal tileCount)
+      return boardsData.map((b) => ({
+        boardName: b.boardName,
+        boardIndex: b.boardIndex,
+        glyph: b.glyph,
+        allocatedNodes: b.allocatedNodes,
+        boardRotation: b.boardRotation,
+        boardBgUrl: b.boardBgUrl,
+        boardX: b.boardX,
+        boardY: b.boardY
+      }))
     } catch {
       return []
     }
