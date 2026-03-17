@@ -1,4 +1,9 @@
-import type { BuildSourceSite, ISkillAllocation, IParagonBoard, IGearSlot } from '../../shared/types'
+import type {
+  BuildSourceSite,
+  ISkillAllocation,
+  IParagonBoard,
+  IGearSlot
+} from '../../shared/types'
 
 // ============================================================
 // BuildScraper — The base class for all site scrapers
