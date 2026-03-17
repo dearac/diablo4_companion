@@ -27,7 +27,6 @@
   text-align: center;
   margin-bottom: clamp(20px, 3vw, 40px);
   width: 100%;
-  max-width: 900px;
 }
 
 .config-header__title {
@@ -57,7 +56,6 @@
 
 .config-main {
   width: 100%;
-  max-width: 900px;
   display: flex;
   flex-direction: column;
   gap: clamp(16px, 2vw, 28px);
