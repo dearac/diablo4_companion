@@ -1,6 +1,6 @@
 import { chromium, Page } from 'playwright'
 import { BuildScraper, RawBuildData } from './BuildScraper'
-import { BuildSourceSite, D4Class, ISkillAllocation } from '../../shared/types'
+import { BuildSourceSite, D4Class, ISkillAllocation, IParagonBoard } from '../../shared/types'
 
 // ============================================================
 // MaxrollScraper — Scraper for maxroll.gg D4 build planner
@@ -69,14 +69,15 @@ export class MaxrollScraper extends BuildScraper {
       // 4. Extract Skills
       const skills = await this.scrapeSkills(page)
 
-      // TODO: Implement Paragon tab switching and scraping
+      // 5. Extract Paragon boards
+      const paragonBoards = await this.scrapeParagon(page)
 
       return {
         name: buildName,
         d4Class: d4Class,
         level: 100,
         skills,
-        paragonBoards: [],
+        paragonBoards,
         gearSlots: []
       }
     } catch (error: unknown) {
@@ -167,6 +168,89 @@ export class MaxrollScraper extends BuildScraper {
     )
 
     return skills
+  }
+
+  /**
+   * Switches to the Paragon tab and extracts all board data.
+   *
+   * Maxroll's paragon section renders each board as a container with:
+   * - `[class*="boardName"]` — the board's display name
+   * - `[class*="glyph"]` — the socket glyph (name + level)
+   * - `[class*="paragonNode"]` — individual nodes with type modifiers
+   *
+   * @param page - The Playwright page, already on the planner
+   * @returns Array of paragon boards with glyphs and allocated nodes
+   */
+  private async scrapeParagon(page: Page): Promise<IParagonBoard[]> {
+    // Click the "Paragon" tab to switch to the paragon panel
+    const paragonTab = await page.$(
+      'button:has-text("Paragon"), [data-tab="paragon"], button[class*="paragon"]'
+    )
+    if (paragonTab) {
+      await paragonTab.click()
+      await page.waitForSelector('[class*="paragonBoard"]', { timeout: 10000 }).catch(() => {
+        // Paragon section may already be visible
+      })
+    }
+
+    // Extract all paragon board containers
+    const boards = await page.$$eval('[class*="paragonBoard"]', (boardEls) => {
+      return boardEls.map((board, index) => {
+        // Board name from the header element
+        const nameEl = board.querySelector('[class*="boardName"]')
+        const boardName = nameEl?.textContent?.trim() || `Board ${index + 1}`
+
+        // Glyph info (may not exist on every board)
+        const glyphEl = board.querySelector('[class*="glyph"]')
+        let glyph: { glyphName: string; level: number } | null = null
+        if (glyphEl) {
+          const glyphNameEl = glyphEl.querySelector('[class*="name"]')
+          const glyphLevelEl = glyphEl.querySelector('[class*="level"]')
+          const glyphName = glyphNameEl?.textContent?.trim() || 'Unknown Glyph'
+          const level = parseInt(glyphLevelEl?.textContent?.trim() || '1', 10)
+          glyph = { glyphName, level }
+        }
+
+        // Allocated nodes with type classification
+        const nodeEls = board.querySelectorAll('[class*="paragonNode"]')
+        const allocatedNodes: Array<{
+          nodeName: string
+          nodeType: 'normal' | 'magic' | 'rare' | 'legendary'
+          allocated: boolean
+        }> = []
+
+        nodeEls.forEach((nodeEl) => {
+          const nodeNameEl = nodeEl.querySelector('[class*="name"]')
+          const nodeName = nodeNameEl?.textContent?.trim() || 'Unknown Node'
+          const classStr = nodeEl.className || ''
+
+          // Determine node type from CSS class modifiers
+          let nodeType: 'normal' | 'magic' | 'rare' | 'legendary' = 'normal'
+          if (classStr.includes('legendary')) {
+            nodeType = 'legendary'
+          } else if (classStr.includes('rare')) {
+            nodeType = 'rare'
+          } else if (classStr.includes('magic')) {
+            nodeType = 'magic'
+          }
+
+          allocatedNodes.push({
+            nodeName,
+            nodeType,
+            allocated: true
+          })
+        })
+
+        return {
+          boardName,
+          boardIndex: index,
+          glyph,
+          allocatedNodes
+        }
+      })
+    })
+
+    return boards
   }
 
   /**
