@@ -6,6 +6,7 @@ import type Store from 'electron-store'
 import { HotkeyService } from './services/HotkeyService'
 import { getDataPaths } from './services/StorageService'
 import { BuildImportService } from './services/BuildImportService'
+import { BuildRepository } from './services/BuildRepository'
 import { MaxrollScraper } from './scrapers/MaxrollScraper'
 import { D4BuildsScraper } from './scrapers/D4BuildsScraper'
 import { IcyVeinsScraper } from './scrapers/IcyVeinsScraper'
@@ -57,6 +58,7 @@ app.setPath('userData', dataPaths.userData)
 let store: Store
 let hotkeyService: HotkeyService
 let buildService: BuildImportService
+let buildRepo: BuildRepository
 
 /**
  * Two-window architecture:
@@ -84,6 +86,7 @@ async function initStore(): Promise<void> {
  */
 function initServices(): void {
   buildService = new BuildImportService()
+  buildRepo = new BuildRepository(dataPaths.builds)
 
   // Register supported scrapers here
   buildService.registerScraper(new MaxrollScraper())
@@ -232,13 +235,38 @@ function setupIpcHandlers(): void {
   ipcMain.handle('import-build', async (_event, url: string) => {
     try {
       const result = await buildService.importFromUrl(url)
-      currentBuildData = result // Store for overlay
-      return result
+      currentBuildData = result
+
+      // Auto-save the imported build
+      const site = buildService.detectSite(url)
+      const saved = buildRepo.save(result, url, site)
+
+      return { build: result, savedId: saved.id }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
       console.error('Import failed:', message)
       throw error
     }
+  })
+
+  // ---- Build Library IPC ----
+
+  /** List all saved builds */
+  ipcMain.handle('list-builds', async () => {
+    return buildRepo.listAll()
+  })
+
+  /** Load a specific saved build by ID */
+  ipcMain.handle('load-build', async (_event, id: string) => {
+    const build = buildRepo.load(id)
+    if (!build) throw new Error(`Build not found: ${id}`)
+    currentBuildData = build.data
+    return build
+  })
+
+  /** Delete a saved build by ID */
+  ipcMain.handle('delete-build', async (_event, id: string) => {
+    return buildRepo.delete(id)
   })
 
   // Launch the overlay window

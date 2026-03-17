@@ -1,5 +1,5 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
-import type { RawBuildData } from '../shared/types'
+import type { RawBuildData, SavedBuild } from '../shared/types'
 
 declare global {
   interface Window {
@@ -11,12 +11,15 @@ declare global {
       onTriggerScan: (callback: () => void) => void
       onTriggerReport: (callback: () => void) => void
       quit: () => void
-      importBuild: (url: string) => Promise<RawBuildData>
+      importBuild: (url: string) => Promise<{ build: RawBuildData; savedId: string }>
       launchOverlay: () => void
       overlayReady: () => void
       onBuildData: (callback: (data: RawBuildData) => void) => void
       closeOverlay: () => void
       openConfig: () => void
+      listBuilds: () => Promise<SavedBuild[]>
+      loadBuild: (id: string) => Promise<SavedBuild>
+      deleteBuild: (id: string) => Promise<boolean>
     }
   }
 }

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { RawBuildData } from '../../../shared/types'
 
 /**
  * ImportForm — URL input and import button.
@@ -9,7 +10,7 @@ import { useState } from 'react'
  */
 interface ImportFormProps {
   onImportStart: () => void
-  onImportSuccess: (data: any) => void
+  onImportSuccess: (result: { build: RawBuildData; savedId: string }) => void
   onImportError: (error: string) => void
   isLoading: boolean
 }

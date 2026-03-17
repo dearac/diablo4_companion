@@ -7,7 +7,8 @@
     "src/overlay/src/env.d.ts",
     "src/overlay/src/**/*",
     "src/overlay/src/**/*.tsx",
-    "src/preload/*.d.ts"
+    "src/preload/*.d.ts",
+    "src/shared/**/*"
   ],
   "compilerOptions": {
     "composite": true,

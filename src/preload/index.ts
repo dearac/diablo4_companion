@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { RawBuildData } from '../shared/types'
+import type { RawBuildData, SavedBuild } from '../shared/types'
 
 // ============================================================
 // PRELOAD SCRIPT — The Bridge Between Main and Renderer
@@ -116,6 +116,27 @@ const api = {
    */
   openConfig: (): void => {
     ipcRenderer.send('open-config')
+  },
+
+  /**
+   * Lists all saved builds from disk.
+   */
+  listBuilds: (): Promise<SavedBuild[]> => {
+    return ipcRenderer.invoke('list-builds')
+  },
+
+  /**
+   * Loads a saved build by ID.
+   */
+  loadBuild: (id: string): Promise<SavedBuild> => {
+    return ipcRenderer.invoke('load-build', id)
+  },
+
+  /**
+   * Deletes a saved build by ID.
+   */
+  deleteBuild: (id: string): Promise<boolean> => {
+    return ipcRenderer.invoke('delete-build', id)
   }
 }
 
