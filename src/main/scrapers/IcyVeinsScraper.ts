@@ -1,6 +1,12 @@
 import { chromium, Page } from 'playwright'
 import { BuildScraper, RawBuildData } from './BuildScraper'
-import { BuildSourceSite, D4Class, ISkillAllocation, IParagonBoard } from '../../shared/types'
+import {
+  BuildSourceSite,
+  D4Class,
+  ISkillAllocation,
+  IParagonBoard,
+  IGearSlot
+} from '../../shared/types'
 
 // ============================================================
 // IcyVeinsScraper — Scraper for icy-veins.com D4 build guides
@@ -71,13 +77,16 @@ export class IcyVeinsScraper extends BuildScraper {
       // 6. Extract Paragon boards
       const paragonBoards = await this.scrapeParagon(page)
 
+      // 7. Extract Gear slots
+      const gearSlots = await this.scrapeGear(page)
+
       return {
         name: buildName,
         d4Class: d4Class,
         level: 100,
         skills,
         paragonBoards,
-        gearSlots: []
+        gearSlots
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
@@ -221,6 +230,82 @@ export class IcyVeinsScraper extends BuildScraper {
     )
 
     return boards
+  }
+
+  /**
+   * Extracts gear slot data from Icy Veins' editorial gear section.
+   *
+   * Icy Veins uses various elements for gear recommendations:
+   * - `.gear-slot` containers with slot name, item info, aspect, affixes
+   * - Headings (h4/strong) for slot names
+   * - Item names with type indicators
+   *
+   * @param page - The Playwright page, already on the guide
+   * @returns Array of gear slots with all equipment details
+   */
+  private async scrapeGear(page: Page): Promise<IGearSlot[]> {
+    const gearSlots = await page.$$eval(
+      '.gear-slot, [class*="gear-slot"], [class*="equipment"], section.gear .slot',
+      (slotEls) => {
+        return slotEls.map((slotEl, index) => {
+          // Slot name
+          const slotNameEl = slotEl.querySelector('.slot-name, h4, strong, [class*="slot-name"]')
+          const slot = slotNameEl?.textContent?.trim() || `Slot ${index + 1}`
+
+          // Item name and type
+          const itemEl = slotEl.querySelector('.item-name, [class*="item-name"]')
+          const itemName = itemEl?.textContent?.trim() || null
+          const itemClass = (itemEl as HTMLElement)?.className || ''
+
+          let itemType: 'Unique' | 'Legendary' | 'Rare' = 'Legendary'
+          if (itemClass.includes('unique') || itemClass.includes('Unique')) {
+            itemType = 'Unique'
+          } else if (itemClass.includes('rare') || itemClass.includes('Rare')) {
+            itemType = 'Rare'
+          }
+
+          // Required aspect
+          const aspectEl = slotEl.querySelector('.aspect, [class*="aspect"]')
+          const requiredAspect = aspectEl?.textContent?.trim() || null
+
+          // Priority affixes
+          const affixEls = slotEl.querySelectorAll('.affix, [class*="affix"]')
+          const priorityAffixes: Array<{ name: string; priority: number }> = []
+          affixEls.forEach((affixEl, affixIndex) => {
+            const name = affixEl.textContent?.trim() || ''
+            if (name) priorityAffixes.push({ name, priority: affixIndex + 1 })
+          })
+
+          // Tempering targets
+          const temperEls = slotEl.querySelectorAll('.temper, [class*="temper"]')
+          const temperingTargets: string[] = []
+          temperEls.forEach((el) => {
+            const text = el.textContent?.trim() || ''
+            if (text) temperingTargets.push(text)
+          })
+
+          // Masterwork priorities
+          const masterworkEls = slotEl.querySelectorAll('.masterwork, [class*="masterwork"]')
+          const masterworkPriority: string[] = []
+          masterworkEls.forEach((el) => {
+            const text = el.textContent?.trim() || ''
+            if (text) masterworkPriority.push(text)
+          })
+
+          return {
+            slot,
+            itemName,
+            itemType,
+            requiredAspect,
+            priorityAffixes,
+            temperingTargets,
+            masterworkPriority
+          }
+        })
+      }
+    )
+
+    return gearSlots
   }
 
   /**
