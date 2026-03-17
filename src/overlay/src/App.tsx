@@ -3,6 +3,9 @@ import type { RawBuildData } from '../../shared/types'
 import OverlayHeader from './components/OverlayHeader'
 import TabBar from './components/TabBar'
 import type { TabId } from './components/TabBar'
+import SkillsPanel from './components/SkillsPanel'
+import ParagonPanel from './components/ParagonPanel'
+import GearPanel from './components/GearPanel'
 import OverlayFooter from './components/OverlayFooter'
 
 /**
@@ -51,9 +54,9 @@ function App(): React.JSX.Element {
         <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
 
         <div className="tab-content">
-          {activeTab === 'skills' && <p>Skills panel — Task 6</p>}
-          {activeTab === 'paragon' && <p>Paragon panel — Task 7</p>}
-          {activeTab === 'gear' && <p>Gear panel — Task 8</p>}
+          {activeTab === 'skills' && <SkillsPanel skills={buildData.skills} />}
+          {activeTab === 'paragon' && <ParagonPanel boards={buildData.paragonBoards} />}
+          {activeTab === 'gear' && <GearPanel gearSlots={buildData.gearSlots} />}
         </div>
 
         <OverlayFooter />

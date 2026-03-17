@@ -4,6 +4,9 @@
     "src/renderer/src/env.d.ts",
     "src/renderer/src/**/*",
     "src/renderer/src/**/*.tsx",
+    "src/overlay/src/env.d.ts",
+    "src/overlay/src/**/*",
+    "src/overlay/src/**/*.tsx",
     "src/preload/*.d.ts"
   ],
   "compilerOptions": {
@@ -13,6 +16,9 @@
     "paths": {
       "@renderer/*": [
         "src/renderer/src/*"
+      ],
+      "@overlay/*": [
+        "src/overlay/src/*"
       ]
     }
   }
