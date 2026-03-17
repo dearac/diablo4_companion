@@ -1,6 +1,12 @@
 import { chromium, Page } from 'playwright'
 import { BuildScraper, RawBuildData } from './BuildScraper'
-import { BuildSourceSite, D4Class, ISkillAllocation, IParagonBoard } from '../../shared/types'
+import {
+  BuildSourceSite,
+  D4Class,
+  ISkillAllocation,
+  IParagonBoard,
+  IGearSlot
+} from '../../shared/types'
 
 // ============================================================
 // MaxrollScraper — Scraper for maxroll.gg D4 build planner
@@ -72,13 +78,16 @@ export class MaxrollScraper extends BuildScraper {
       // 5. Extract Paragon boards
       const paragonBoards = await this.scrapeParagon(page)
 
+      // 6. Extract Gear slots
+      const gearSlots = await this.scrapeGear(page)
+
       return {
         name: buildName,
         d4Class: d4Class,
         level: 100,
         skills,
         paragonBoards,
-        gearSlots: []
+        gearSlots
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
@@ -251,6 +260,93 @@ export class MaxrollScraper extends BuildScraper {
     })
 
     return boards
+  }
+
+  /**
+   * Extracts gear slot data from Maxroll's equipment section.
+   *
+   * Maxroll displays equipment on the default tab, each slot as:
+   * - `[class*="equipment_Slot"]` — the slot container
+   * - `[class*="equipment_SlotName"]` or `[class*="slot"]` — slot name (Helm, Chest, etc.)
+   * - `[class*="equipment_ItemName"]` — item name + class modifier for type
+   * - `[class*="equipment_Aspect"]` — the required aspect (null for Uniques)
+   * - `[class*="affix"]` — priority affixes listed
+   * - `[class*="temper"]` — tempering targets
+   * - `[class*="masterwork"]` — masterwork priorities
+   *
+   * @param page - The Playwright page, already on the planner
+   * @returns Array of gear slots with all equipment details
+   */
+  private async scrapeGear(page: Page): Promise<IGearSlot[]> {
+    // Equipment is on the default tab — no tab switch needed
+    const gearSlots = await page.$$eval(
+      '[class*="equipment_Slot"], [class*="equipment-slot"]',
+      (slotEls) => {
+        return slotEls.map((slotEl, index) => {
+          // Slot name (Helm, Chest, Gloves, etc.)
+          const slotNameEl = slotEl.querySelector(
+            '[class*="SlotName"], [class*="slot-name"], [class*="slot"]'
+          )
+          const slot = slotNameEl?.textContent?.trim() || `Slot ${index + 1}`
+
+          // Item name and type detection
+          const itemEl = slotEl.querySelector('[class*="ItemName"], [class*="item-name"]')
+          const itemName = itemEl?.textContent?.trim() || null
+          const itemClass = (itemEl as HTMLElement)?.className || ''
+
+          let itemType: 'Unique' | 'Legendary' | 'Rare' = 'Legendary'
+          if (itemClass.includes('unique') || itemClass.includes('Unique')) {
+            itemType = 'Unique'
+          } else if (itemClass.includes('rare') || itemClass.includes('Rare')) {
+            itemType = 'Rare'
+          }
+
+          // Required aspect (null for Unique items)
+          const aspectEl = slotEl.querySelector('[class*="Aspect"], [class*="aspect"]')
+          const requiredAspect = aspectEl?.textContent?.trim() || null
+
+          // Priority affixes with index-based priority
+          const affixEls = slotEl.querySelectorAll('[class*="affix"], [class*="Affix"]')
+          const priorityAffixes: Array<{ name: string; priority: number }> = []
+          affixEls.forEach((affixEl, affixIndex) => {
+            const name = affixEl.textContent?.trim() || ''
+            if (name) {
+              priorityAffixes.push({ name, priority: affixIndex + 1 })
+            }
+          })
+
+          // Tempering targets
+          const temperEls = slotEl.querySelectorAll('[class*="temper"], [class*="Temper"]')
+          const temperingTargets: string[] = []
+          temperEls.forEach((el) => {
+            const text = el.textContent?.trim() || ''
+            if (text) temperingTargets.push(text)
+          })
+
+          // Masterwork priorities
+          const masterworkEls = slotEl.querySelectorAll(
+            '[class*="masterwork"], [class*="Masterwork"]'
+          )
+          const masterworkPriority: string[] = []
+          masterworkEls.forEach((el) => {
+            const text = el.textContent?.trim() || ''
+            if (text) masterworkPriority.push(text)
+          })
+
+          return {
+            slot,
+            itemName,
+            itemType,
+            requiredAspect,
+            priorityAffixes,
+            temperingTargets,
+            masterworkPriority
+          }
+        })
+      }
+    )
+
+    return gearSlots
   }
 
   /**

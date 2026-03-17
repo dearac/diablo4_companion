@@ -293,4 +293,35 @@ describe('MaxrollScraper', () => {
       allocated: true
     })
   })
+
+  it('should extract gear slots with aspects and affixes', async () => {
+    const data = await scraper.scrape('https://maxroll.gg/d4/planner/test')
+    expect(data.gearSlots).toHaveLength(2)
+
+    // Verify Unique item (Helm)
+    const helm = data.gearSlots[0]
+    expect(helm.slot).toBe('Helm')
+    expect(helm.itemName).toBe('Harlequin Crest')
+    expect(helm.itemType).toBe('Unique')
+    expect(helm.requiredAspect).toBeNull()
+    expect(helm.priorityAffixes).toEqual([
+      { name: 'Maximum Life', priority: 1 },
+      { name: 'Cooldown Reduction', priority: 2 }
+    ])
+    expect(helm.temperingTargets).toEqual(['Chance to Deal Double Damage'])
+    expect(helm.masterworkPriority).toEqual(['Maximum Life'])
+
+    // Verify Legendary item (Chest with aspect)
+    const chest = data.gearSlots[1]
+    expect(chest.slot).toBe('Chest')
+    expect(chest.itemName).toBeNull()
+    expect(chest.itemType).toBe('Legendary')
+    expect(chest.requiredAspect).toBe('Aspect of Disobedience')
+    expect(chest.priorityAffixes).toEqual([
+      { name: 'Total Armor', priority: 1 },
+      { name: 'Maximum Life', priority: 2 }
+    ])
+    expect(chest.temperingTargets).toEqual(['Armor Contribution'])
+    expect(chest.masterworkPriority).toEqual(['Total Armor'])
+  })
 })
