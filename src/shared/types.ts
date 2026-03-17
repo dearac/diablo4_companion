@@ -133,3 +133,20 @@ export interface RawBuildData {
   paragonBoards: IParagonBoard[]
   gearSlots: IGearSlot[]
 }
+
+/**
+ * A build that has been saved to disk.
+ * Wraps RawBuildData with persistence metadata (ID, source URL, timestamps).
+ */
+export interface SavedBuild {
+  /** Unique identifier (ISO timestamp + sanitized name) */
+  id: string
+  /** The URL the build was originally imported from */
+  sourceUrl: string
+  /** Which site it came from */
+  sourceSite: BuildSourceSite
+  /** When the build was first imported (ISO string) */
+  importedAt: string
+  /** The raw build data from the scraper */
+  data: RawBuildData
+}
