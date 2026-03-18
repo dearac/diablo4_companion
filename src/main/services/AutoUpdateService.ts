@@ -38,23 +38,42 @@ export class AutoUpdateService {
    */
   async checkForUpdate(currentVersion: string): Promise<UpdateInfo | null> {
     try {
+      console.log(`[AutoUpdate] Checking for updates... current version: ${currentVersion}`)
+      console.log(`[AutoUpdate] API URL: ${this.apiUrl}`)
       const releaseJson = await this.fetchJson(this.apiUrl)
-      if (!releaseJson) return null
+      if (!releaseJson) {
+        console.log('[AutoUpdate] No release data returned from GitHub')
+        return null
+      }
 
       const tagVersion = releaseJson.tag_name?.replace(/^v/, '') || ''
-      if (!this.isNewer(tagVersion, currentVersion)) return null
+      console.log(`[AutoUpdate] Latest release: ${tagVersion}`)
+
+      if (!this.isNewer(tagVersion, currentVersion)) {
+        console.log(`[AutoUpdate] ${tagVersion} is not newer than ${currentVersion}, skipping`)
+        return null
+      }
 
       // Find the exe asset
       const asset = releaseJson.assets?.find(
         (a: { name: string }) => a.name === 'diablo4_companion.exe'
       )
 
+      if (!asset) {
+        console.log('[AutoUpdate] No diablo4_companion.exe asset found in release')
+        return null
+      }
+
+      console.log(`[AutoUpdate] Update available! ${currentVersion} -> ${tagVersion}`)
+      console.log(`[AutoUpdate] Download URL: ${asset.browser_download_url}`)
+
       return {
         version: tagVersion,
         releaseNotes: releaseJson.body || '',
-        downloadUrl: asset?.browser_download_url || ''
+        downloadUrl: asset.browser_download_url || ''
       }
-    } catch {
+    } catch (err) {
+      console.error('[AutoUpdate] Check failed with error:', err)
       return null
     }
   }
