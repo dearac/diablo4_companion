@@ -23,7 +23,7 @@ export type D4Class =
 /**
  * The three build websites we can import from.
  */
-export type BuildSourceSite = 'd4builds'
+export type BuildSourceSite = 'd4builds' | 'maxroll' | 'icy-veins'
 
 /**
  * Represents a complete D4 build — everything we know about
@@ -187,3 +187,90 @@ export interface SavedBuild {
   /** The raw build data from the scraper */
   data: RawBuildData
 }
+
+// ============================================================
+// OCR TOOLTIP SCANNER TYPES
+// ============================================================
+
+/**
+ * An item scanned from the game via OCR tooltip capture.
+ * Produced by the Python sidecar's tooltip parser.
+ */
+export interface IScannedItem {
+  /** The gear slot this item belongs to (e.g. "Helm", "Chest Armor") */
+  slot: string
+  /** Full item name from the tooltip */
+  itemName: string
+  /** Item rarity */
+  itemType: 'Unique' | 'Legendary' | 'Rare' | 'Mythic'
+  /** Item Power value (e.g. 800) */
+  itemPower: number
+  /** Aspect or legendary power, if present */
+  aspect: IAspectInfo | null
+  /** Regular affixes on the item */
+  affixes: IScannedAffix[]
+  /** Implicit (inherent) affixes */
+  implicitAffixes: IScannedAffix[]
+  /** Tempered affixes */
+  temperedAffixes: IScannedAffix[]
+  /** Greater affixes */
+  greaterAffixes: IScannedAffix[]
+  /** Names of socketed gems */
+  socketedGems: string[]
+  /** The raw OCR text for debugging */
+  rawOcrText: string
+  /** When this item was scanned (ISO timestamp) */
+  scannedAt: string
+}
+
+/**
+ * A parsed affix with its numeric value.
+ * More detailed than IAffix — includes the actual rolled value.
+ */
+export interface IScannedAffix {
+  /** Affix name (e.g. "Damage to Close Enemies") */
+  name: string
+  /** Numeric value (e.g. 15.5) */
+  value: number
+  /** How the value is applied: additive (+), multiplicative (x), or flat */
+  valueType: '+' | 'x' | 'flat'
+  /** Whether this is a Greater Affix */
+  isGreater: boolean
+}
+
+/**
+ * The user's equipped gear state — what they actually have in-game.
+ * One per active build.
+ */
+export interface IEquippedGear {
+  /** The build this gear set belongs to */
+  buildId: string
+  /** Equipped items keyed by slot name (e.g. "Helm", "Chest Armor") */
+  slots: Record<string, IScannedItem>
+  /** When this gear state was last modified */
+  lastUpdated: string
+}
+
+/**
+ * Verdict for comparing an inventory item against equipped + build.
+ * Tells the user whether a drop is worth equipping.
+ */
+export interface IInventoryVerdict {
+  /** The scanned inventory item */
+  scannedItem: IScannedItem
+  /** Which slot this is being compared for */
+  comparedToSlot: string
+  /** Whether this item is better than what's equipped */
+  isUpgrade: boolean
+  /** Numeric score: positive = better, negative = worse */
+  upgradeScore: number
+  /** Build affixes this drop has that the equipped item doesn't */
+  gainsOverEquipped: string[]
+  /** Build affixes the equipped item has that this drop doesn't */
+  lossesFromEquipped: string[]
+  /** Build requirements neither item satisfies */
+  stillMissingFromBuild: string[]
+  /** Quick recommendation */
+  recommendation: 'EQUIP' | 'SALVAGE' | 'KEEP_FOR_TEMPER' | 'SIDEGRADE'
+}
+

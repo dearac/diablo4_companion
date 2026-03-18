@@ -4,6 +4,7 @@ import ImportForm from './components/ImportForm'
 import StatusIndicator from './components/StatusIndicator'
 import BuildSummaryCard from './components/BuildSummaryCard'
 import BuildLibrary from './components/BuildLibrary'
+import HotkeySettings from './components/HotkeySettings'
 
 /**
  * Config Window App — The build import launcher.
@@ -12,7 +13,8 @@ import BuildLibrary from './components/BuildLibrary'
  * 1. Paste a build URL → scrape + auto-save
  * 2. See the import result
  * 3. Browse saved builds
- * 4. Launch the overlay
+ * 4. Configure hotkeys
+ * 5. Launch the overlay
  */
 type ImportStatus = 'idle' | 'loading' | 'success' | 'error'
 
@@ -84,10 +86,11 @@ function App(): React.JSX.Element {
         )}
 
         <BuildLibrary onLoadBuild={handleLoadBuild} refreshTrigger={refreshCounter} />
+
+        <HotkeySettings />
       </main>
 
       <footer className="config-footer">
-        <span>Toggle Overlay: F6</span>
         <button
           className="config-footer__clear-cache"
           onClick={handleClearCache}

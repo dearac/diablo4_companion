@@ -29,3 +29,8 @@ docs/plans/
 
 # Large generated files
 tree.txt
+
+# Sidecar binaries (downloaded by setup-sidecar.ps1)
+sidecar/python/
+sidecar/tesseract/
+sidecar/__pycache__/

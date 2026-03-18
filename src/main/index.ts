@@ -8,6 +8,11 @@ import { getDataPaths } from './services/StorageService'
 import { BuildImportService } from './services/BuildImportService'
 import { BuildRepository } from './services/BuildRepository'
 import { ProcessManager } from './services/ProcessManager'
+import { SidecarManager } from './services/SidecarManager'
+import { ScreenCaptureService } from './services/ScreenCaptureService'
+import { EquippedGearService } from './services/EquippedGearService'
+import { GearComparisonEngine } from './services/GearComparisonEngine'
+import { PythonBootstrapper } from './services/PythonBootstrapper'
 import { D4BuildsScraper } from './scrapers/D4BuildsScraper'
 import type { RawBuildData } from '../shared/types'
 
@@ -60,6 +65,17 @@ let buildService: BuildImportService
 let buildRepo: BuildRepository
 let d4BuildsScraper: D4BuildsScraper
 
+// OCR Scanner services
+let screenCapture: ScreenCaptureService
+let equippedGearService: EquippedGearService
+let gearComparisonEngine: GearComparisonEngine
+
+/** Current scan mode: 'equip' or 'inventory' */
+let scanMode: 'equip' | 'inventory' = 'inventory'
+
+/** Whether a scan is currently in progress (prevents overlapping scans) */
+let scanInProgress = false
+
 /**
  * Two-window architecture:
  * - configWindow: Normal desktop window for importing builds (650×500)
@@ -91,6 +107,11 @@ function initServices(): void {
   // Register supported scrapers (d4builds only)
   d4BuildsScraper = new D4BuildsScraper(dataPaths.classes)
   buildService.registerScraper(d4BuildsScraper)
+
+  // OCR Scanner services
+  screenCapture = new ScreenCaptureService()
+  equippedGearService = new EquippedGearService(dataPaths.builds)
+  gearComparisonEngine = new GearComparisonEngine()
 }
 
 // ============================================================
@@ -310,11 +331,160 @@ function setupIpcHandlers(): void {
     d4BuildsScraper.clearCache()
     return { success: true }
   })
+
+  // ---- OCR Scanner IPC ----
+
+  // Set scan mode from overlay toggle
+  ipcMain.on('set-scan-mode', (_event, mode: 'equip' | 'inventory') => {
+    scanMode = mode
+    console.log(`[Scanner] Scan mode set to: ${mode}`)
+  })
+
+  // Get equipped gear for a build
+  ipcMain.handle('get-equipped-gear', async (_event, buildId: string) => {
+    return await equippedGearService.getEquippedGear(buildId)
+  })
+
+  // Clear equipped gear for a build
+  ipcMain.handle('clear-equipped-gear', async (_event, buildId: string) => {
+    return await equippedGearService.clearAll(buildId)
+  })
 }
 
 // ============================================================
 // GLOBAL HOTKEYS
 // ============================================================
+
+/**
+ * Performs a full tooltip scan:
+ *   1. Hide overlay briefly (avoid self-capture)
+ *   2. Capture the screen
+ *   3. Send to Python sidecar for OCR
+ *   4. Route to equip or compare based on mode
+ *   5. Send result to overlay for display
+ */
+async function performScan(): Promise<void> {
+  if (scanInProgress) {
+    console.log('[Scanner] Scan already in progress, ignoring')
+    return
+  }
+  if (!currentBuildData) {
+    console.log('[Scanner] No build loaded, cannot scan')
+    overlayWindow?.webContents.send('scan-result', {
+      mode: scanMode,
+      error: 'Load a build first before scanning'
+    })
+    return
+  }
+
+  scanInProgress = true
+
+  try {
+    // 1. Temporarily hide overlay to avoid capturing our own UI
+    const wasVisible = overlayWindow?.isVisible() ?? false
+    if (wasVisible) {
+      overlayWindow?.hide()
+      await new Promise((resolve) => setTimeout(resolve, 150))
+    }
+
+    // 2. Capture the screen and crop tooltip region
+    const capture = await screenCapture.captureTooltip()
+
+    // 3. Re-show overlay immediately
+    if (wasVisible && overlayWindow) {
+      overlayWindow.show()
+      overlayWindow.setAlwaysOnTop(true, 'screen-saver')
+    }
+
+    // 4. Send cropped image to Python sidecar for OCR
+    const sidecar = SidecarManager.getInstance(appDir)
+    const imageB64 = capture.tooltipBuffer.toString('base64')
+
+    const ocrResponse = await sidecar.send('ocr', {
+      image: imageB64,
+      debug: process.env.DEBUG_OCR === 'true',
+      debugDir: join(dataPaths.scans, 'debug')
+    })
+
+    if (!ocrResponse.ok || !ocrResponse.result) {
+      throw new Error(ocrResponse.error || 'OCR failed')
+    }
+
+    const result = ocrResponse.result as {
+      success: boolean
+      item?: Record<string, unknown>
+      rawText?: string
+      error?: string
+    }
+
+    if (!result.success || !result.item) {
+      throw new Error(result.error || 'No item detected in tooltip')
+    }
+
+    // 5. Route based on scan mode
+    const scannedItem = {
+      ...result.item,
+      scannedAt: new Date().toISOString()
+    }
+
+    if (scanMode === 'equip') {
+      // Equip mode: save to equipped gear
+      const currentBuildId = currentBuildData.name
+        .replace(/[^a-zA-Z0-9]/g, '_')
+        .substring(0, 40)
+
+      const equipped = await equippedGearService.equipItem(
+        currentBuildId,
+        scannedItem as any
+      )
+
+      // Generate build verdicts after equipping
+      const verdicts = gearComparisonEngine.generateBuildVerdict(
+        equipped,
+        currentBuildData.gearSlots
+      )
+
+      overlayWindow?.webContents.send('scan-result', {
+        mode: 'equip',
+        item: scannedItem
+      })
+      overlayWindow?.webContents.send('equipped-gear-updated', equipped)
+      overlayWindow?.webContents.send('build-verdicts', verdicts)
+
+    } else {
+      // Inventory mode: compare against equipped + build
+      const currentBuildId = currentBuildData.name
+        .replace(/[^a-zA-Z0-9]/g, '_')
+        .substring(0, 40)
+
+      const equipped = await equippedGearService.getEquippedGear(currentBuildId)
+      const verdict = gearComparisonEngine.evaluateInventoryItem(
+        scannedItem as any,
+        equipped,
+        currentBuildData.gearSlots
+      )
+
+      overlayWindow?.webContents.send('scan-result', {
+        mode: 'inventory',
+        verdict
+      })
+      overlayWindow?.webContents.send('inventory-verdict', verdict)
+    }
+
+    console.log(`[Scanner] Scan complete (${scanMode} mode)`)
+
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error('[Scanner] Scan failed:', message)
+
+    overlayWindow?.webContents.send('scan-result', {
+      mode: scanMode,
+      error: message
+    })
+  } finally {
+    scanInProgress = false
+  }
+}
 
 /**
  * Registers global keyboard shortcuts.
@@ -324,6 +494,7 @@ function setupIpcHandlers(): void {
  * that the renderer listens for via IPC.
  */
 function registerGlobalHotkeys(): void {
+
   // Always clear old shortcuts before setting new ones
   // to avoid duplicate registrations
   globalShortcut.unregisterAll()
@@ -347,7 +518,7 @@ function registerGlobalHotkeys(): void {
     // Scan a gear tooltip (captures screen, sends to OCR)
     if (hotkeys.scan) {
       globalShortcut.register(hotkeys.scan, () => {
-        overlayWindow?.webContents.send('trigger-scan')
+        performScan()
       })
     }
 
@@ -392,11 +563,38 @@ app.whenReady().then(async () => {
 
   // Register keyboard shortcuts
   registerGlobalHotkeys()
+
+  // Bootstrap the Python OCR environment in the background.
+  // This downloads Python + deps on first run (~30s).
+  // The config window shows a status bar during setup.
+  const sidecarDir = existsSync(join(appDir, 'resources', 'sidecar'))
+    ? join(appDir, 'resources', 'sidecar')
+    : join(appDir, 'sidecar')
+
+  const bootstrapper = new PythonBootstrapper(dataPaths.userData, sidecarDir)
+
+  bootstrapper.ensureReady((progress) => {
+    // Send progress updates to config window
+    configWindow?.webContents.send('python-bootstrap-progress', progress)
+    console.log(`[Bootstrap] ${progress.stage}: ${progress.message}`)
+  }).then(() => {
+    // Wire the bootstrapped Python + Tesseract into the SidecarManager
+    const sidecar = SidecarManager.getInstance(appDir)
+    sidecar.setPythonPath(bootstrapper.getPythonPath())
+    sidecar.setTesseractDir(bootstrapper.getTessdataDir())
+    console.log('[Bootstrap] Python + Tesseract ready, SidecarManager configured')
+  }).catch((err) => {
+    console.error('[Bootstrap] OCR environment setup failed:', err)
+    // OCR won't work, but the rest of the app still functions
+  })
 })
 
-// Clean up shortcuts and kill all tracked browser processes when the app closes
+// Clean up shortcuts, kill sidecar, and kill all tracked browser processes
 app.on('will-quit', async () => {
   globalShortcut.unregisterAll()
+  try {
+    await SidecarManager.getInstance(appDir).shutdown()
+  } catch { /* sidecar may not have been started */ }
   await ProcessManager.getInstance().killAll()
 })
 

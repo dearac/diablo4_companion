@@ -1106,3 +1106,212 @@
   color: var(--d4-error);
   background: rgba(255, 68, 68, 0.1);
 }
+
+/* ============================================================
+   HOTKEY SETTINGS — Interactive Key Rebinding Panel
+   ============================================================ */
+
+.hotkey-settings {
+  width: 100%;
+}
+
+.hotkey-settings__toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: clamp(10px, 1.2vw, 16px) clamp(12px, 1.5vw, 20px);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--d4-border);
+  border-radius: 6px;
+  color: var(--d4-text-primary);
+  font-family: var(--font-body);
+  font-size: clamp(14px, 1.3vw, 18px);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.hotkey-settings__toggle:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--d4-border-ornate);
+}
+
+.hotkey-settings__toggle.active {
+  background: rgba(212, 169, 74, 0.08);
+  border-color: var(--d4-accent-gold);
+  border-radius: 6px 6px 0 0;
+}
+
+.hotkey-settings__arrow {
+  font-size: 10px;
+  color: var(--d4-text-muted);
+  transition: transform var(--transition-normal);
+}
+
+/* ---- Panel ---- */
+
+.hotkey-settings__panel {
+  border: 1px solid var(--d4-border);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  padding: clamp(12px, 1.5vw, 20px);
+  background: rgba(0, 0, 0, 0.3);
+  animation: slideDown 0.2s ease-out;
+}
+
+.hotkey-settings__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ---- Hotkey Row ---- */
+
+.hotkey-settings__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: linear-gradient(135deg,
+      rgba(20, 20, 32, 0.95) 0%,
+      rgba(14, 14, 24, 0.98) 100%);
+  border: 1px solid var(--d4-border);
+  border-radius: 6px;
+  transition: border-color var(--transition-fast);
+}
+
+.hotkey-settings__row:hover {
+  border-color: var(--d4-border-ornate);
+}
+
+.hotkey-settings__action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hotkey-settings__icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.hotkey-settings__info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.hotkey-settings__label {
+  font-size: clamp(13px, 1.2vw, 16px);
+  font-weight: 600;
+  color: var(--d4-text-primary);
+}
+
+.hotkey-settings__desc {
+  font-size: clamp(10px, 0.9vw, 13px);
+  color: var(--d4-text-dim);
+}
+
+/* ---- Key Badge ---- */
+
+.hotkey-settings__key-badge {
+  min-width: 80px;
+  padding: 6px 16px;
+  background: var(--d4-bg-input);
+  border: 1px solid var(--d4-border);
+  border-radius: 6px;
+  color: var(--d4-accent-gold);
+  font-family: var(--font-display);
+  font-size: clamp(13px, 1.2vw, 16px);
+  letter-spacing: 1px;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.hotkey-settings__key-badge:hover {
+  border-color: var(--d4-accent-gold);
+  box-shadow: 0 0 12px rgba(212, 169, 74, 0.15);
+}
+
+.hotkey-settings__key-badge--recording {
+  border-color: var(--d4-accent-red);
+  box-shadow: 0 0 16px rgba(196, 30, 58, 0.25);
+  animation: keyBadgePulse 1.2s ease-in-out infinite;
+}
+
+@keyframes keyBadgePulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 8px rgba(196, 30, 58, 0.15);
+    border-color: var(--d4-accent-red);
+  }
+
+  50% {
+    box-shadow: 0 0 20px rgba(196, 30, 58, 0.4);
+    border-color: var(--d4-accent-orange);
+  }
+}
+
+.hotkey-settings__recording-text {
+  color: var(--d4-accent-red);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-style: italic;
+  letter-spacing: 0;
+}
+
+/* ---- Conflict Warning ---- */
+
+.hotkey-settings__conflict {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 68, 68, 0.08);
+  border-left: 3px solid var(--d4-error);
+  border-radius: 4px;
+  color: var(--d4-error);
+  font-size: clamp(11px, 1vw, 14px);
+  animation: fadeIn 0.2s ease;
+}
+
+/* ---- Footer ---- */
+
+.hotkey-settings__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--d4-border);
+}
+
+.hotkey-settings__reset {
+  background: none;
+  border: 1px solid var(--d4-border);
+  color: var(--d4-text-muted);
+  padding: 5px 14px;
+  border-radius: 4px;
+  font-size: clamp(11px, 1vw, 14px);
+  cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.hotkey-settings__reset:hover {
+  color: var(--d4-text-primary);
+  border-color: var(--d4-border-ornate);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.hotkey-settings__hint {
+  font-size: clamp(10px, 0.9vw, 12px);
+  color: var(--d4-text-dim);
+}
