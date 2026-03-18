@@ -23,6 +23,9 @@ declare global {
       clearParagonCache: () => Promise<{ success: boolean }>
       onUpdateProgress: (callback: (progress: { percent: number; downloadedMB: number; totalMB: number }) => void) => void
       onUpdateStarted: (callback: () => void) => void
+      onBootstrapProgress: (callback: (progress: { stage: string; message: string; percent?: number }) => void) => void
+      onOcrStatus: (callback: (status: { type: string; message: string }) => void) => void
+      getBootstrapStatus: () => Promise<{ stage: string; message: string; percent?: number }>
     }
   }
 }

@@ -161,6 +161,30 @@ const api = {
    */
   onUpdateStarted: (callback: () => void): void => {
     ipcRenderer.on('update-started', callback)
+  },
+
+  /**
+   * Listens for Python/Tesseract bootstrap progress events.
+   * Callback receives { stage, message, percent? }.
+   */
+  onBootstrapProgress: (callback: (progress: { stage: string; message: string; percent?: number }) => void): void => {
+    ipcRenderer.on('python-bootstrap-progress', (_event, progress) => callback(progress))
+  },
+
+  /**
+   * Listens for OCR scan status events from the main process.
+   * Callback receives { type, message }.
+   */
+  onOcrStatus: (callback: (status: { type: string; message: string }) => void): void => {
+    ipcRenderer.on('ocr-status', (_event, status) => callback(status))
+  },
+
+  /**
+   * Queries the current bootstrap status (handles race condition on mount).
+   * Returns the last known { stage, message, percent? }.
+   */
+  getBootstrapStatus: (): Promise<{ stage: string; message: string; percent?: number }> => {
+    return ipcRenderer.invoke('get-bootstrap-status')
   }
 }
 

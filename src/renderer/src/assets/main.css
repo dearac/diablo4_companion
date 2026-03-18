@@ -1348,3 +1348,165 @@
   position: relative;
   z-index: 1;
 }
+
+/* ============================================================
+   STATUS BANNER — Install Progress + OCR Service Status
+   ============================================================ */
+
+.status-banner {
+  border-bottom: 1px solid var(--d4-border);
+  font-family: var(--font-body);
+  font-size: 12px;
+}
+
+/* ---- Install Mode ---- */
+
+.status-banner--installing {
+  position: relative;
+  background: var(--d4-bg-surface);
+  padding: 8px 16px;
+}
+
+.status-banner__progress-track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.status-banner__progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--d4-accent-gold), #e8b82a);
+  transition: width 0.4s ease;
+  border-radius: 0 2px 2px 0;
+}
+
+.status-banner__install-text {
+  color: var(--d4-text-muted);
+  letter-spacing: 0.3px;
+}
+
+/* ---- Service Mode ---- */
+
+.status-banner--service {
+  background: var(--d4-bg-surface);
+  padding: 4px 12px;
+}
+
+.status-banner__empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  color: var(--d4-text-muted);
+}
+
+.status-banner__log {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ---- Message Entry ---- */
+
+.status-banner__message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border-left: 3px solid var(--d4-border);
+  background: rgba(255, 255, 255, 0.02);
+  animation: statusSlideIn 0.2s ease-out;
+}
+
+.status-banner__message--ready {
+  border-left-color: #4ade80;
+}
+
+.status-banner__message--success {
+  border-left-color: #4ade80;
+}
+
+.status-banner__message--scanning {
+  border-left-color: var(--d4-accent-gold);
+}
+
+.status-banner__message--error {
+  border-left-color: var(--d4-error, #ff4444);
+  background: rgba(255, 68, 68, 0.04);
+}
+
+@keyframes statusSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.status-banner__icon {
+  flex-shrink: 0;
+  font-size: 11px;
+  line-height: 1;
+}
+
+.status-banner__text {
+  flex: 1;
+  color: var(--d4-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-banner__time {
+  flex-shrink: 0;
+  color: var(--d4-text-dim);
+  font-size: 10px;
+  letter-spacing: 0.3px;
+}
+
+.status-banner__dismiss {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--d4-text-dim);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+}
+
+.status-banner__dismiss:hover {
+  color: var(--d4-text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.status-banner__clear-all {
+  align-self: flex-end;
+  background: none;
+  border: 1px solid var(--d4-border);
+  color: var(--d4-text-dim);
+  font-size: 10px;
+  padding: 2px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  letter-spacing: 0.5px;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.status-banner__clear-all:hover {
+  color: var(--d4-text-primary);
+  border-color: var(--d4-border-ornate);
+  background: rgba(255, 255, 255, 0.04);
+}

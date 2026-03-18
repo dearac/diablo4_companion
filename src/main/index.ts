@@ -88,6 +88,12 @@ let overlayWindow: BrowserWindow | null = null
 /** Holds the most recently imported build data, shared between windows */
 let currentBuildData: RawBuildData | null = null
 
+/** Last known bootstrap progress — used so renderer can query on mount */
+let lastBootstrapProgress: { stage: string; message: string; percent?: number } = {
+  stage: 'checking',
+  message: 'Checking OCR environment…'
+}
+
 /**
  * Initializes electron-store using dynamic import (ESM compatibility).
  * The store saves user settings like hotkey bindings.
@@ -328,6 +334,11 @@ function setupIpcHandlers(): void {
   })
 
   // Clear paragon board cache (call after game updates)
+  // Return the last known bootstrap progress (handles race condition on mount)
+  ipcMain.handle('get-bootstrap-status', () => {
+    return lastBootstrapProgress
+  })
+
   ipcMain.handle('clear-paragon-cache', () => {
     d4BuildsScraper.clearCache()
     return { success: true }
@@ -379,6 +390,12 @@ async function performScan(): Promise<void> {
   }
 
   scanInProgress = true
+
+  // Notify renderer that a scan is starting
+  configWindow?.webContents.send('ocr-status', {
+    type: 'scanning',
+    message: 'Scanning tooltip\u2026'
+  })
 
   try {
     // 1. Temporarily hide overlay to avoid capturing our own UI
@@ -472,11 +489,24 @@ async function performScan(): Promise<void> {
       overlayWindow?.webContents.send('inventory-verdict', verdict)
     }
 
+    // Notify renderer of successful scan
+    const itemName = (result.item as Record<string, unknown>).name || 'Unknown Item'
+    configWindow?.webContents.send('ocr-status', {
+      type: 'success',
+      message: `Scanned: ${itemName}`
+    })
+
     console.log(`[Scanner] Scan complete (${scanMode} mode)`)
 
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error)
     console.error('[Scanner] Scan failed:', message)
+
+    // Notify renderer of scan failure
+    configWindow?.webContents.send('ocr-status', {
+      type: 'error',
+      message: message
+    })
 
     overlayWindow?.webContents.send('scan-result', {
       mode: scanMode,
@@ -624,6 +654,8 @@ app.whenReady().then(async () => {
   const bootstrapper = new PythonBootstrapper(dataPaths.userData, sidecarDir)
 
   bootstrapper.ensureReady((progress) => {
+    // Store latest progress so renderer can query on mount
+    lastBootstrapProgress = progress
     // Send progress updates to config window
     configWindow?.webContents.send('python-bootstrap-progress', progress)
     console.log(`[Bootstrap] ${progress.stage}: ${progress.message}`)
