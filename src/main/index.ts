@@ -36,7 +36,19 @@ function getBaseDir(): string {
   return process.env.PORTABLE_EXECUTABLE_DIR || dirname(app.getPath('exe'))
 }
 
+/**
+ * Where bundled resources live (sidecar scripts, chromium, etc.).
+ * For portable builds, the exe is self-extracting — bundled files are
+ * in the temp extraction dir (dirname of the running exe), NOT the
+ * folder containing the portable .exe.
+ */
+function getResourceDir(): string {
+  if (is.dev) return app.getAppPath()
+  return dirname(app.getPath('exe'))
+}
+
 const appDir = getBaseDir()
+const resourceDir = getResourceDir()
 const dataPaths = getDataPaths(appDir)
 
 // Create all required data directories on startup
@@ -415,7 +427,7 @@ async function performScan(): Promise<void> {
     }
 
     // 4. Send cropped image to Python sidecar for OCR
-    const sidecar = SidecarManager.getInstance(appDir)
+    const sidecar = SidecarManager.getInstance(resourceDir)
     const imageB64 = capture.tooltipBuffer.toString('base64')
 
     const ocrResponse = await sidecar.send('ocr', {
@@ -647,9 +659,9 @@ app.whenReady().then(async () => {
   // Bootstrap the Python OCR environment in the background.
   // This downloads Python + deps on first run (~30s).
   // The config window shows a status bar during setup.
-  const sidecarDir = existsSync(join(appDir, 'resources', 'sidecar'))
-    ? join(appDir, 'resources', 'sidecar')
-    : join(appDir, 'sidecar')
+  const sidecarDir = existsSync(join(resourceDir, 'resources', 'sidecar'))
+    ? join(resourceDir, 'resources', 'sidecar')
+    : join(resourceDir, 'sidecar')
 
   const bootstrapper = new PythonBootstrapper(dataPaths.userData, sidecarDir)
 
@@ -661,7 +673,7 @@ app.whenReady().then(async () => {
     console.log(`[Bootstrap] ${progress.stage}: ${progress.message}`)
   }).then(() => {
     // Wire the bootstrapped Python + Tesseract into the SidecarManager
-    const sidecar = SidecarManager.getInstance(appDir)
+    const sidecar = SidecarManager.getInstance(resourceDir)
     sidecar.setPythonPath(bootstrapper.getPythonPath())
     sidecar.setTesseractDir(bootstrapper.getTessdataDir())
     console.log('[Bootstrap] Python + Tesseract ready, SidecarManager configured')
@@ -675,7 +687,7 @@ app.whenReady().then(async () => {
 app.on('will-quit', async () => {
   globalShortcut.unregisterAll()
   try {
-    await SidecarManager.getInstance(appDir).shutdown()
+    await SidecarManager.getInstance(resourceDir).shutdown()
   } catch { /* sidecar may not have been started */ }
   await ProcessManager.getInstance().killAll()
 })
