@@ -22,7 +22,7 @@ win:
     - target: portable
       arch: [x64]
 portable:
-  artifactName: ${name}-${version}-portable.${ext}
+  artifactName: diablo4_companion.${ext}
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
@@ -49,5 +49,6 @@ appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
 publish:
-  provider: generic
-  url: https://example.com/auto-updates
+  provider: github
+  owner: dearac
+  repo: diablo4-companion-releases
