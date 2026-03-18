@@ -1,5 +1,7 @@
 import https from 'https'
 import { IncomingMessage } from 'http'
+import { createWriteStream, writeFileSync } from 'fs'
+import { join } from 'path'
 
 /**
  * Describes an available update found on GitHub Releases.
@@ -118,6 +120,102 @@ export class AutoUpdateService {
           }
         })
       }).on('error', () => resolve(null))
+    })
+  }
+
+  /**
+   * Downloads the update exe to <appDir>/diablo4_companion.exe.update.
+   * Calls onProgress with { percent, downloadedMB, totalMB } during download.
+   */
+  async downloadUpdate(
+    downloadUrl: string,
+    appDir: string,
+    onProgress?: (progress: { percent: number; downloadedMB: number; totalMB: number }) => void
+  ): Promise<string> {
+    const destPath = join(appDir, 'diablo4_companion.exe.update')
+    return this.downloadFile(downloadUrl, destPath, onProgress)
+  }
+
+  /**
+   * Generates the update.bat script that swaps the exe after the current
+   * process exits. Returns the path to the batch file.
+   */
+  generateUpdateScript(appDir: string, currentPid: number): string {
+    const scriptPath = join(appDir, 'update.bat')
+    const exeName = 'diablo4_companion.exe'
+    const updateName = 'diablo4_companion.exe.update'
+
+    const script = `@echo off
+set RETRIES=0
+:wait
+tasklist /FI "PID eq ${currentPid}" 2>nul | find "${currentPid}" >nul
+if not errorlevel 1 (
+    set /a RETRIES+=1
+    if %RETRIES% GEQ 30 exit /b 1
+    timeout /t 1 /nobreak >nul
+    goto wait
+)
+del "${join(appDir, exeName).replace(/\//g, '\\')}"
+move "${join(appDir, updateName).replace(/\//g, '\\')}" "${join(appDir, exeName).replace(/\//g, '\\')}"
+start "" "${join(appDir, exeName).replace(/\//g, '\\')}"
+del "%~f0"
+`
+    writeFileSync(scriptPath, script, 'utf-8')
+    return scriptPath
+  }
+
+  /**
+   * Downloads a file from a URL, following redirects.
+   * Reports progress via callback.
+   */
+  private downloadFile(
+    url: string,
+    destPath: string,
+    onProgress?: (progress: { percent: number; downloadedMB: number; totalMB: number }) => void
+  ): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const options = {
+        headers: { 'User-Agent': 'Diablo4Companion-Updater' }
+      }
+
+      https.get(url, options, (res: IncomingMessage) => {
+        // Follow redirects (GitHub serves assets via redirect)
+        if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
+          this.downloadFile(res.headers.location, destPath, onProgress).then(resolve).catch(reject)
+          return
+        }
+
+        if (res.statusCode !== 200) {
+          reject(new Error(`Download failed with status ${res.statusCode}`))
+          return
+        }
+
+        const totalBytes = parseInt(res.headers['content-length'] || '0', 10)
+        let downloadedBytes = 0
+
+        const file = createWriteStream(destPath)
+        res.on('data', (chunk: Buffer) => {
+          downloadedBytes += chunk.length
+          file.write(chunk)
+          if (onProgress && totalBytes > 0) {
+            onProgress({
+              percent: Math.round((downloadedBytes / totalBytes) * 100),
+              downloadedMB: Math.round((downloadedBytes / (1024 * 1024)) * 10) / 10,
+              totalMB: Math.round((totalBytes / (1024 * 1024)) * 10) / 10
+            })
+          }
+        })
+
+        res.on('end', () => {
+          file.end()
+          resolve(destPath)
+        })
+
+        res.on('error', (err) => {
+          file.end()
+          reject(err)
+        })
+      }).on('error', reject)
     })
   }
 }

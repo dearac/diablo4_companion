@@ -1,3 +1,6 @@
+import { existsSync, readFileSync, unlinkSync, mkdtempSync } from 'fs'
+import { join } from 'path'
+import { tmpdir } from 'os'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { AutoUpdateService } from '../../../src/main/services/AutoUpdateService'
 import https from 'https'
@@ -92,6 +95,26 @@ describe('AutoUpdateService', () => {
 
       const result = await service.checkForUpdate('0.2.0')
       expect(result).toBeNull()
+    })
+  })
+
+  describe('generateUpdateScript()', () => {
+    let tempDir: string
+
+    beforeEach(() => {
+      tempDir = mkdtempSync(join(tmpdir(), 'updater-test-'))
+    })
+
+    it('should generate a valid batch script', () => {
+      const scriptPath = service.generateUpdateScript(tempDir, 12345)
+
+      expect(existsSync(scriptPath)).toBe(true)
+      const content = readFileSync(scriptPath, 'utf-8')
+      expect(content).toContain('12345')
+      expect(content).toContain('diablo4_companion.exe')
+      expect(content).toContain('diablo4_companion.exe.update')
+
+      unlinkSync(scriptPath)
     })
   })
 })
