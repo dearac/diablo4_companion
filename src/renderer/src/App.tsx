@@ -5,6 +5,7 @@ import StatusIndicator from './components/StatusIndicator'
 import BuildSummaryCard from './components/BuildSummaryCard'
 import BuildLibrary from './components/BuildLibrary'
 import HotkeySettings from './components/HotkeySettings'
+import UpdateBanner from './components/UpdateBanner'
 
 /**
  * Config Window App — The build import launcher.
@@ -65,6 +66,7 @@ function App(): React.JSX.Element {
 
   return (
     <div className="config-window">
+      <UpdateBanner />
       <header className="config-header">
         <h1 className="config-header__title">Diablo IV Companion</h1>
         <p className="config-header__subtitle">Build Importer</p>

@@ -14,6 +14,7 @@ import { EquippedGearService } from './services/EquippedGearService'
 import { GearComparisonEngine } from './services/GearComparisonEngine'
 import { PythonBootstrapper } from './services/PythonBootstrapper'
 import { D4BuildsScraper } from './scrapers/D4BuildsScraper'
+import { AutoUpdateService } from './services/AutoUpdateService'
 import type { RawBuildData } from '../shared/types'
 
 // ============================================================
@@ -563,6 +564,55 @@ app.whenReady().then(async () => {
 
   // Register keyboard shortcuts
   registerGlobalHotkeys()
+
+  // ---- Auto-Update Check ----
+  // Runs after the config window is visible so the user isn't
+  // staring at a blank screen. Uses the public releases repo.
+  const updater = new AutoUpdateService('dearac/diablo4-companion-releases')
+
+  updater.checkForUpdate(app.getVersion()).then(async (updateInfo) => {
+    if (!updateInfo || !configWindow) return
+
+    // Show native dialog with release notes
+    const { dialog } = await import('electron')
+    const { response } = await dialog.showMessageBox(configWindow, {
+      type: 'info',
+      title: 'Update Available',
+      message: `A new version (v${updateInfo.version}) is available.\nYou are running v${app.getVersion()}.`,
+      detail: updateInfo.releaseNotes || 'Bug fixes and improvements.',
+      buttons: ['Update Now', 'Skip'],
+      defaultId: 0,
+      cancelId: 1
+    })
+
+    if (response !== 0) return // User clicked Skip
+
+    // Notify renderer that download is starting
+    configWindow.webContents.send('update-started')
+
+    try {
+      // Download the new exe
+      await updater.downloadUpdate(updateInfo.downloadUrl, appDir, (progress) => {
+        configWindow?.webContents.send('update-download-progress', progress)
+      })
+
+      // Generate and launch the swap script
+      const scriptPath = updater.generateUpdateScript(appDir, process.pid)
+
+      const { exec } = await import('child_process')
+      exec(`start /min "" "${scriptPath}"`, { windowsHide: true })
+
+      // Quit so the batch script can replace us
+      app.quit()
+    } catch (err) {
+      console.error('[AutoUpdate] Download failed:', err)
+      const { dialog: dlg } = await import('electron')
+      dlg.showErrorBox('Update Failed', 'The update download failed. The app will continue normally.')
+    }
+  }).catch((err) => {
+    console.error('[AutoUpdate] Check failed:', err)
+    // Silent fail — app continues normally
+  })
 
   // Bootstrap the Python OCR environment in the background.
   // This downloads Python + deps on first run (~30s).
