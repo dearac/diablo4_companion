@@ -2,7 +2,8 @@ import type {
   BuildSourceSite,
   ISkillAllocation,
   IParagonBoard,
-  IGearSlot
+  IGearSlot,
+  IRune
 } from '../../shared/types'
 
 // ============================================================
@@ -29,6 +30,7 @@ export interface RawBuildData {
   skills: ISkillAllocation[]
   paragonBoards: IParagonBoard[]
   gearSlots: IGearSlot[]
+  activeRunes: IRune[]
 }
 
 /**

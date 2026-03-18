@@ -18,6 +18,14 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 //   always read the latest values. The state is then set from
 //   the ref to trigger a React re-render. This eliminates cursor
 //   drift during fast scrolling.
+//
+// PERFORMANCE NOTE — RAF Throttling:
+//   Rapid mouse events (wheel, mousemove) fire faster than the
+//   screen refreshes. We update refs immediately for accuracy,
+//   but batch React state updates through requestAnimationFrame
+//   so we never re-render more than once per frame (~60fps).
+//   This prevents re-rendering 3,000+ DOM nodes hundreds of
+//   times per second during rapid scrolling/panning.
 // ============================================================
 
 /** Minimum zoom level — see all boards from far away */
@@ -106,53 +114,74 @@ export function useCanvasTransform(): CanvasTransformResult {
   const offsetAtPanStart = useRef({ x: 0, y: 0 })
   const containerRef = useRef<HTMLDivElement | null>(null)
 
+  // RAF throttle flag — prevents scheduling multiple frames
+  const rafPending = useRef(false)
+
+  /**
+   * Flushes the current ref values into React state, capped at
+   * one re-render per animation frame. Multiple rapid events
+   * (wheel ticks, mousemove) only trigger a single setState.
+   */
+  const scheduleRender = useCallback(() => {
+    if (rafPending.current) return
+    rafPending.current = true
+    requestAnimationFrame(() => {
+      rafPending.current = false
+      setScale(scaleRef.current)
+      setOffset({ ...offsetRef.current })
+    })
+  }, [])
+
   /**
    * handleWheel — Zooms toward the cursor position.
    *
    * Uses refs to read the latest scale/offset synchronously,
-   * then writes to both the ref (immediate) and state (triggers
-   * render). This ensures every wheel tick — even when they fire
-   * faster than React can re-render — uses perfectly accurate values.
+   * then writes to both the ref (immediate) and schedules a
+   * render via RAF. This ensures every wheel tick — even when
+   * they fire faster than React can re-render — uses perfectly
+   * accurate values, while only rendering once per frame.
    *
    * Registered via addEventListener with { passive: false } so
    * preventDefault() actually blocks page scroll.
    */
-  const handleWheel = useCallback((e: WheelEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
+  const handleWheel = useCallback(
+    (e: WheelEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
 
-    const rect = containerRef.current?.getBoundingClientRect()
-    if (!rect) return
+      const rect = containerRef.current?.getBoundingClientRect()
+      if (!rect) return
 
-    // Cursor position relative to the container
-    const cursorX = e.clientX - rect.left
-    const cursorY = e.clientY - rect.top
+      // Cursor position relative to the container
+      const cursorX = e.clientX - rect.left
+      const cursorY = e.clientY - rect.top
 
-    // Read the CURRENT values synchronously from refs
-    const prevScale = scaleRef.current
-    const prevOffset = offsetRef.current
+      // Read the CURRENT values synchronously from refs
+      const prevScale = scaleRef.current
+      const prevOffset = offsetRef.current
 
-    // Compute new scale
-    const zoomFactor = 1 - e.deltaY * ZOOM_SENSITIVITY
-    const newScale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prevScale * zoomFactor))
-    const ratio = newScale / prevScale
+      // Compute new scale
+      const zoomFactor = 1 - e.deltaY * ZOOM_SENSITIVITY
+      const newScale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, prevScale * zoomFactor))
+      const ratio = newScale / prevScale
 
-    // Adjust offset so the world-space point under the cursor
-    // remains at the same screen position after zooming.
-    // Formula: newOffset = cursor - (cursor - oldOffset) * ratio
-    const newOffset = {
-      x: cursorX - (cursorX - prevOffset.x) * ratio,
-      y: cursorY - (cursorY - prevOffset.y) * ratio
-    }
+      // Adjust offset so the world-space point under the cursor
+      // remains at the same screen position after zooming.
+      // Formula: newOffset = cursor - (cursor - oldOffset) * ratio
+      const newOffset = {
+        x: cursorX - (cursorX - prevOffset.x) * ratio,
+        y: cursorY - (cursorY - prevOffset.y) * ratio
+      }
 
-    // Write to refs FIRST (synchronous, immediate)
-    scaleRef.current = newScale
-    offsetRef.current = newOffset
+      // Write to refs FIRST (synchronous, immediate)
+      scaleRef.current = newScale
+      offsetRef.current = newOffset
 
-    // Then write to state (triggers re-render)
-    setScale(newScale)
-    setOffset(newOffset)
-  }, []) // No dependencies — reads from refs, not state
+      // Schedule a batched render (max once per frame)
+      scheduleRender()
+    },
+    [scheduleRender]
+  ) // No state dependencies — reads from refs
 
   // Register wheel handler with { passive: false } so preventDefault works.
   // React's onWheel is passive — it CANNOT prevent scrolling.
@@ -188,9 +217,11 @@ export function useCanvasTransform(): CanvasTransformResult {
 
       // Keep refs in sync during panning too
       offsetRef.current = newOffset
-      setOffset(newOffset)
+
+      // Batch pan updates via RAF (mousemove fires 60+fps)
+      scheduleRender()
     },
-    [isPanning]
+    [isPanning, scheduleRender]
   )
 
   /** handleMouseUp — Ends the pan drag */
@@ -222,7 +253,7 @@ export function useCanvasTransform(): CanvasTransformResult {
       y: rect.height / 2 - centerY * fitScale
     }
 
-    // Update both refs and state
+    // Update both refs and state (immediate for fitAll — user expects instant response)
     scaleRef.current = fitScale
     offsetRef.current = newOffset
     setScale(fitScale)

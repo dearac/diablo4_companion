@@ -45,10 +45,8 @@ export class BuildImportService {
     // Normalize to lowercase for consistent matching
     const normalized = url.toLowerCase().trim()
 
-    // Check URL patterns directly (fast path that works even without scrapers)
+    // Check URL patterns directly (fast path)
     if (normalized.includes('d4builds.gg')) return 'd4builds'
-    if (normalized.includes('maxroll.gg')) return 'maxroll'
-    if (normalized.includes('icy-veins.com')) return 'icy-veins'
 
     // If direct pattern didn't match, try each scraper's canHandle
     for (const scraper of this.scrapers) {
@@ -58,7 +56,7 @@ export class BuildImportService {
     // No scraper found — tell the user what we support
     throw new Error(
       `Unsupported build URL: "${url}"\n` +
-        `Supported sites: d4builds.gg, maxroll.gg, icy-veins.com`
+        `Supported sites: d4builds.gg`
     )
   }
 
@@ -94,7 +92,7 @@ export class BuildImportService {
     if (!scraper) {
       throw new Error(
         `No scraper available for "${url}". ` +
-          `Make sure the URL is from d4builds.gg, maxroll.gg, or icy-veins.com.`
+          `Make sure the URL is from d4builds.gg.`
       )
     }
 

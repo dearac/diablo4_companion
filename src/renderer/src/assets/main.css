@@ -492,6 +492,17 @@
   margin-left: auto;
 }
 
+/* Tile base state — filter via CSS class instead of inline style (reduces React diff) */
+.paragon-canvas-tile--active {
+  opacity: 1;
+  filter: drop-shadow(0px 0px 3px rgba(196, 30, 58, 0.8));
+}
+
+.paragon-canvas-tile--inactive {
+  opacity: 0.3;
+  filter: grayscale(80%) brightness(0.6);
+}
+
 /* Tile hover effects */
 .paragon-canvas-tile:hover {
   z-index: 5 !important;
@@ -501,6 +512,13 @@
 
 .paragon-canvas-tile--active:hover {
   filter: drop-shadow(0 0 8px rgba(196, 30, 58, 1)) !important;
+}
+
+/* GPU layer hints — promote board groups to own compositing layer */
+.paragon-canvas__board-group {
+  will-change: transform;
+  contain: layout style paint;
+  content-visibility: auto;
 }
 
 /* ---- Paragon Tooltip ---- */
@@ -576,52 +594,347 @@
   letter-spacing: 0.5px;
 }
 
-/* Gear */
-.build-summary__gear {
-  display: grid;
-  grid-template-columns: clamp(80px, 10vw, 120px) 1fr auto;
+/* ============================================================
+   GEAR PANEL — Full Detail Cards (matches overlay)
+   ============================================================ */
+
+.build-summary__detail--gear {
+  max-height: 600px;
+}
+
+.gear-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ---- Gear Slot Card ---- */
+
+.gear-slot {
+  padding: 12px 14px;
+  background: linear-gradient(135deg,
+      rgba(20, 20, 32, 0.95) 0%,
+      rgba(14, 14, 24, 0.98) 100%);
+  border: 1px solid var(--d4-border);
+  border-left: 3px solid var(--d4-border);
+  border-radius: 6px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.gear-slot:hover {
+  border-color: var(--d4-border-ornate);
+  box-shadow: 0 0 12px rgba(74, 58, 42, 0.15);
+}
+
+.gear-slot--unique {
+  border-left-color: var(--d4-item-unique, #d4a94a);
+}
+
+.gear-slot--legendary {
+  border-left-color: var(--d4-item-legendary, #e87a2a);
+}
+
+.gear-slot--rare {
+  border-left-color: var(--d4-item-rare, #f5e35b);
+}
+
+/* ---- Slot Header ---- */
+
+.gear-slot__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   gap: 8px;
-  align-items: center;
-  padding: clamp(5px, 0.7vw, 10px) clamp(8px, 1vw, 14px);
-  border-radius: 3px;
-  font-size: clamp(13px, 1.2vw, 17px);
+  margin-bottom: 4px;
 }
 
-.build-summary__gear:hover {
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.build-summary__gear-slot {
+.gear-slot__name {
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 2px;
   color: var(--d4-text-muted);
-  font-size: clamp(11px, 1vw, 14px);
   text-transform: uppercase;
+}
+
+.gear-slot__type-badge {
+  font-size: 10px;
+  font-weight: 600;
   letter-spacing: 0.5px;
+  padding: 1px 8px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.build-summary__gear-name {
-  color: var(--d4-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.gear-slot__type-badge--unique {
+  color: var(--d4-item-unique, #d4a94a);
+  border-color: rgba(212, 169, 74, 0.25);
 }
 
-.build-summary__gear-name.unique {
-  color: #d4a94a;
+.gear-slot__type-badge--legendary {
+  color: var(--d4-item-legendary, #e87a2a);
+  border-color: rgba(232, 122, 42, 0.25);
 }
 
-.build-summary__gear-name.legendary {
-  color: #e88b3e;
+.gear-slot__type-badge--rare {
+  color: var(--d4-item-rare, #f5e35b);
+  border-color: rgba(245, 227, 91, 0.25);
 }
 
-.build-summary__gear-name.rare {
-  color: #f5e35b;
+/* ---- Item Name ---- */
+
+.gear-slot__item-name {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 2px;
 }
 
-.build-summary__gear-type {
+.gear-slot__item-name--unique {
+  color: var(--d4-item-unique, #d4a94a);
+}
+
+.gear-slot__item-name--legendary {
+  color: var(--d4-item-legendary, #e87a2a);
+}
+
+.gear-slot__item-name--rare {
+  color: var(--d4-item-rare, #f5e35b);
+}
+
+.gear-slot__item-name--empty {
   color: var(--d4-text-dim);
-  font-size: clamp(10px, 0.9vw, 13px);
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* ---- Divider ---- */
+
+.gear-slot__divider {
+  height: 1px;
+  background: linear-gradient(to right, var(--d4-border-ornate), transparent);
+  margin: 6px 0;
+}
+
+/* ---- Aspect ---- */
+
+.gear-slot__aspect {
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.gear-slot__aspect-name {
+  color: var(--d4-accent-orange, #e87a2a);
+  font-weight: 600;
+}
+
+.gear-slot__aspect-desc {
+  color: var(--d4-text-muted);
+  font-size: 11px;
+  font-style: italic;
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+/* ---- Section Labels ---- */
+
+.gear-slot__section-label {
+  font-size: 10px;
+  color: var(--d4-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-top: 6px;
+  margin-bottom: 2px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid rgba(42, 42, 58, 0.4);
+}
+
+/* ---- Affix List ---- */
+
+.gear-slot__affix-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.gear-slot__affix-item {
+  font-size: 12px;
+  color: var(--d4-text-primary);
+  padding: 2px 0 2px 16px;
+  position: relative;
+  line-height: 1.5;
+}
+
+.gear-slot__affix-item::before {
+  content: '✦';
+  position: absolute;
+  left: 0;
+  font-size: 9px;
+  top: 4px;
+  color: #5a7ac4;
+}
+
+.gear-slot__affix-item--greater::before {
+  color: var(--d4-item-greater, #a855f7);
+  text-shadow: 0 0 4px rgba(168, 85, 247, 0.5);
+}
+
+.gear-slot__affix-item--tempered {
+  color: var(--d4-accent-orange, #e87a2a);
+}
+
+.gear-slot__affix-item--tempered::before {
+  content: '⚒';
+  color: var(--d4-accent-orange, #e87a2a);
+}
+
+.gear-slot__affix-item--implicit {
+  color: var(--d4-text-muted);
+}
+
+.gear-slot__affix-item--implicit::before {
+  content: '○';
+  color: var(--d4-text-dim);
+}
+
+/* ---- Special Effects (Rampage/Feast) ---- */
+
+.gear-slot__effect {
+  font-size: 11px;
+  margin-top: 4px;
+  padding: 3px 8px;
+  border-radius: 3px;
+}
+
+.gear-slot__effect--rampage {
+  color: #e85050;
+  background: rgba(232, 80, 80, 0.06);
+  border-left: 2px solid rgba(232, 80, 80, 0.3);
+}
+
+.gear-slot__effect--feast {
+  color: #e87a2a;
+  background: rgba(232, 122, 42, 0.06);
+  border-left: 2px solid rgba(232, 122, 42, 0.3);
+}
+
+/* ---- Socketed Gems ---- */
+
+.gear-slot__affix-item--socket {
+  color: #b088e8;
+}
+
+.gear-slot__affix-item--socket::before {
+  content: '';
+  display: none;
+}
+
+/* ============================================================
+   ACTIVE RUNES SECTION
+   ============================================================ */
+
+.rune-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--d4-border-ornate);
+}
+
+.rune-section__header {
+  margin-bottom: 10px;
+}
+
+.rune-section__title {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--d4-accent-gold, #d4a94a);
   text-transform: uppercase;
 }
+
+/* ---- Rune Card ---- */
+
+.rune-card {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: linear-gradient(135deg,
+      rgba(25, 20, 40, 0.95) 0%,
+      rgba(16, 14, 28, 0.98) 100%);
+  border: 1px solid var(--d4-border);
+  border-left: 3px solid #7c5ecf;
+  border-radius: 6px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.rune-card:hover {
+  border-color: var(--d4-border-ornate);
+  box-shadow: 0 0 10px rgba(124, 94, 207, 0.1);
+}
+
+.rune-card--legendary {
+  border-left-color: var(--d4-item-legendary, #e87a2a);
+}
+
+.rune-card--rare {
+  border-left-color: #5a7ac4;
+}
+
+.rune-card__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.rune-card__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #c5b8e8;
+}
+
+.rune-card__type {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.rune-card__type--legendary {
+  color: var(--d4-item-legendary, #e87a2a);
+  border-color: rgba(232, 122, 42, 0.25);
+}
+
+.rune-card__type--rare {
+  color: #5a7ac4;
+  border-color: rgba(90, 122, 196, 0.25);
+}
+
+.rune-card__effects {
+  list-style: none;
+  padding: 0;
+  margin: 4px 0 0 0;
+}
+
+.rune-card__effect {
+  font-size: 11px;
+  color: var(--d4-text-primary);
+  padding: 2px 0 2px 16px;
+  position: relative;
+  line-height: 1.5;
+}
+
+.rune-card__effect::before {
+  content: '◆';
+  position: absolute;
+  left: 0;
+  font-size: 8px;
+  top: 4px;
+  color: #7c5ecf;
+}
+
 
 /* Scrollbar for detail panels */
 .build-summary__detail::-webkit-scrollbar {

@@ -1,11 +1,14 @@
 import { chromium, Page } from 'playwright'
 import { BuildScraper, RawBuildData } from './BuildScraper'
+import { ProcessManager } from '../services/ProcessManager'
+import { getBrowserPath } from '../services/BrowserPath'
 import {
   BuildSourceSite,
   D4Class,
   ISkillAllocation,
   IParagonBoard,
-  IGearSlot
+  IGearSlot,
+  IRune
 } from '../../shared/types'
 import { ParagonCacheService, type CachedNodeData } from '../services/ParagonCacheService'
 
@@ -67,7 +70,8 @@ export class D4BuildsScraper extends BuildScraper {
   }
 
   async scrape(url: string): Promise<RawBuildData> {
-    const browser = await chromium.launch({ headless: true })
+    const browser = await chromium.launch({ headless: true, executablePath: getBrowserPath() })
+    ProcessManager.getInstance().register(browser)
     const context = await browser.newContext({
       viewport: { width: 1920, height: 1080 }
     })
@@ -113,6 +117,9 @@ export class D4BuildsScraper extends BuildScraper {
       await page.waitForTimeout(1000)
       const gearSlots = await this.scrapeGear(page)
 
+      // 9. Scrape active runes (separate from gear)
+      const activeRunes = await this.scrapeRunes(page)
+
       // Use skill tree allocations (deduplicated), fall back to active skills
       const skills = skillAllocations.length > 0 ? skillAllocations : activeSkills
 
@@ -122,7 +129,8 @@ export class D4BuildsScraper extends BuildScraper {
         level: 100,
         skills,
         paragonBoards,
-        gearSlots
+        gearSlots,
+        activeRunes
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error)
@@ -130,6 +138,7 @@ export class D4BuildsScraper extends BuildScraper {
       throw new Error(`Failed to scrape D4Builds: ${message}`)
     } finally {
       await browser.close()
+      ProcessManager.getInstance().unregister(browser)
     }
   }
 
@@ -527,13 +536,19 @@ export class D4BuildsScraper extends BuildScraper {
   }
 
   /**
-   * Extracts gear data from the Gear & Skills tab.
+   * Extracts detailed gear data from both the Gear Stats grid
+   * and the gear item tooltips in the Gear & Skills tab.
+   *
+   * Phase A: Scrape the top gear summary for slot/name/type
+   * Phase B: Scrape the Gear Stats grid for all affixes
+   * Phase C: Hover each gear item to get aspect tooltip data
    */
   private async scrapeGear(page: Page): Promise<IGearSlot[]> {
     await page.waitForSelector('.builder__gear__item', { timeout: 10000 }).catch(() => {})
 
     try {
-      return await page.$$eval('.builder__gear__item', (items) => {
+      // ── Phase A: Top gear summary (slot, name, rarity, socketed gems) ──
+      const topGear = await page.$$eval('.builder__gear__item', (items) => {
         return items.map((item) => {
           const slotEl = item.querySelector('.builder__gear__slot')
           const slot = slotEl?.textContent?.trim() || 'Unknown Slot'
@@ -549,17 +564,282 @@ export class D4BuildsScraper extends BuildScraper {
             itemType = 'Rare'
           }
 
+          // Extract socketed gems from .builder__new__gems container
+          const socketedGems: string[] = []
+          const gemsContainer = item.querySelector('.builder__new__gems')
+          if (gemsContainer) {
+            const gemItems = gemsContainer.querySelectorAll('.builder__gems__item')
+            gemItems.forEach((gem) => {
+              const img = gem.querySelector('img')
+              const gemName = img?.getAttribute('alt')?.trim()
+              if (gemName) socketedGems.push(gemName)
+            })
+          }
+
+          return { slot, itemName, itemType, socketedGems }
+        })
+      })
+
+      // ── Phase B: Gear Stats grid (affixes, tempered, greater, rampage) ──
+      const statsData = await page.$$eval('.builder__stats__group', (groups) => {
+        return groups.map((group) => {
+          const slotEl = group.querySelector('.builder__stats__slot')
+          const slot = slotEl?.textContent?.trim() || 'Unknown'
+
+          const affixes: Array<{ name: string; isGreater: boolean }> = []
+          const implicitAffixes: Array<{ name: string; isGreater: boolean }> = []
+          const temperedAffixes: Array<{ name: string; isGreater: boolean }> = []
+          const greaterAffixes: Array<{ name: string; isGreater: boolean }> = []
+          let rampageEffect: string | null = null
+          let feastEffect: string | null = null
+
+          let isImplicitSection = false
+          const rows = group.querySelectorAll('.stat__dropdown__wrapper, .builder__stat')
+
+          rows.forEach((row) => {
+            const text = row.textContent?.trim() || ''
+
+            // Check for "Implicit Stat" header
+            if (
+              row.classList.contains('implicit') ||
+              text.toLowerCase() === 'implicit stat'
+            ) {
+              isImplicitSection = true
+              return
+            }
+
+            // Skip "Bloodied Affix" label rows
+            if (text.toLowerCase() === 'bloodied affix') return
+
+            // Check for Rampage/Feast effects
+            if (text.startsWith('Rampage:')) {
+              rampageEffect = text
+              return
+            }
+            if (text.startsWith('Feast:')) {
+              feastEffect = text
+              return
+            }
+
+            // Detect affix type
+            const isGreater = !!row.querySelector('.greater__affix__button--filled')
+            const isTempered = !!row.querySelector('img[src*="tempering"]')
+
+            // Extract the stat text from the dropdown button span
+            const statSpan = row.querySelector('.dropdown__button span')
+            const statText = statSpan?.textContent?.trim() || text
+
+            if (!statText || statText.toLowerCase() === 'implicit stat') return
+
+            const affix = { name: statText, isGreater }
+
+            if (isTempered) {
+              temperedAffixes.push(affix)
+            } else if (isGreater) {
+              greaterAffixes.push(affix)
+              affixes.push(affix)
+            } else if (isImplicitSection) {
+              implicitAffixes.push(affix)
+              isImplicitSection = false
+            } else {
+              affixes.push(affix)
+            }
+          })
+
           return {
             slot,
-            itemName,
-            itemType,
-            requiredAspect: itemName,
-            priorityAffixes: [],
-            temperingTargets: [],
-            masterworkPriority: []
+            affixes,
+            implicitAffixes,
+            temperedAffixes,
+            greaterAffixes,
+            rampageEffect,
+            feastEffect
           }
         })
       })
+
+      // ── Phase C: Hover gear items for aspect tooltip data ──
+      const aspectData = await page
+        .evaluate(async () => {
+          const delay = (ms: number): Promise<void> =>
+            new Promise((resolve) => setTimeout(resolve, ms))
+          const results: Array<{
+            index: number
+            name: string | null
+            description: string | null
+          }> = []
+
+          const gearItems = document.querySelectorAll('.builder__gear__item')
+          for (let i = 0; i < gearItems.length; i++) {
+            const item = gearItems[i]
+            item.dispatchEvent(
+              new MouseEvent('mouseover', { bubbles: true, cancelable: true })
+            )
+            await delay(150)
+
+            const tooltip = document.querySelector('.codex__tooltip')
+            if (tooltip) {
+              const nameEl = tooltip.querySelector('.codex__tooltip__name')
+              const descEl = tooltip.querySelector('.codex__tooltip__description')
+              results.push({
+                index: i,
+                name: nameEl?.textContent?.trim() || null,
+                description: descEl?.textContent?.trim() || null
+              })
+            }
+
+            item.dispatchEvent(
+              new MouseEvent('mouseout', { bubbles: true, cancelable: true })
+            )
+            await delay(50)
+          }
+          return results
+        })
+        .catch(
+          () =>
+            [] as Array<{ index: number; name: string | null; description: string | null }>
+        )
+
+      // ── Merge all three data sources ──
+      return topGear
+        // Filter out rune items (they show as "Unknown Slot" in gear items)
+        .filter((gear) => gear.slot !== 'Unknown Slot')
+        .map((gear, i) => {
+        // Match stats data by slot name
+        const stats = statsData.find(
+          (s) => s.slot.toLowerCase() === gear.slot.toLowerCase()
+        ) || {
+          affixes: [],
+          implicitAffixes: [],
+          temperedAffixes: [],
+          greaterAffixes: [],
+          rampageEffect: null,
+          feastEffect: null
+        }
+
+        // Match aspect tooltip by index
+        const aspect = aspectData.find((a) => a.index === i)
+
+        return {
+          slot: gear.slot,
+          itemName: gear.itemName,
+          itemType: gear.itemType,
+          requiredAspect: aspect?.name
+            ? { name: aspect.name, description: aspect.description || null }
+            : null,
+          affixes: stats.affixes,
+          implicitAffixes: stats.implicitAffixes,
+          temperedAffixes: stats.temperedAffixes,
+          greaterAffixes: stats.greaterAffixes,
+          masterworkPriority: [],
+          rampageEffect: stats.rampageEffect,
+          feastEffect: stats.feastEffect,
+          socketedGems: gear.socketedGems || []
+        }
+      })
+    } catch {
+      return []
+    }
+  }
+
+  /**
+   * Extracts active rune data from the "Active Runes" section on d4builds.
+   *
+   * The standalone runes are in a `.builder__gems` container that is NOT
+   * inside a `.builder__gear__item`. Socketed gems inside gear items are
+   * handled separately in `scrapeGear()`.
+   *
+   * Uses Playwright hover() for reliable tooltip triggering.
+   */
+  private async scrapeRunes(page: Page): Promise<IRune[]> {
+    try {
+      // Find standalone rune items (not inside gear items)
+      // The "Active Runes" section has a top-level .builder__gems that
+      // contains .builder__gems__item elements with rune names
+      const runeData = await page.evaluate(() => {
+        // Get all .builder__gems containers
+        const allGemContainers = document.querySelectorAll('.builder__gems')
+        const results: Array<{ name: string; index: number }> = []
+
+        for (const container of allGemContainers) {
+          // Skip gem containers that are nested inside gear items
+          if (container.closest('.builder__gear__item')) continue
+
+          // This is the standalone Active Runes container
+          const items = container.querySelectorAll('.builder__gems__item')
+          items.forEach((item, i) => {
+            const nameEl = item.querySelector('.builder__gem__slot')
+            const name = nameEl?.textContent?.trim()
+            if (name) results.push({ name, index: i })
+          })
+        }
+        return results
+      })
+
+      if (runeData.length === 0) return []
+
+      // Use Playwright's hover() on each rune element to get tooltip data
+      const runes: IRune[] = []
+      for (let i = 0; i < runeData.length; i++) {
+        try {
+          // Build a selector for the i-th standalone rune
+          // Target rune items that come AFTER the "Active Runes" label
+          const runeEl = page.locator(
+            '.builder__gems:not(.builder__gear__item .builder__gems) .builder__gems__item'
+          ).nth(i)
+
+          const isVisible = await runeEl.isVisible().catch(() => false)
+          if (!isVisible) {
+            runes.push({
+              name: runeData[i].name,
+              runeType: 'Rune',
+              effects: []
+            })
+            continue
+          }
+
+          // Hover using Playwright for reliable tooltip triggering
+          await runeEl.hover({ force: true })
+          await page.waitForTimeout(300)
+
+          // Now extract tooltip data
+          const tooltipInfo = await page.evaluate(() => {
+            const tooltip = document.querySelector('.gem__tooltip')
+            if (!tooltip) return null
+
+            const nameEl = tooltip.querySelector('.gem__tooltip__name')
+            const typeEl = tooltip.querySelector('.gem__tooltip__class')
+            const effectEls = tooltip.querySelectorAll('.gem__tooltip__effect')
+
+            const effects: string[] = []
+            effectEls.forEach((el) => {
+              const text = el.textContent?.trim()
+              if (text) effects.push(text)
+            })
+
+            return {
+              name: nameEl?.textContent?.trim() || null,
+              runeType: typeEl?.textContent?.trim() || null,
+              effects
+            }
+          })
+
+          runes.push({
+            name: tooltipInfo?.name || runeData[i].name,
+            runeType: tooltipInfo?.runeType || 'Rune',
+            effects: tooltipInfo?.effects || []
+          })
+        } catch {
+          // If hover fails, still add the rune with basic info
+          runes.push({
+            name: runeData[i].name,
+            runeType: 'Rune',
+            effects: []
+          })
+        }
+      }
+
+      return runes
     } catch {
       return []
     }

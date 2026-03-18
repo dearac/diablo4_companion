@@ -12,6 +12,16 @@ export default defineConfig({
         '@overlay': resolve('src/overlay/src')
       }
     },
+    server: {
+      fs: {
+        allow: [
+          resolve('src/renderer'),
+          resolve('src/overlay'),
+          resolve('src/shared'),
+          resolve('node_modules')
+        ]
+      }
+    },
     plugins: [react()],
     build: {
       rollupOptions: {

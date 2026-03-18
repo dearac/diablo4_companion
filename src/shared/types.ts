@@ -23,7 +23,7 @@ export type D4Class =
 /**
  * The three build websites we can import from.
  */
-export type BuildSourceSite = 'd4builds' | 'maxroll' | 'icy-veins'
+export type BuildSourceSite = 'd4builds'
 
 /**
  * Represents a complete D4 build — everything we know about
@@ -98,18 +98,42 @@ export interface IGearSlot {
   slot: string
   itemName: string | null
   itemType: 'Unique' | 'Legendary' | 'Rare'
-  requiredAspect: string | null
-  priorityAffixes: IAffix[]
-  temperingTargets: string[]
+  requiredAspect: IAspectInfo | null
+  affixes: IAffix[]
+  implicitAffixes: IAffix[]
+  temperedAffixes: IAffix[]
+  greaterAffixes: IAffix[]
   masterworkPriority: string[]
+  rampageEffect: string | null
+  feastEffect: string | null
+  socketedGems: string[]
 }
 
 /**
- * A stat affix on a piece of gear, with its priority.
+ * A stat affix on a piece of gear.
  */
 export interface IAffix {
   name: string
-  priority: number
+  isGreater: boolean
+}
+
+/**
+ * Aspect/runeword data from gear tooltip.
+ */
+export interface IAspectInfo {
+  name: string
+  description: string | null
+}
+
+/**
+ * An active rune in the build (from the "Active Runes" section).
+ * Runes come in pairs: a Ritual rune (offering gain) and a
+ * Ritual/Invocation rune (offering spend), plus additional runes.
+ */
+export interface IRune {
+  name: string
+  runeType: string // e.g. "Legendary Rune of Ritual", "Rare Rune of Invocation"
+  effects: string[] // e.g. ["Gain: 25 Offering", "Stores offering every 0.3 seconds..."]
 }
 
 /**
@@ -144,6 +168,7 @@ export interface RawBuildData {
   skills: ISkillAllocation[]
   paragonBoards: IParagonBoard[]
   gearSlots: IGearSlot[]
+  activeRunes: IRune[]
 }
 
 /**

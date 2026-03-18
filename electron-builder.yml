@@ -1,5 +1,5 @@
-appId: com.electron.app
-productName: diablo4-companion
+appId: com.dearac.diablo4-companion
+productName: Diablo IV Companion
 directories:
   buildResources: build
 files:
@@ -11,8 +11,18 @@ files:
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
 asarUnpack:
   - resources/**
+extraResources:
+  - from: build/chromium
+    to: chromium
+    filter:
+      - '**/*'
 win:
   executableName: diablo4-companion
+  target:
+    - target: portable
+      arch: [x64]
+portable:
+  artifactName: ${name}-${version}-portable.${ext}
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}

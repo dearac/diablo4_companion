@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo, useState } from 'react'
+import { useEffect, useCallback, useMemo, useState, useRef, memo } from 'react'
 import type { IParagonBoard, IParagonNode } from '../types'
 import { computeBoardLayout, computeWorldBounds } from './boardLayoutEngine'
 import { useCanvasTransform } from '../hooks/useCanvasTransform'
@@ -18,24 +18,41 @@ import { formatNodeName, getNodeTypeColor } from './paragonNodeUtils'
 //         ├─ SVG connections layer (golden lines between boards)
 //         └─ Board groups (one per board, rotated + positioned)
 //             └─ ParagonBoardTiles (existing tile rendering logic)
+//
+// PERFORMANCE OPTIMIZATIONS:
+//   - ParagonBoardTiles wrapped in React.memo() — boards don't
+//     re-render when only the zoom/pan transform changes
+//   - Tooltip mouse tracking throttled to 60fps via RAF
+//   - Inline filter styles replaced with CSS classes to reduce
+//     React diff overhead per tile
+//   - SVG connection glow uses wider stroke + opacity instead
+//     of expensive feGaussianBlur filter
+//   - Image elements use loading="lazy" for off-screen boards
 // ============================================================
+
+interface ParagonBoardTilesProps {
+  board: IParagonBoard
+  onNodeHover: (node: IParagonNode, boardIndex: number) => void
+  onNodeLeave: () => void
+  onNodeMouseMove: (e: React.MouseEvent) => void
+}
 
 /**
  * ParagonBoardTiles — Renders the individual node tiles for one board.
  * This is the tile rendering extracted from the previous ParagonBoardVisual,
  * but without its own container — the canvas handles positioning.
+ *
+ * Wrapped in React.memo() to prevent re-renders during zoom/pan.
+ * The board data doesn't change when the user zooms — only the
+ * parent's CSS transform does. This saves re-rendering 400+ nodes
+ * per board on every scroll tick.
  */
-function ParagonBoardTiles({
+const ParagonBoardTiles = memo(function ParagonBoardTiles({
   board,
   onNodeHover,
   onNodeLeave,
   onNodeMouseMove
-}: {
-  board: IParagonBoard
-  onNodeHover: (node: IParagonNode, boardIndex: number) => void
-  onNodeLeave: () => void
-  onNodeMouseMove: (e: React.MouseEvent) => void
-}): React.JSX.Element {
+}: ParagonBoardTilesProps): React.JSX.Element {
   const positionedNodes = board.allocatedNodes.filter(
     (n) => n.row !== undefined && n.col !== undefined
   )
@@ -93,11 +110,12 @@ function ParagonBoardTiles({
         </span>
       </div>
 
-      {/* Board background */}
+      {/* Board background — lazy loaded for off-screen boards */}
       {board.boardBgUrl && (
         <img
           src={board.boardBgUrl}
           alt=""
+          loading="lazy"
           style={{
             position: 'absolute',
             top: 0,
@@ -110,7 +128,7 @@ function ParagonBoardTiles({
         />
       )}
 
-      {/* Render each tile */}
+      {/* Render each tile — uses CSS classes for filter instead of inline styles */}
       {positionedNodes.map((node, i) => {
         const col = node.col! - minCol
         const row = node.row! - minRow
@@ -118,10 +136,16 @@ function ParagonBoardTiles({
         const top = row * cellSize + padding
         const typeColor = getNodeTypeColor(node.nodeType)
 
+        // Build CSS class list for tile state (avoids expensive inline filter diffs)
+        const tileClasses = [
+          'paragon-canvas-tile',
+          node.allocated ? 'paragon-canvas-tile--active' : 'paragon-canvas-tile--inactive'
+        ].join(' ')
+
         return (
           <div
             key={i}
-            className={`paragon-canvas-tile ${node.allocated ? 'paragon-canvas-tile--active' : ''}`}
+            className={tileClasses}
             onMouseEnter={() => onNodeHover(node, board.boardIndex)}
             onMouseMove={onNodeMouseMove}
             onMouseLeave={onNodeLeave}
@@ -132,10 +156,6 @@ function ParagonBoardTiles({
               width: `${tileSize}px`,
               height: `${tileSize}px`,
               transform: node.styleTransform || undefined,
-              opacity: node.allocated ? 1 : 0.3,
-              filter: node.allocated
-                ? 'drop-shadow(0px 0px 3px rgba(196, 30, 58, 0.8))'
-                : 'grayscale(80%) brightness(0.6)',
               cursor: 'pointer',
               zIndex: 1
             }}
@@ -145,6 +165,7 @@ function ParagonBoardTiles({
               <img
                 src={node.bgUrl}
                 alt=""
+                loading="lazy"
                 style={{
                   position: 'absolute',
                   top: 0,
@@ -161,6 +182,7 @@ function ParagonBoardTiles({
               <img
                 src={node.allocated && node.activeIconUrl ? node.activeIconUrl : node.iconUrl}
                 alt={formatNodeName(node.nodeName)}
+                loading="lazy"
                 style={{
                   position: 'absolute',
                   top: 0,
@@ -194,7 +216,7 @@ function ParagonBoardTiles({
       })}
     </div>
   )
-}
+})
 
 /**
  * ParagonBoardCanvas — The main interactive canvas component.
@@ -210,6 +232,11 @@ function ParagonBoardCanvas({ boards }: ParagonBoardCanvasProps): React.JSX.Elem
   // Tooltip state
   const [hoveredNode, setHoveredNode] = useState<IParagonNode | null>(null)
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+
+  // RAF throttle for tooltip mouse moves — prevents setting state 60+
+  // times per second when the user moves the cursor over tiles.
+  const tooltipRafPending = useRef(false)
+  const tooltipMouseRef = useRef({ x: 0, y: 0 })
 
   // Canvas transform state (zoom + pan)
   // Note: wheel handler is registered internally by useCanvasTransform
@@ -252,9 +279,19 @@ function ParagonBoardCanvas({ boards }: ParagonBoardCanvasProps): React.JSX.Elem
     setHoveredNode(node)
   }, [])
 
-  /** Track cursor for tooltip positioning */
+  /**
+   * Track cursor for tooltip positioning — RAF throttled.
+   * Stores the latest mouse position in a ref and schedules
+   * a single setState per animation frame.
+   */
   const handleNodeMouseMove = useCallback((e: React.MouseEvent) => {
-    setTooltipPos({ x: e.clientX, y: e.clientY })
+    tooltipMouseRef.current = { x: e.clientX, y: e.clientY }
+    if (tooltipRafPending.current) return
+    tooltipRafPending.current = true
+    requestAnimationFrame(() => {
+      tooltipRafPending.current = false
+      setTooltipPos({ ...tooltipMouseRef.current })
+    })
   }, [])
 
   /** Clear tooltip on mouse leave */
@@ -306,7 +343,9 @@ function ParagonBoardCanvas({ boards }: ParagonBoardCanvasProps): React.JSX.Elem
 
       {/* World layer — everything inside here is transformed */}
       <div className="paragon-canvas__world" style={{ transform: transformStyle }}>
-        {/* SVG layer for connection lines between boards */}
+        {/* SVG layer for connection lines between boards.
+            Uses wider stroke + opacity instead of feGaussianBlur
+            to save GPU computation during zoom/pan. */}
         <svg
           className="paragon-canvas__connections"
           viewBox={svgViewBox}
@@ -320,30 +359,18 @@ function ParagonBoardCanvas({ boards }: ParagonBoardCanvasProps): React.JSX.Elem
             zIndex: 0
           }}
         >
-          <defs>
-            {/* Golden glow filter for connection lines */}
-            <filter id="connection-glow" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur stdDeviation="4" result="glow" />
-              <feMerge>
-                <feMergeNode in="glow" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-
           {connections.map((conn, i) => (
             <g key={i}>
-              {/* Glow layer */}
+              {/* Soft glow layer — wider stroke instead of expensive blur filter */}
               <line
                 x1={conn.from.x}
                 y1={conn.from.y}
                 x2={conn.to.x}
                 y2={conn.to.y}
                 stroke="#d4a94a"
-                strokeWidth="4"
+                strokeWidth="6"
                 strokeLinecap="round"
-                opacity="0.4"
-                filter="url(#connection-glow)"
+                opacity="0.2"
               />
               {/* Crisp line on top */}
               <line
@@ -375,7 +402,8 @@ function ParagonBoardCanvas({ boards }: ParagonBoardCanvasProps): React.JSX.Elem
                 width: `${layout.width}px`,
                 height: `${layout.height}px`,
                 transform: layout.rotation !== 0 ? `rotate(${layout.rotation}deg)` : undefined,
-                transformOrigin: 'center center'
+                transformOrigin: 'center center',
+                contain: 'layout style paint'
               }}
             >
               <ParagonBoardTiles

@@ -18,7 +18,9 @@ export default defineConfig({
 
     /* Make sure TypeScript paths resolve correctly */
     alias: {
-      '@': resolve(__dirname, 'src')
+      '@': resolve(__dirname, 'src'),
+      'electron': resolve(__dirname, '__mocks__/electron.js'),
+      '@electron-toolkit/utils': resolve(__dirname, '__mocks__/@electron-toolkit/utils.js')
     }
   },
 

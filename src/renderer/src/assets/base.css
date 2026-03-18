@@ -31,6 +31,12 @@
   --d4-error: #ff4444;
   --d4-success: #4aaf5a;
 
+  /* Item rarity */
+  --d4-item-unique: #d4a94a;
+  --d4-item-legendary: #e87a2a;
+  --d4-item-rare: #f5e35b;
+  --d4-item-greater: #a855f7;
+
   /* Typography */
   --font-display: 'Cinzel', serif;
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;

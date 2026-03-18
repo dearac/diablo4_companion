@@ -1,4 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+// Hoist the electron mock so it resolves before any import
+const electronMock = vi.hoisted(() => ({
+  BrowserWindow: vi.fn(),
+  app: { getPath: vi.fn().mockReturnValue('/tmp') },
+  ipcMain: { handle: vi.fn(), on: vi.fn() }
+}))
+vi.mock('electron', () => electronMock)
+
 import { D4BuildsScraper } from '../../../src/main/scrapers/D4BuildsScraper'
 
 // ============================================================
@@ -155,7 +164,7 @@ const { mockPage } = vi.hoisted(() => {
         return Promise.resolve(callback(mockBoards))
       }
 
-      // Gear items
+      // Gear items (Phase A: top summary)
       if (selector.includes('builder__gear__item')) {
         const mockItems = [
           {
@@ -182,6 +191,39 @@ const { mockPage } = vi.hoisted(() => {
           }
         ]
         return Promise.resolve(callback(mockItems))
+      }
+
+      // Gear Stats grid (Phase B: affixes)
+      if (selector.includes('builder__stats__group')) {
+        const mockGroups = [
+          {
+            querySelector: (sel: string) => {
+              if (sel.includes('stats__slot')) return { textContent: 'Helm' }
+              return null
+            },
+            querySelectorAll: () => [
+              {
+                textContent: '45% Critical Strike Chance',
+                classList: { contains: () => false },
+                querySelector: (sel: string) => {
+                  if (sel === '.greater__affix__button--filled') return null
+                  if (sel.includes('tempering')) return null
+                  if (sel === '.dropdown__button span')
+                    return { textContent: '45% Critical Strike Chance' }
+                  return null
+                }
+              }
+            ]
+          },
+          {
+            querySelector: (sel: string) => {
+              if (sel.includes('stats__slot')) return { textContent: 'Chest Armor' }
+              return null
+            },
+            querySelectorAll: () => []
+          }
+        ]
+        return Promise.resolve(callback(mockGroups))
       }
 
       return Promise.resolve(callback([]))
@@ -288,10 +330,13 @@ describe('D4BuildsScraper', () => {
     expect(helm.slot).toBe('Helm')
     expect(helm.itemName).toBe('Heir of Perdition')
     expect(helm.itemType).toBe('Unique') // mythic maps to Unique
+    expect(helm.affixes).toHaveLength(1)
+    expect(helm.affixes[0].name).toBe('45% Critical Strike Chance')
 
     const chest = data.gearSlots[1]
     expect(chest.slot).toBe('Chest Armor')
     expect(chest.itemName).toBe('Mantle of the Grey')
     expect(chest.itemType).toBe('Unique')
+    expect(chest.affixes).toHaveLength(0)
   })
 })

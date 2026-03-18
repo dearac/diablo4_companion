@@ -7,9 +7,8 @@ import { HotkeyService } from './services/HotkeyService'
 import { getDataPaths } from './services/StorageService'
 import { BuildImportService } from './services/BuildImportService'
 import { BuildRepository } from './services/BuildRepository'
-import { MaxrollScraper } from './scrapers/MaxrollScraper'
+import { ProcessManager } from './services/ProcessManager'
 import { D4BuildsScraper } from './scrapers/D4BuildsScraper'
-import { IcyVeinsScraper } from './scrapers/IcyVeinsScraper'
 import type { RawBuildData } from '../shared/types'
 
 // ============================================================
@@ -89,11 +88,9 @@ function initServices(): void {
   buildService = new BuildImportService()
   buildRepo = new BuildRepository(dataPaths.builds)
 
-  // Register supported scrapers here
-  buildService.registerScraper(new MaxrollScraper())
+  // Register supported scrapers (d4builds only)
   d4BuildsScraper = new D4BuildsScraper(dataPaths.classes)
   buildService.registerScraper(d4BuildsScraper)
-  buildService.registerScraper(new IcyVeinsScraper())
 }
 
 // ============================================================
@@ -243,9 +240,9 @@ function setupIpcHandlers(): void {
       const result = await buildService.importFromUrl(url)
       currentBuildData = result
 
-      // Auto-save the imported build
+      // Auto-save the imported build (async — doesn't block main process)
       const site = buildService.detectSite(url)
-      const saved = buildRepo.save(result, url, site)
+      const saved = await buildRepo.save(result, url, site)
 
       return { build: result, savedId: saved.id }
     } catch (error: unknown) {
@@ -257,22 +254,22 @@ function setupIpcHandlers(): void {
 
   // ---- Build Library IPC ----
 
-  /** List all saved builds */
+  /** List all saved builds (async, uses in-memory cache) */
   ipcMain.handle('list-builds', async () => {
-    return buildRepo.listAll()
+    return await buildRepo.listAll()
   })
 
-  /** Load a specific saved build by ID */
+  /** Load a specific saved build by ID (async) */
   ipcMain.handle('load-build', async (_event, id: string) => {
-    const build = buildRepo.load(id)
+    const build = await buildRepo.load(id)
     if (!build) throw new Error(`Build not found: ${id}`)
     currentBuildData = build.data
     return build
   })
 
-  /** Delete a saved build by ID */
+  /** Delete a saved build by ID (async) */
   ipcMain.handle('delete-build', async (_event, id: string) => {
-    return buildRepo.delete(id)
+    return await buildRepo.delete(id)
   })
 
   // Launch the overlay window
@@ -382,6 +379,11 @@ app.whenReady().then(async () => {
   await initStore()
   initServices()
 
+  // Initialize process manager and clean up any orphaned processes from previous runs
+  const processManager = ProcessManager.getInstance()
+  processManager.setDataDir(dataPaths.userData)
+  processManager.cleanupStalePids()
+
   // Set up IPC communication between main and renderer
   setupIpcHandlers()
 
@@ -392,9 +394,10 @@ app.whenReady().then(async () => {
   registerGlobalHotkeys()
 })
 
-// Clean up shortcuts when the app closes
-app.on('will-quit', () => {
+// Clean up shortcuts and kill all tracked browser processes when the app closes
+app.on('will-quit', async () => {
   globalShortcut.unregisterAll()
+  await ProcessManager.getInstance().killAll()
 })
 
 // Quit when all windows are closed
