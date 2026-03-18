@@ -7,6 +7,7 @@ import BuildLibrary from './components/BuildLibrary'
 import HotkeySettings from './components/HotkeySettings'
 import UpdateBanner from './components/UpdateBanner'
 import StatusBanner from './components/StatusBanner'
+import HelpTooltip from './components/HelpTooltip'
 
 /**
  * Config Window App — The build import launcher.
@@ -70,7 +71,9 @@ function App(): React.JSX.Element {
       <UpdateBanner />
       <StatusBanner />
       <header className="config-header">
-        <h1 className="config-header__title">Diablo IV Companion</h1>
+        <HelpTooltip text="Import builds from Maxroll, D4Builds, or Icy Veins. Press a hotkey in-game to toggle the overlay and scan items." placement="bottom">
+          <h1 className="config-header__title">Diablo IV Companion</h1>
+        </HelpTooltip>
         <p className="config-header__subtitle">Build Importer</p>
         <hr className="config-header__divider" />
       </header>
@@ -95,13 +98,15 @@ function App(): React.JSX.Element {
       </main>
 
       <footer className="config-footer">
-        <button
-          className="config-footer__clear-cache"
-          onClick={handleClearCache}
-          title="Clear cached board data (use after a game update)"
-        >
-          {cacheCleared ? '✓ Cache Cleared' : '🔄 Clear Board Cache'}
-        </button>
+        <HelpTooltip text="Clears cached paragon board data. Use this after a game patch to force fresh data from build sites." placement="top">
+          <button
+            className="config-footer__clear-cache"
+            onClick={handleClearCache}
+            title="Clear cached board data (use after a game update)"
+          >
+            {cacheCleared ? '✓ Cache Cleared' : '🔄 Clear Board Cache'}
+          </button>
+        </HelpTooltip>
       </footer>
     </div>
   )

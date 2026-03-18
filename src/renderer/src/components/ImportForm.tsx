@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { RawBuildData } from '../../../shared/types'
+import HelpTooltip from './HelpTooltip'
 
 /**
  * ImportForm — URL input and import button.
@@ -50,26 +51,30 @@ function ImportForm({
   return (
     <div className="import-form">
       <div className="import-form__input-row">
-        <input
-          id="url-input"
-          className="import-form__input"
-          type="url"
-          placeholder="Paste a build URL from Maxroll, D4Builds, or Icy Veins..."
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={isLoading}
-          autoFocus
-        />
+        <HelpTooltip text="Paste a full build URL from Maxroll.gg, D4Builds.gg, or Icy-Veins.com. The app will scrape all skills, gear, and paragon data." placement="bottom" className="help-tooltip-wrapper--block">
+          <input
+            id="url-input"
+            className="import-form__input"
+            type="url"
+            placeholder="Paste a build URL from Maxroll, D4Builds, or Icy Veins..."
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={isLoading}
+            autoFocus
+          />
+        </HelpTooltip>
       </div>
-      <button
-        id="import-button"
-        className="import-form__button"
-        onClick={handleImport}
-        disabled={!isValidUrl || isLoading}
-      >
-        {isLoading ? '⏳ Importing...' : '⚔ Import Build'}
-      </button>
+      <HelpTooltip text="Scrapes the build page and saves all skills, paragon boards, gear, and runes. You can then view them in the overlay." placement="bottom">
+        <button
+          id="import-button"
+          className="import-form__button"
+          onClick={handleImport}
+          disabled={!isValidUrl || isLoading}
+        >
+          {isLoading ? '⏳ Importing...' : '⚔ Import Build'}
+        </button>
+      </HelpTooltip>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { RawBuildData } from '../../../shared/types'
 import ParagonBoardCanvas from '../../../shared/components/ParagonBoardCanvas'
+import HelpTooltip from './HelpTooltip'
 
 /**
  * BuildSummaryCard — Displays a successful import result.
@@ -42,13 +43,15 @@ function BuildSummaryCard({ build, onLaunchOverlay }: BuildSummaryCardProps): Re
 
       <div className="build-summary__sections">
         {/* Skills */}
-        <button
-          className={`build-summary__section-toggle ${expanded === 'skills' ? 'active' : ''}`}
-          onClick={() => toggleSection('skills')}
-        >
-          <span>⚡ Skills</span>
-          <span className="build-summary__badge">{build.skills.length}</span>
-        </button>
+        <HelpTooltip text="Expand to see all skill points allocated in this build." placement="right">
+          <button
+            className={`build-summary__section-toggle ${expanded === 'skills' ? 'active' : ''}`}
+            onClick={() => toggleSection('skills')}
+          >
+            <span>⚡ Skills</span>
+            <span className="build-summary__badge">{build.skills.length}</span>
+          </button>
+        </HelpTooltip>
         {expanded === 'skills' && (
           <div className="build-summary__detail">
             {build.skills.length === 0 ? (
@@ -69,15 +72,17 @@ function BuildSummaryCard({ build, onLaunchOverlay }: BuildSummaryCardProps): Re
         )}
 
         {/* Paragon — now renders the interactive canvas */}
-        <button
-          className={`build-summary__section-toggle ${expanded === 'paragon' ? 'active' : ''}`}
-          onClick={() => toggleSection('paragon')}
-        >
-          <span>🔷 Paragon</span>
-          <span className="build-summary__badge">
-            {build.paragonBoards.length} boards, {glyphCount} glyphs
-          </span>
-        </button>
+        <HelpTooltip text="Expand to see the full paragon board layout with glyphs. Drag to pan, scroll to zoom." placement="right">
+          <button
+            className={`build-summary__section-toggle ${expanded === 'paragon' ? 'active' : ''}`}
+            onClick={() => toggleSection('paragon')}
+          >
+            <span>🔷 Paragon</span>
+            <span className="build-summary__badge">
+              {build.paragonBoards.length} boards, {glyphCount} glyphs
+            </span>
+          </button>
+        </HelpTooltip>
         {expanded === 'paragon' && (
           <div className="build-summary__detail build-summary__detail--paragon">
             {build.paragonBoards.length === 0 ? (
@@ -91,16 +96,18 @@ function BuildSummaryCard({ build, onLaunchOverlay }: BuildSummaryCardProps): Re
         )}
 
         {/* Gear */}
-        <button
-          className={`build-summary__section-toggle ${expanded === 'gear' ? 'active' : ''}`}
-          onClick={() => toggleSection('gear')}
-        >
-          <span>🛡️ Gear</span>
-          <span className="build-summary__badge">
-            {build.gearSlots.length} slots
-            {(build.activeRunes?.length || 0) > 0 && `, ${build.activeRunes.length} runes`}
-          </span>
-        </button>
+        <HelpTooltip text="Expand to see all recommended gear, aspects, affixes, and runes for this build." placement="right">
+          <button
+            className={`build-summary__section-toggle ${expanded === 'gear' ? 'active' : ''}`}
+            onClick={() => toggleSection('gear')}
+          >
+            <span>🛡️ Gear</span>
+            <span className="build-summary__badge">
+              {build.gearSlots.length} slots
+              {(build.activeRunes?.length || 0) > 0 && `, ${build.activeRunes.length} runes`}
+            </span>
+          </button>
+        </HelpTooltip>
         {expanded === 'gear' && (
           <div className="build-summary__detail build-summary__detail--gear">
             {build.gearSlots.length === 0 ? (
@@ -282,9 +289,11 @@ function BuildSummaryCard({ build, onLaunchOverlay }: BuildSummaryCardProps): Re
         )}
       </div>
 
-      <button id="launch-overlay-button" className="launch-button" onClick={onLaunchOverlay}>
-        🗡️ Launch Overlay
-      </button>
+      <HelpTooltip text="Opens a transparent overlay on top of your game. Use your scan hotkey to OCR tooltips and compare gear." placement="top">
+        <button id="launch-overlay-button" className="launch-button" onClick={onLaunchOverlay}>
+          🗡️ Launch Overlay
+        </button>
+      </HelpTooltip>
     </div>
   )
 }

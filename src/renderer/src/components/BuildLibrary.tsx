@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { SavedBuild, RawBuildData } from '../../../shared/types'
+import HelpTooltip from './HelpTooltip'
 
 interface BuildLibraryProps {
   onLoadBuild: (data: RawBuildData) => void
@@ -48,7 +49,9 @@ function BuildLibrary({ onLoadBuild, refreshTrigger }: BuildLibraryProps): React
 
   return (
     <div className="build-library">
-      <h3 className="build-library__title">Saved Builds</h3>
+      <HelpTooltip text="Your saved builds. Click ▶ to load one into the overlay, or ✕ to delete it." placement="bottom">
+        <h3 className="build-library__title">Saved Builds</h3>
+      </HelpTooltip>
       <ul className="build-library__list">
         {builds.map((build) => (
           <li key={build.id} className="build-library__item">

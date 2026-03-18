@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import HelpTooltip from './HelpTooltip'
 
 /**
  * Hotkey action metadata for display
@@ -136,13 +137,15 @@ function HotkeySettings(): React.JSX.Element {
 
     return (
         <div className="hotkey-settings">
-            <button
-                className={`hotkey-settings__toggle ${isOpen ? 'active' : ''}`}
-                onClick={() => setIsOpen(!isOpen)}
-            >
-                <span>⌨️ Hotkey Settings</span>
-                <span className="hotkey-settings__arrow">{isOpen ? '▲' : '▼'}</span>
-            </button>
+            <HelpTooltip text="Configure keyboard shortcuts for the overlay, item scanning, and gear reports. These work globally, even in-game." placement="bottom" className="help-tooltip-wrapper--block">
+                <button
+                    className={`hotkey-settings__toggle ${isOpen ? 'active' : ''}`}
+                    onClick={() => setIsOpen(!isOpen)}
+                >
+                    <span>⌨️ Hotkey Settings</span>
+                    <span className="hotkey-settings__arrow">{isOpen ? '▲' : '▼'}</span>
+                </button>
+            </HelpTooltip>
 
             {isOpen && (
                 <div className="hotkey-settings__panel" ref={recorderRef}>
@@ -178,9 +181,11 @@ function HotkeySettings(): React.JSX.Element {
                     )}
 
                     <div className="hotkey-settings__footer">
-                        <button className="hotkey-settings__reset" onClick={handleReset}>
-                            ↺ Reset to Defaults
-                        </button>
+                        <HelpTooltip text="Resets all hotkeys back to F6 (overlay), F7 (scan), F8 (report)." placement="top">
+                            <button className="hotkey-settings__reset" onClick={handleReset}>
+                                ↺ Reset to Defaults
+                            </button>
+                        </HelpTooltip>
                         <span className="hotkey-settings__hint">
                             Click a key badge to rebind • ESC to cancel
                         </span>
