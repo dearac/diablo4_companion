@@ -145,6 +145,22 @@ const api = {
    */
   clearParagonCache: (): Promise<{ success: boolean }> => {
     return ipcRenderer.invoke('clear-paragon-cache')
+  },
+
+  /**
+   * Listens for update download progress events from the main process.
+   * Callback receives { percent, downloadedMB, totalMB }.
+   */
+  onUpdateProgress: (callback: (progress: { percent: number; downloadedMB: number; totalMB: number }) => void): void => {
+    ipcRenderer.on('update-download-progress', (_event, progress) => callback(progress))
+  },
+
+  /**
+   * Listens for update-available notification from main process.
+   * This is used when the update starts downloading after user accepts.
+   */
+  onUpdateStarted: (callback: () => void): void => {
+    ipcRenderer.on('update-started', callback)
   }
 }
 
