@@ -27,7 +27,7 @@ export interface UpdateInfo {
 export class AutoUpdateService {
   private readonly apiUrl: string
 
-  constructor(private readonly repo: string) {
+  constructor(repo: string) {
     this.apiUrl = `https://api.github.com/repos/${repo}/releases/latest`
   }
 

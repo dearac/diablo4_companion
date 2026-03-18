@@ -21,6 +21,8 @@ declare global {
       loadBuild: (id: string) => Promise<SavedBuild>
       deleteBuild: (id: string) => Promise<boolean>
       clearParagonCache: () => Promise<{ success: boolean }>
+      onUpdateProgress: (callback: (progress: { percent: number; downloadedMB: number; totalMB: number }) => void) => void
+      onUpdateStarted: (callback: () => void) => void
     }
   }
 }
