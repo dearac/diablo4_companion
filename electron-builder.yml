@@ -59,4 +59,4 @@ npmRebuild: false
 publish:
   provider: github
   owner: dearac
-  repo: diablo4-companion-releases
+  repo: diablo4_companion

@@ -568,7 +568,7 @@ app.whenReady().then(async () => {
   // ---- Auto-Update Check ----
   // Runs after the config window is visible so the user isn't
   // staring at a blank screen. Uses the public releases repo.
-  const updater = new AutoUpdateService('dearac/diablo4-companion-releases')
+  const updater = new AutoUpdateService('dearac/diablo4_companion')
 
   updater.checkForUpdate(app.getVersion()).then(async (updateInfo) => {
     if (!updateInfo || !configWindow) return
