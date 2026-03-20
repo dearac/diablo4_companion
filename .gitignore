@@ -27,5 +27,10 @@ SAVEPOINT.md
 TESTING_RULES.md
 docs/plans/
 
+# Sidecar build output
+sidecar/bin/
+sidecar/ocr-cli/bin/
+sidecar/ocr-cli/obj/
+
 # Large generated files
 tree.txt
