@@ -10,22 +10,23 @@ import { join } from 'path'
  * Diablo 4 tooltips render to the left of the cursor, roughly 500×900px.
  */
 
-/** Tooltip crop dimensions (generous to avoid clipping) */
-const TOOLTIP_WIDTH = 550
-const TOOLTIP_HEIGHT = 950
+/** Tooltip crop dimensions (generous to avoid clipping long tooltips) */
+const TOOLTIP_WIDTH = 620
+const TOOLTIP_HEIGHT = 1200
 
 /**
  * How far left of the cursor the crop region starts.
  * The tooltip is fully to the left of the mouse, so we offset
  * by the full width plus a small margin.
  */
-const CURSOR_LEFT_OFFSET = 570
+const CURSOR_LEFT_OFFSET = 640
 
 /**
  * Vertical offset above the cursor. The tooltip extends both above
- * and below the cursor, but mostly below. We start 250px above.
+ * and below the cursor, but mostly below. We start 350px above
+ * to capture headers on items with long tooltip bodies.
  */
-const CURSOR_TOP_OFFSET = 250
+const CURSOR_TOP_OFFSET = 350
 
 export class ScreenCaptureService {
   private scansDir: string

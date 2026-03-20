@@ -88,7 +88,7 @@ function EquippedGearTab({ buildData }: EquippedGearTabProps): React.JSX.Element
           const matched: string[] = []
           const missing: string[] = []
           if (equipped && buildSlot) {
-            const allBuildAffixes = buildSlot.affixes.map((a) => a.name)
+            const allBuildAffixes = [...new Set(buildSlot.affixes.map((a) => a.name))]
             const allEquippedAffixes = [
               ...equipped.affixes,
               ...equipped.temperedAffixes,

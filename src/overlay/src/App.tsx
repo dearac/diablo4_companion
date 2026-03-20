@@ -99,6 +99,12 @@ function App(): React.JSX.Element {
     setScanHistory([])
   }, [])
 
+  /** Clear all equipped gear */
+  const handleClearEquipped = useCallback(async () => {
+    await window.api.clearEquippedGear()
+    setEquippedGear({})
+  }, [])
+
   // ── Drag logic ──
   const handleDragStart = useCallback(
     (e: React.MouseEvent) => {
@@ -199,6 +205,7 @@ function App(): React.JSX.Element {
               gearSlots={buildData.gearSlots}
               activeRunes={buildData.activeRunes || []}
               equippedGear={equippedGear}
+              onClearEquipped={handleClearEquipped}
             />
           )}
           {activeTab === 'scans' && <ScansPanel entries={scanHistory} onClear={handleClearScans} />}

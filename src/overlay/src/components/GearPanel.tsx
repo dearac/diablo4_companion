@@ -5,6 +5,24 @@ interface GearPanelProps {
   gearSlots: IGearSlot[]
   activeRunes: IRune[]
   equippedGear?: Record<string, ScannedGearPiece>
+  onClearEquipped?: () => void
+}
+
+/**
+ * Deduplicates an IAffix array by name.
+ * Prefers the isGreater variant when both exist.
+ */
+function dedupeAffixes(
+  affixes: { name: string; isGreater: boolean }[]
+): { name: string; isGreater: boolean }[] {
+  const seen = new Map<string, { name: string; isGreater: boolean }>()
+  for (const a of affixes) {
+    const existing = seen.get(a.name)
+    if (!existing || (a.isGreater && !existing.isGreater)) {
+      seen.set(a.name, a)
+    }
+  }
+  return [...seen.values()]
 }
 
 /**
@@ -25,17 +43,33 @@ interface GearPanelProps {
  * - Rune name + type badge
  * - Effects list
  */
-function GearPanel({ gearSlots, activeRunes, equippedGear }: GearPanelProps): React.JSX.Element {
+function GearPanel({
+  gearSlots,
+  activeRunes,
+  equippedGear,
+  onClearEquipped
+}: GearPanelProps): React.JSX.Element {
   const rc = (type: string): string => type.toLowerCase()
 
   return (
     <div className="gear-panel">
+      {/* Clear equipped gear button */}
+      {equippedGear && Object.keys(equippedGear).length > 0 && onClearEquipped && (
+        <div className="gear-panel__clear-row">
+          <button className="gear-panel__clear-btn" onClick={onClearEquipped}>
+            🗑️ Clear Equipped Gear
+          </button>
+        </div>
+      )}
+
       {gearSlots.map((slot) => {
+        const uniqueAffixes = dedupeAffixes(slot.affixes)
+        const uniqueTempered = dedupeAffixes(slot.temperedAffixes)
         const hasDetails =
           slot.requiredAspect ||
-          slot.affixes.length > 0 ||
+          uniqueAffixes.length > 0 ||
           slot.implicitAffixes.length > 0 ||
-          slot.temperedAffixes.length > 0 ||
+          uniqueTempered.length > 0 ||
           slot.rampageEffect ||
           slot.feastEffect
 
@@ -85,12 +119,12 @@ function GearPanel({ gearSlots, activeRunes, equippedGear }: GearPanelProps): Re
               </>
             )}
 
-            {/* Regular + greater affixes */}
-            {slot.affixes.length > 0 && (
+            {/* Regular + greater affixes (deduplicated) */}
+            {uniqueAffixes.length > 0 && (
               <>
                 <div className="gear-slot__section-label">Affixes</div>
                 <ul className="gear-slot__affix-list">
-                  {slot.affixes.map((affix, i) => (
+                  {uniqueAffixes.map((affix, i) => (
                     <li
                       key={i}
                       className={`gear-slot__affix-item${affix.isGreater ? ' gear-slot__affix-item--greater' : ''}`}
@@ -102,12 +136,12 @@ function GearPanel({ gearSlots, activeRunes, equippedGear }: GearPanelProps): Re
               </>
             )}
 
-            {/* Tempered affixes */}
-            {slot.temperedAffixes.length > 0 && (
+            {/* Tempered affixes (deduplicated) */}
+            {uniqueTempered.length > 0 && (
               <>
                 <div className="gear-slot__section-label">Tempered</div>
                 <ul className="gear-slot__affix-list">
-                  {slot.temperedAffixes.map((affix, i) => (
+                  {uniqueTempered.map((affix, i) => (
                     <li key={i} className="gear-slot__affix-item gear-slot__affix-item--tempered">
                       {affix.name}
                     </li>

@@ -105,21 +105,23 @@ body {
   height: 16px;
   cursor: nwse-resize;
   z-index: 10;
-  background:
-    linear-gradient(135deg,
-      transparent 50%,
-      rgba(212, 169, 74, 0.3) 50%,
-      rgba(212, 169, 74, 0.15) 100%);
+  background: linear-gradient(
+    135deg,
+    transparent 50%,
+    rgba(212, 169, 74, 0.3) 50%,
+    rgba(212, 169, 74, 0.15) 100%
+  );
   border-radius: 0 0 8px 0;
   transition: background 0.15s ease;
 }
 
 .overlay-panel__resize-handle:hover {
-  background:
-    linear-gradient(135deg,
-      transparent 50%,
-      rgba(212, 169, 74, 0.5) 50%,
-      rgba(212, 169, 74, 0.3) 100%);
+  background: linear-gradient(
+    135deg,
+    transparent 50%,
+    rgba(212, 169, 74, 0.5) 50%,
+    rgba(212, 169, 74, 0.3) 100%
+  );
 }
 
 @keyframes panelSlideIn {
@@ -331,9 +333,11 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: radial-gradient(circle at 50% 50%,
-      rgba(20, 20, 32, 0.95) 0%,
-      rgba(10, 10, 15, 1) 100%);
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(20, 20, 32, 0.95) 0%,
+    rgba(10, 10, 15, 1) 100%
+  );
   border-radius: 0 0 8px 8px;
   user-select: none;
 }
@@ -591,6 +595,30 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.gear-panel__clear-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 2px;
+}
+
+.gear-panel__clear-btn {
+  background: none;
+  border: 1px solid rgba(196, 30, 58, 0.3);
+  color: #c41e3a;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+
+.gear-panel__clear-btn:hover {
+  background: rgba(196, 30, 58, 0.1);
+  border-color: #c41e3a;
 }
 
 /* ---- Gear Slot Card ---- */
