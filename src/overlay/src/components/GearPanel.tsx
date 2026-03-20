@@ -1,19 +1,10 @@
 import type { IGearSlot, IRune, ScannedGearPiece } from '../../../shared/types'
+import { affixMatches } from '../../../shared/AffixMatcher'
 
 interface GearPanelProps {
   gearSlots: IGearSlot[]
   activeRunes: IRune[]
   equippedGear?: Record<string, ScannedGearPiece>
-}
-
-/**
- * Checks if a scanned affix matches a build-expected affix name.
- * Uses case-insensitive substring matching.
- */
-function affixMatches(scannedAffix: string, buildAffixName: string): boolean {
-  const scan = scannedAffix.toLowerCase()
-  const build = buildAffixName.toLowerCase()
-  return scan.includes(build) || build.includes(scan)
 }
 
 /**

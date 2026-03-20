@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { ScannedGearPiece, RawBuildData, IGearSlot } from '../../../shared/types'
+import { affixMatches } from '../../../shared/AffixMatcher'
 
 interface EquippedGearTabProps {
   buildData: RawBuildData | null
@@ -18,15 +19,6 @@ const SLOT_ORDER = [
   'Weapon',
   'Offhand'
 ]
-
-/**
- * Checks if a scanned affix matches a build-expected affix name.
- */
-function affixMatches(scannedAffix: string, buildAffixName: string): boolean {
-  const scan = scannedAffix.toLowerCase()
-  const build = buildAffixName.toLowerCase()
-  return scan.includes(build) || build.includes(scan)
-}
 
 /**
  * EquippedGearTab — Main app tab showing all equipped gear with build comparison.

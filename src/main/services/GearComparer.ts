@@ -5,6 +5,7 @@ import type {
   ScanVerdict,
   CraftingRecommendation
 } from '../../shared/types'
+import { affixMatches } from '../../shared/AffixMatcher'
 
 /**
  * GearComparer is the scoring engine for the scan pipeline.
@@ -23,33 +24,28 @@ import type {
  */
 
 /**
- * Checks if a scanned affix string matches a build-expected affix name.
- *
- * Uses case-insensitive substring matching because OCR output includes
- * numeric prefixes (e.g., "+15.5% Critical Strike Chance") while the
- * build just stores the affix name ("Critical Strike Chance").
- */
-function affixMatches(scannedAffix: string, buildAffixName: string): boolean {
-  return scannedAffix.toLowerCase().includes(buildAffixName.toLowerCase())
-}
-
-/**
  * Counts how many build-expected affixes are present in the scanned item.
  * Returns the matched affix names and unmatched (missing) affix names.
+ *
+ * Build data often contains duplicate affixes (same name with isGreater: true
+ * and false). We deduplicate by name before scoring to avoid inflated counts.
  */
 function matchAffixes(
   scannedAffixes: string[],
   buildAffixes: IAffix[]
 ): { matched: string[]; missing: string[] } {
+  // Deduplicate build affixes by name (d4builds stores greater + non-greater entries separately)
+  const uniqueNames = [...new Set(buildAffixes.map((a) => a.name))]
+
   const matched: string[] = []
   const missing: string[] = []
 
-  for (const buildAffix of buildAffixes) {
-    const found = scannedAffixes.some((sa) => affixMatches(sa, buildAffix.name))
+  for (const buildAffixName of uniqueNames) {
+    const found = scannedAffixes.some((sa) => affixMatches(sa, buildAffixName))
     if (found) {
-      matched.push(buildAffix.name)
+      matched.push(buildAffixName)
     } else {
-      missing.push(buildAffix.name)
+      missing.push(buildAffixName)
     }
   }
 
