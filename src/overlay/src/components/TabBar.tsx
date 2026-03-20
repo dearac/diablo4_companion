@@ -3,7 +3,7 @@
  * Skills, Paragon, and Gear views in the overlay.
  */
 
-type TabId = 'skills' | 'paragon' | 'gear'
+type TabId = 'skills' | 'paragon' | 'gear' | 'scans'
 
 interface TabBarProps {
   activeTab: TabId
@@ -13,7 +13,8 @@ interface TabBarProps {
 const TABS: { id: TabId; label: string }[] = [
   { id: 'skills', label: 'Skills' },
   { id: 'paragon', label: 'Paragon' },
-  { id: 'gear', label: 'Gear' }
+  { id: 'gear', label: 'Gear' },
+  { id: 'scans', label: 'Scans' }
 ]
 
 function TabBar({ activeTab, onTabChange }: TabBarProps): React.JSX.Element {

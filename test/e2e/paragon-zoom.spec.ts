@@ -28,8 +28,7 @@ const SCREENSHOTS_DIR = path.join(__dirname, '../../test-results/paragon-zoom')
  * This is the canonical test build for the Diablo IV Companion app.
  * See: TESTING_RULES.md
  */
-const FALLBACK_BUILD_URL =
-  'https://d4builds.gg/builds/blessed-hammer-paladin-endgame/?var=0'
+const FALLBACK_BUILD_URL = 'https://d4builds.gg/builds/blessed-hammer-paladin-endgame/?var=0'
 
 // ============================================================
 // Helpers

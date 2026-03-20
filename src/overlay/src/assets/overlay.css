@@ -72,11 +72,7 @@ body {
 /* ---- Overlay Panel ---- */
 
 .overlay-panel {
-  position: fixed;
-  right: 20px;
-  top: 10%;
-  width: 380px;
-  height: 70vh;
+  /* Position, top, left, width, height set via inline style */
   background: rgba(10, 10, 15, 0.88);
   backdrop-filter: blur(4px);
   border: 1px solid var(--d4-border-ornate);
@@ -87,6 +83,45 @@ body {
     0 0 30px rgba(0, 0, 0, 0.6),
     inset 0 1px 0 rgba(212, 169, 74, 0.1);
   animation: panelSlideIn 0.3s ease;
+  overflow: hidden;
+}
+
+/* Drag handle wraps the header */
+.overlay-panel__drag-handle {
+  cursor: grab;
+  user-select: none;
+}
+
+.overlay-panel__drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Resize handle — bottom-right corner triangle */
+.overlay-panel__resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  z-index: 10;
+  background: linear-gradient(
+    135deg,
+    transparent 50%,
+    rgba(212, 169, 74, 0.3) 50%,
+    rgba(212, 169, 74, 0.15) 100%
+  );
+  border-radius: 0 0 8px 0;
+  transition: background 0.15s ease;
+}
+
+.overlay-panel__resize-handle:hover {
+  background: linear-gradient(
+    135deg,
+    transparent 50%,
+    rgba(212, 169, 74, 0.5) 50%,
+    rgba(212, 169, 74, 0.3) 100%
+  );
 }
 
 @keyframes panelSlideIn {
@@ -298,9 +333,11 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: radial-gradient(circle at 50% 50%,
-      rgba(20, 20, 32, 0.95) 0%,
-      rgba(10, 10, 15, 1) 100%);
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(20, 20, 32, 0.95) 0%,
+    rgba(10, 10, 15, 1) 100%
+  );
   border-radius: 0 0 8px 8px;
   user-select: none;
 }
@@ -560,17 +597,291 @@ body {
   gap: 10px;
 }
 
+.gear-panel__clear-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 2px;
+}
+
+.gear-panel__clear-btn {
+  background: none;
+  border: 1px solid rgba(196, 30, 58, 0.3);
+  color: #c41e3a;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+
+.gear-panel__clear-btn:hover {
+  background: rgba(196, 30, 58, 0.1);
+  border-color: #c41e3a;
+}
+
+/* ---- Empty State ---- */
+
+.gear-panel__empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--d4-text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.gear-panel__empty-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.gear-panel__empty-hint {
+  font-size: 11px;
+  color: var(--d4-text-dim);
+  margin-top: 4px;
+}
+
+/* ============================================================
+   GEAR CARD — Compact equipped item card with hover tooltip
+   ============================================================ */
+
+.gear-card {
+  position: relative;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, rgba(20, 20, 32, 0.95) 0%, rgba(14, 14, 24, 0.98) 100%);
+  border: 1px solid var(--d4-border);
+  border-left: 3px solid var(--d4-border);
+  border-radius: 6px;
+  cursor: default;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.gear-card:hover {
+  border-color: var(--d4-border-ornate);
+  box-shadow: 0 0 16px rgba(74, 58, 42, 0.25);
+}
+
+.gear-card--perfect {
+  border-left-color: #4ade80;
+}
+
+.gear-card--good {
+  border-left-color: #a3e635;
+}
+
+.gear-card--fair {
+  border-left-color: #fbbf24;
+}
+
+.gear-card--poor {
+  border-left-color: #ef4444;
+}
+
+.gear-card__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.gear-card__slot {
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: var(--d4-text-muted);
+  text-transform: uppercase;
+}
+
+.gear-card__badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 3px;
+}
+
+.gear-card__badge--perfect {
+  color: #4ade80;
+}
+
+.gear-card__badge--good {
+  color: #a3e635;
+}
+
+.gear-card__badge--fair {
+  color: #fbbf24;
+}
+
+.gear-card__badge--poor {
+  color: #ef4444;
+}
+
+.gear-card__name {
+  font-size: 12px;
+  color: var(--d4-gold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gear-card__ip {
+  color: var(--d4-text-muted);
+  font-size: 10px;
+}
+
+.gear-card__action-hint {
+  font-size: 10px;
+  color: var(--d4-text-muted);
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gear-card__action-hint--good {
+  color: #4ade80;
+}
+
+/* ============================================================
+   GEAR TOOLTIP — Hover popup with details
+   ============================================================ */
+
+.gear-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: 10px 12px;
+  background: linear-gradient(145deg, rgba(16, 14, 28, 0.98) 0%, rgba(10, 8, 18, 0.99) 100%);
+  border: 1px solid var(--d4-border-ornate);
+  border-radius: 6px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+  animation: tooltipFadeIn 0.15s ease-out;
+  pointer-events: none;
+}
+
+.gear-card:hover .gear-tooltip {
+  display: block;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.gear-tooltip__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.gear-tooltip__status {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.gear-tooltip__status--perfect {
+  color: #4ade80;
+}
+
+.gear-tooltip__status--good {
+  color: #a3e635;
+}
+
+.gear-tooltip__status--fair {
+  color: #fbbf24;
+}
+
+.gear-tooltip__status--poor {
+  color: #ef4444;
+}
+
+.gear-tooltip__score {
+  font-size: 11px;
+  color: var(--d4-text-muted);
+}
+
+.gear-tooltip__divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  margin: 6px 0;
+}
+
+.gear-tooltip__section {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--d4-text-dim);
+  margin-bottom: 4px;
+}
+
+.gear-tooltip__affix {
+  font-size: 11px;
+  padding: 1px 0;
+  line-height: 1.4;
+}
+
+.gear-tooltip__affix--match {
+  color: #4ade80;
+}
+
+.gear-tooltip__affix--miss {
+  color: #ef4444;
+}
+
+.gear-tooltip__action {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  padding: 3px 0;
+  color: var(--d4-text);
+}
+
+.gear-tooltip__action-icon {
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+}
+
+.gear-tooltip__action-text {
+  flex: 1;
+  color: var(--d4-gold);
+}
+
+.gear-tooltip__action-vendor {
+  font-size: 9px;
+  color: var(--d4-text-dim);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 1px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
 /* ---- Gear Slot Card ---- */
 
 .gear-slot {
   padding: 12px 14px;
-  background: linear-gradient(135deg,
-      rgba(20, 20, 32, 0.95) 0%,
-      rgba(14, 14, 24, 0.98) 100%);
+  background: linear-gradient(135deg, rgba(20, 20, 32, 0.95) 0%, rgba(14, 14, 24, 0.98) 100%);
   border: 1px solid var(--d4-border);
   border-left: 3px solid var(--d4-border);
   border-radius: 6px;
-  transition: border-color var(--transition-fast),
+  transition:
+    border-color var(--transition-fast),
     box-shadow var(--transition-fast);
 }
 
@@ -809,13 +1120,12 @@ body {
 .rune-card {
   padding: 10px 12px;
   margin-bottom: 8px;
-  background: linear-gradient(135deg,
-      rgba(25, 20, 40, 0.95) 0%,
-      rgba(16, 14, 28, 0.98) 100%);
+  background: linear-gradient(135deg, rgba(25, 20, 40, 0.95) 0%, rgba(16, 14, 28, 0.98) 100%);
   border: 1px solid var(--d4-border);
   border-left: 3px solid #7c5ecf;
   border-radius: 6px;
-  transition: border-color var(--transition-fast),
+  transition:
+    border-color var(--transition-fast),
     box-shadow var(--transition-fast);
 }
 
@@ -887,4 +1197,695 @@ body {
   font-size: 8px;
   top: 4px;
   color: #7c5ecf;
+}
+
+/* ============================================================
+   SCAN CONTROLS — Mode Toggle + Hotkey Display
+   ============================================================ */
+
+.scan-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--d4-border);
+  background: rgba(14, 14, 24, 0.6);
+}
+
+.scan-controls__mode {
+  display: flex;
+  align-items: center;
+}
+
+.scan-controls__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--d4-border);
+  background: var(--d4-bg-surface);
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+.scan-controls__toggle:hover {
+  background: var(--d4-bg-elevated);
+  border-color: var(--d4-border-ornate);
+}
+
+.scan-controls__toggle--compare {
+  color: #5ac4a8;
+  border-color: rgba(90, 196, 168, 0.3);
+}
+
+.scan-controls__toggle--compare:hover {
+  box-shadow: 0 0 8px rgba(90, 196, 168, 0.15);
+}
+
+.scan-controls__toggle--equip {
+  color: var(--d4-accent-orange);
+  border-color: rgba(232, 122, 42, 0.3);
+}
+
+.scan-controls__toggle--equip:hover {
+  box-shadow: 0 0 8px rgba(232, 122, 42, 0.15);
+}
+
+.scan-controls__toggle-icon {
+  font-size: 14px;
+}
+
+.scan-controls__toggle-label {
+  font-weight: 600;
+}
+
+.scan-controls__hotkey {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.scan-controls__hotkey-label {
+  font-size: 11px;
+  color: var(--d4-text-muted);
+}
+
+.scan-controls__hotkey-key {
+  font-family: monospace;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--d4-bg-dark);
+  border: 1px solid var(--d4-border);
+  color: var(--d4-text-primary);
+}
+
+/* ============================================================
+   VERDICT CARD — Scan Result Display
+   ============================================================ */
+
+@keyframes verdictSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.verdict-card {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  width: 380px;
+  max-height: 70vh;
+  overflow-y: auto;
+  background: rgba(10, 10, 15, 0.94);
+  backdrop-filter: blur(6px);
+  border: 1px solid var(--d4-border-ornate);
+  border-radius: 8px;
+  padding: 14px 16px;
+  box-shadow:
+    0 0 30px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(212, 169, 74, 0.1);
+  opacity: 0;
+  transform: translateX(-30px);
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s ease;
+  z-index: 100;
+}
+
+.verdict-card--visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Thin scrollbar */
+.verdict-card::-webkit-scrollbar {
+  width: 4px;
+}
+
+.verdict-card::-webkit-scrollbar-thumb {
+  background: var(--d4-border);
+  border-radius: 2px;
+}
+
+/* ---- Dismiss button ---- */
+
+.verdict-card__dismiss {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--d4-text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+  transition:
+    color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.verdict-card__dismiss:hover {
+  color: var(--d4-text-primary);
+  background: var(--d4-bg-elevated);
+}
+
+/* ---- Error state ---- */
+
+.verdict-card--error {
+  border-left: 3px solid var(--d4-error);
+}
+
+.verdict-card__error-icon {
+  font-size: 16px;
+  margin-right: 8px;
+}
+
+.verdict-card__error-text {
+  font-size: 13px;
+  color: var(--d4-error);
+}
+
+/* ---- Equip confirmation ---- */
+
+.verdict-card--equip {
+  border-left: 3px solid var(--d4-accent-orange);
+}
+
+.verdict-card__header {
+  display: flex;
+  align-items: center;
+}
+
+.verdict-card__equip-icon {
+  font-size: 16px;
+  margin-right: 8px;
+}
+
+.verdict-card__equip-text {
+  font-size: 13px;
+  color: var(--d4-text-primary);
+}
+
+/* ---- Compare verdict ---- */
+
+.verdict-card--compare {
+  border-left: 3px solid var(--d4-accent-gold);
+}
+
+.verdict-card__item-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 2px;
+  padding-right: 24px;
+}
+
+.verdict-card__item-name {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--d4-accent-gold);
+}
+
+.verdict-card__item-slot {
+  font-size: 11px;
+  color: var(--d4-text-muted);
+}
+
+.verdict-card__item-power {
+  font-size: 12px;
+  color: var(--d4-text-muted);
+  margin-bottom: 8px;
+}
+
+/* ---- Verdict badge ---- */
+
+.verdict-card__badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.verdict-card__badge--perfect {
+  color: var(--d4-success);
+  background: rgba(74, 175, 90, 0.1);
+  border: 1px solid rgba(74, 175, 90, 0.25);
+}
+
+.verdict-card__badge--upgrade {
+  color: var(--d4-success);
+  background: rgba(74, 175, 90, 0.08);
+  border: 1px solid rgba(74, 175, 90, 0.2);
+}
+
+.verdict-card__badge--sidegrade {
+  color: #e8c84a;
+  background: rgba(232, 200, 74, 0.08);
+  border: 1px solid rgba(232, 200, 74, 0.2);
+}
+
+.verdict-card__badge--downgrade {
+  color: var(--d4-accent-red);
+  background: rgba(196, 30, 58, 0.08);
+  border: 1px solid rgba(196, 30, 58, 0.2);
+}
+
+.verdict-card__badge-score {
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--d4-text-muted);
+}
+
+/* ---- Affix list ---- */
+
+.verdict-card__affixes {
+  margin-bottom: 8px;
+}
+
+.verdict-card__affix {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  font-size: 12px;
+}
+
+.verdict-card__affix-icon {
+  font-size: 11px;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.verdict-card__affix--matched {
+  color: var(--d4-text-primary);
+}
+
+.verdict-card__affix--missing {
+  color: var(--d4-accent-red);
+}
+
+/* ---- Sockets ---- */
+
+.verdict-card__sockets {
+  font-size: 12px;
+  color: #b088e8;
+  padding: 4px 0;
+}
+
+.verdict-card__socket-action {
+  color: var(--d4-accent-orange);
+}
+
+/* ---- Greater affixes ---- */
+
+.verdict-card__greater {
+  font-size: 12px;
+  color: var(--d4-item-greater);
+  padding: 4px 0;
+}
+
+/* ---- Recommendations ---- */
+
+.verdict-card__recommendations {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(74, 58, 42, 0.4);
+}
+
+.verdict-card__rec {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  background: rgba(20, 20, 32, 0.6);
+  border-radius: 4px;
+  border-left: 2px solid var(--d4-accent-orange);
+}
+
+.verdict-card__rec-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.verdict-card__rec-text {
+  font-size: 11px;
+  color: var(--d4-text-primary);
+  line-height: 1.5;
+}
+
+.verdict-card__rec-text strong {
+  color: var(--d4-accent-orange);
+  letter-spacing: 0.5px;
+}
+
+/* ---- Equipped comparison ---- */
+
+.verdict-card__equipped {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.verdict-card__equipped--upgrade {
+  color: var(--d4-success);
+  background: rgba(74, 175, 90, 0.06);
+  border: 1px solid rgba(74, 175, 90, 0.15);
+}
+
+.verdict-card__equipped--downgrade {
+  color: var(--d4-accent-red);
+  background: rgba(196, 30, 58, 0.06);
+  border: 1px solid rgba(196, 30, 58, 0.15);
+}
+
+/* ============================================================
+   SCANS PANEL — Compare-mode scan history
+   ============================================================ */
+
+.scans-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.scans-panel--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+}
+
+.scans-panel__empty-msg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--d4-text-dim);
+  font-size: 13px;
+}
+
+.scans-panel__empty-icon {
+  font-size: 28px;
+  opacity: 0.5;
+}
+
+.scans-panel__empty-hint {
+  font-size: 11px;
+  color: var(--d4-text-dim);
+}
+
+/* ---- Header bar ---- */
+
+.scans-panel__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--d4-border);
+  margin-bottom: 2px;
+}
+
+.scans-panel__count {
+  font-size: 12px;
+  color: var(--d4-text-muted);
+  font-family: var(--font-display);
+  letter-spacing: 1px;
+}
+
+.scans-panel__clear {
+  background: none;
+  border: 1px solid rgba(196, 30, 58, 0.3);
+  color: var(--d4-accent-red);
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.scans-panel__clear:hover {
+  background: rgba(196, 30, 58, 0.1);
+  border-color: var(--d4-accent-red);
+}
+
+/* ---- Scan Card ---- */
+
+.scan-card {
+  padding: 10px 12px;
+  background: linear-gradient(135deg, rgba(20, 20, 32, 0.95) 0%, rgba(14, 14, 24, 0.98) 100%);
+  border: 1px solid var(--d4-border);
+  border-left: 3px solid var(--d4-border);
+  border-radius: 6px;
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+  animation: scanCardFadeIn 0.2s ease;
+}
+
+@keyframes scanCardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.scan-card:hover {
+  border-color: var(--d4-border-ornate);
+  box-shadow: 0 0 10px rgba(74, 58, 42, 0.15);
+}
+
+.scan-card--perfect,
+.scan-card--upgrade {
+  border-left-color: var(--d4-success);
+}
+
+.scan-card--sidegrade {
+  border-left-color: #e8b84a;
+}
+
+.scan-card--downgrade {
+  border-left-color: var(--d4-accent-red);
+}
+
+/* ---- Card layout ---- */
+
+.scan-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.scan-card__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--d4-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.scan-card__time {
+  font-size: 10px;
+  color: var(--d4-text-dim);
+  white-space: nowrap;
+}
+
+.scan-card__meta {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.scan-card__slot {
+  font-size: 11px;
+  color: var(--d4-text-muted);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.scan-card__power {
+  font-size: 11px;
+  color: var(--d4-accent-gold);
+  font-weight: 600;
+}
+
+/* ---- Verdict badge ---- */
+
+.scan-card__verdict {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.scan-card__verdict-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.scan-card__verdict-score {
+  font-size: 11px;
+  color: var(--d4-text-muted);
+}
+
+/* ---- Recommendation ---- */
+
+.scan-card__rec {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--d4-text-muted);
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 3px;
+  margin-top: 4px;
+}
+
+.scan-card__rec-icon {
+  font-size: 12px;
+}
+
+.scan-card__rec-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- Greater Affix badge ---- */
+
+.scan-card__ga {
+  font-size: 11px;
+  color: var(--d4-item-greater);
+  margin-top: 4px;
+}
+
+/* ============================================================
+   EQUIPPED STATUS — Within each gear slot
+   ============================================================ */
+
+.equipped-status {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--d4-border);
+}
+
+.equipped-status__label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--d4-accent-gold);
+  font-family: var(--font-display);
+  margin-bottom: 4px;
+}
+
+.equipped-status__item-name {
+  font-size: 12px;
+  color: var(--d4-text-secondary);
+  margin-bottom: 6px;
+}
+
+.equipped-status__matches {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.equipped-status__affix {
+  font-size: 11px;
+  padding: 2px 0;
+}
+
+.equipped-status__affix--match {
+  color: var(--d4-success);
+}
+
+.equipped-status__affix--missing {
+  color: var(--d4-accent-red);
+}
+
+.equipped-status__aspect {
+  font-size: 11px;
+  padding: 2px 0;
+  margin-bottom: 4px;
+}
+
+.equipped-status__aspect--match {
+  color: var(--d4-success);
+}
+
+.equipped-status__aspect--missing {
+  color: var(--d4-accent-red);
+}
+
+.equipped-status__suggestions {
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+  border-left: 2px solid var(--d4-accent-gold);
+}
+
+.equipped-status__suggestion-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--d4-accent-gold);
+  font-family: var(--font-display);
+  margin-bottom: 4px;
+}
+
+.equipped-status__suggestion {
+  font-size: 11px;
+  color: var(--d4-text-muted);
+  padding: 2px 0;
+}
+
+.equipped-status__suggestion strong {
+  color: var(--d4-text-secondary);
 }

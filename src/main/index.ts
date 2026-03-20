@@ -10,6 +10,10 @@ import { BuildRepository } from './services/BuildRepository'
 import { ProcessManager } from './services/ProcessManager'
 import { D4BuildsScraper } from './scrapers/D4BuildsScraper'
 import { AutoUpdateService } from './services/AutoUpdateService'
+import { ScanService } from './services/ScanService'
+import { ScreenCaptureService } from './services/ScreenCaptureService'
+import { EquippedGearStore } from './services/EquippedGearStore'
+import { ScanHistoryStore } from './services/ScanHistoryStore'
 import type { RawBuildData } from '../shared/types'
 
 // ============================================================
@@ -60,6 +64,7 @@ let hotkeyService: HotkeyService
 let buildService: BuildImportService
 let buildRepo: BuildRepository
 let d4BuildsScraper: D4BuildsScraper
+let scanService: ScanService
 
 /**
  * Two-window architecture:
@@ -92,6 +97,15 @@ function initServices(): void {
   // Register supported scrapers (d4builds only)
   d4BuildsScraper = new D4BuildsScraper(dataPaths.classes)
   buildService.registerScraper(d4BuildsScraper)
+
+  // Initialize scan pipeline services
+  const captureService = new ScreenCaptureService(dataPaths.scans)
+  const equippedStore = new EquippedGearStore(join(dataPaths.userData, 'equipped-gear.json'))
+  const scanHistoryStore = new ScanHistoryStore(join(dataPaths.userData, 'scan-history.json'))
+  const sidecarDir = is.dev
+    ? join(app.getAppPath(), 'sidecar', 'bin')
+    : join(dirname(app.getPath('exe')), 'sidecar', 'bin')
+  scanService = new ScanService(captureService, equippedStore, scanHistoryStore, sidecarDir)
 }
 
 // ============================================================
@@ -311,6 +325,45 @@ function setupIpcHandlers(): void {
     d4BuildsScraper.clearCache()
     return { success: true }
   })
+
+  // ---- Scan Pipeline IPC ----
+
+  /** Perform a full scan: capture → OCR → parse → compare/equip */
+  ipcMain.handle('perform-scan', async () => {
+    return await scanService.scan(currentBuildData)
+  })
+
+  /** Toggle between compare and equip scan modes */
+  ipcMain.handle('toggle-scan-mode', () => {
+    return scanService.toggleScanMode()
+  })
+
+  /** Get the current scan mode */
+  ipcMain.handle('get-scan-mode', () => {
+    return scanService.getScanMode()
+  })
+
+  /** Get all currently equipped gear */
+  ipcMain.handle('get-equipped-gear', () => {
+    return scanService.getEquippedGear()
+  })
+
+  /** Clear all equipped gear */
+  ipcMain.handle('clear-equipped-gear', () => {
+    scanService.clearEquippedGear()
+    return { success: true }
+  })
+
+  /** Get scan history (compare-mode verdicts) */
+  ipcMain.handle('get-scan-history', () => {
+    return scanService.getScanHistory()
+  })
+
+  /** Clear scan history */
+  ipcMain.handle('clear-scan-history', () => {
+    scanService.clearScanHistory()
+    return { success: true }
+  })
 }
 
 // ============================================================
@@ -345,10 +398,22 @@ function registerGlobalHotkeys(): void {
       })
     }
 
-    // Scan a gear tooltip (captures screen, sends to OCR)
+    // Scan a gear tooltip — runs the full pipeline and sends result to overlay
     if (hotkeys.scan) {
-      globalShortcut.register(hotkeys.scan, () => {
-        overlayWindow?.webContents.send('trigger-scan')
+      globalShortcut.register(hotkeys.scan, async () => {
+        if (!overlayWindow) return
+        try {
+          const result = await scanService.scan(currentBuildData)
+          overlayWindow.webContents.send('scan-result', result)
+        } catch (err) {
+          console.error('[Scan] Hotkey scan failed:', err)
+          overlayWindow.webContents.send('scan-result', {
+            mode: scanService.getScanMode(),
+            verdict: null,
+            equippedItem: null,
+            error: err instanceof Error ? err.message : String(err)
+          })
+        }
       })
     }
 
@@ -399,49 +464,55 @@ app.whenReady().then(async () => {
   // staring at a blank screen. Uses the public releases repo.
   const updater = new AutoUpdateService('dearac/diablo4_companion')
 
-  updater.checkForUpdate(app.getVersion()).then(async (updateInfo) => {
-    if (!updateInfo || !configWindow) return
+  updater
+    .checkForUpdate(app.getVersion())
+    .then(async (updateInfo) => {
+      if (!updateInfo || !configWindow) return
 
-    // Show native dialog with release notes
-    const { dialog } = await import('electron')
-    const { response } = await dialog.showMessageBox(configWindow, {
-      type: 'info',
-      title: 'Update Available',
-      message: `A new version (v${updateInfo.version}) is available.\nYou are running v${app.getVersion()}.`,
-      detail: updateInfo.releaseNotes || 'Bug fixes and improvements.',
-      buttons: ['Update Now', 'Skip'],
-      defaultId: 0,
-      cancelId: 1
-    })
-
-    if (response !== 0) return // User clicked Skip
-
-    // Notify renderer that download is starting
-    configWindow.webContents.send('update-started')
-
-    try {
-      // Download the new exe
-      await updater.downloadUpdate(updateInfo.downloadUrl, appDir, (progress) => {
-        configWindow?.webContents.send('update-download-progress', progress)
+      // Show native dialog with release notes
+      const { dialog } = await import('electron')
+      const { response } = await dialog.showMessageBox(configWindow, {
+        type: 'info',
+        title: 'Update Available',
+        message: `A new version (v${updateInfo.version}) is available.\nYou are running v${app.getVersion()}.`,
+        detail: updateInfo.releaseNotes || 'Bug fixes and improvements.',
+        buttons: ['Update Now', 'Skip'],
+        defaultId: 0,
+        cancelId: 1
       })
 
-      // Generate and launch the swap script
-      const scriptPath = updater.generateUpdateScript(appDir, process.pid)
+      if (response !== 0) return // User clicked Skip
 
-      const { exec } = await import('child_process')
-      exec(`start /min "" "${scriptPath}"`, { windowsHide: true })
+      // Notify renderer that download is starting
+      configWindow.webContents.send('update-started')
 
-      // Quit so the batch script can replace us
-      app.quit()
-    } catch (err) {
-      console.error('[AutoUpdate] Download failed:', err)
-      const { dialog: dlg } = await import('electron')
-      dlg.showErrorBox('Update Failed', 'The update download failed. The app will continue normally.')
-    }
-  }).catch((err) => {
-    console.error('[AutoUpdate] Check failed:', err)
-    // Silent fail — app continues normally
-  })
+      try {
+        // Download the new exe
+        await updater.downloadUpdate(updateInfo.downloadUrl, appDir, (progress) => {
+          configWindow?.webContents.send('update-download-progress', progress)
+        })
+
+        // Generate and launch the swap script
+        const scriptPath = updater.generateUpdateScript(appDir, process.pid)
+
+        const { exec } = await import('child_process')
+        exec(`start /min "" "${scriptPath}"`, { windowsHide: true })
+
+        // Quit so the batch script can replace us
+        app.quit()
+      } catch (err) {
+        console.error('[AutoUpdate] Download failed:', err)
+        const { dialog: dlg } = await import('electron')
+        dlg.showErrorBox(
+          'Update Failed',
+          'The update download failed. The app will continue normally.'
+        )
+      }
+    })
+    .catch((err) => {
+      console.error('[AutoUpdate] Check failed:', err)
+      // Silent fail — app continues normally
+    })
 })
 
 // Clean up shortcuts and kill all tracked browser processes when the app closes

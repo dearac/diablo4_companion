@@ -54,10 +54,7 @@ export class BuildImportService {
     }
 
     // No scraper found — tell the user what we support
-    throw new Error(
-      `Unsupported build URL: "${url}"\n` +
-        `Supported sites: d4builds.gg`
-    )
+    throw new Error(`Unsupported build URL: "${url}"\n` + `Supported sites: d4builds.gg`)
   }
 
   /**
@@ -91,8 +88,7 @@ export class BuildImportService {
 
     if (!scraper) {
       throw new Error(
-        `No scraper available for "${url}". ` +
-          `Make sure the URL is from d4builds.gg.`
+        `No scraper available for "${url}". ` + `Make sure the URL is from d4builds.gg.`
       )
     }
 

@@ -183,12 +183,10 @@ export class BuildRepository {
           itemName: slot.itemName || null,
           itemType: slot.itemType || 'Legendary',
           requiredAspect: aspect,
-          affixes: (slot.priorityAffixes || []).map(
-            (a: { name: string; priority?: number }) => ({
-              name: a.name,
-              isGreater: false
-            })
-          ),
+          affixes: (slot.priorityAffixes || []).map((a: { name: string; priority?: number }) => ({
+            name: a.name,
+            isGreater: false
+          })),
           implicitAffixes: [],
           temperedAffixes: (slot.temperingTargets || []).map((t: string) => ({
             name: t,

@@ -187,3 +187,60 @@ export interface SavedBuild {
   /** The raw build data from the scraper */
   data: RawBuildData
 }
+
+// ============================================================
+// SCANNED GEAR — OCR scan results and comparison verdicts
+// ============================================================
+
+/** A piece of gear read from a tooltip by the OCR scanner. */
+export interface ScannedGearPiece {
+  slot: string
+  itemName: string
+  itemType: 'Unique' | 'Legendary' | 'Rare'
+  itemPower: number
+  affixes: string[]
+  implicitAffixes: string[]
+  temperedAffixes: string[]
+  greaterAffixes: string[]
+  sockets: number
+  socketContents: string[]
+  aspect: { name: string; description: string } | null
+  rawText: string
+}
+
+/** The mode the scanner is operating in. */
+export type ScanMode = 'compare' | 'equip'
+
+/** A recommendation for how to improve an item. */
+export interface CraftingRecommendation {
+  action: 'enchant' | 'temper' | 'socket' | 'none'
+  removeAffix: string | null
+  addAffix: string
+  vendor: string
+  resultScore: string
+}
+
+/** The result of comparing a scanned item to the build + equipped gear. */
+export interface ScanVerdict {
+  scannedItem: ScannedGearPiece
+  buildMatchCount: number
+  buildTotalExpected: number
+  buildMatchPercent: number
+  matchedAffixes: string[]
+  missingAffixes: string[]
+  extraAffixes: string[]
+  socketDelta: number
+  greaterAffixCount: number
+  verdict: 'PERFECT' | 'UPGRADE' | 'SIDEGRADE' | 'DOWNGRADE'
+  equippedComparison: {
+    equippedMatchCount: number
+    isUpgrade: boolean
+  } | null
+  recommendations: CraftingRecommendation[]
+}
+
+/** A timestamped scan verdict in the scan history. */
+export interface ScanHistoryEntry {
+  verdict: ScanVerdict
+  scannedAt: number // Date.now() timestamp
+}

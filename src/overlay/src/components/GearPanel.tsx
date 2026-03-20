@@ -1,147 +1,224 @@
-import type { IGearSlot, IRune } from '../../../shared/types'
+import type { IGearSlot, IRune, ScannedGearPiece } from '../../../shared/types'
+import { affixMatches } from '../../../shared/AffixMatcher'
 
 interface GearPanelProps {
   gearSlots: IGearSlot[]
   activeRunes: IRune[]
+  equippedGear?: Record<string, ScannedGearPiece>
+  onClearEquipped?: () => void
+}
+
+/** Canonical slot order for display */
+const SLOT_ORDER = [
+  'Helm',
+  'Chest Armor',
+  'Gloves',
+  'Pants',
+  'Boots',
+  'Amulet',
+  'Ring 1',
+  'Ring 2',
+  'Weapon',
+  'Offhand'
+]
+
+/** Status label + class for a given match percentage */
+function getStatus(pct: number): { label: string; icon: string; cls: string } {
+  if (pct >= 100) return { label: 'PERFECT', icon: '✅', cls: 'perfect' }
+  if (pct >= 75) return { label: 'GOOD', icon: '🟢', cls: 'good' }
+  if (pct >= 50) return { label: 'NEEDS WORK', icon: '🟡', cls: 'fair' }
+  return { label: 'POOR', icon: '🔴', cls: 'poor' }
 }
 
 /**
- * GearPanel — Diablo-themed gear slot display for the overlay.
+ * GearPanel — Compact equipped gear cards with hover tooltips.
  *
- * Each slot shows:
- * - Header: slot name + rarity badge
- * - Item name in rarity color
- * - Aspect name + description (from tooltip scrape)
- * - Regular affixes (blue stars)
- * - Greater affixes (purple stars)
- * - Tempered affixes (orange anvil icons)
- * - Implicit affixes (muted)
- * - Rampage/Feast special effects
- *
- * Active Runes section shows:
- * - Rune name + type badge
- * - Effects list
+ * Each card shows: slot name, match %, item name, quick status.
+ * Hovering reveals a detailed tooltip with affix breakdown and
+ * vendor-specific crafting recommendations.
  */
-function GearPanel({ gearSlots, activeRunes }: GearPanelProps): React.JSX.Element {
-  const rc = (type: string): string => type.toLowerCase()
+function GearPanel({
+  gearSlots,
+  activeRunes,
+  equippedGear,
+  onClearEquipped
+}: GearPanelProps): React.JSX.Element {
+  const hasEquipped = equippedGear && Object.keys(equippedGear).length > 0
+  const equippedSlots = SLOT_ORDER.filter((s) => equippedGear?.[s])
 
   return (
     <div className="gear-panel">
-      {gearSlots.map((slot) => {
-        const hasDetails =
-          slot.requiredAspect ||
-          slot.affixes.length > 0 ||
-          slot.implicitAffixes.length > 0 ||
-          slot.temperedAffixes.length > 0 ||
-          slot.rampageEffect ||
-          slot.feastEffect
+      {hasEquipped && onClearEquipped && (
+        <div className="gear-panel__clear-row">
+          <button className="gear-panel__clear-btn" onClick={onClearEquipped}>
+            🗑️ Clear Equipped Gear
+          </button>
+        </div>
+      )}
+
+      {!hasEquipped && (
+        <div className="gear-panel__empty">
+          <div className="gear-panel__empty-icon">🛡️</div>
+          <div>No equipped gear scanned yet</div>
+          <div className="gear-panel__empty-hint">
+            Switch to Equip mode (F8) then scan each slot (F7)
+          </div>
+        </div>
+      )}
+
+      {equippedSlots.map((slotName) => {
+        const equipped = equippedGear![slotName]
+        const buildSlot: IGearSlot | undefined = gearSlots.find((gs) => gs.slot === slotName)
+
+        // Compare affixes
+        const buildAffixNames = buildSlot ? [...new Set(buildSlot.affixes.map((a) => a.name))] : []
+        const allEquippedAffixes = [
+          ...equipped.affixes,
+          ...equipped.temperedAffixes,
+          ...equipped.greaterAffixes
+        ]
+
+        const matched: string[] = []
+        const missing: string[] = []
+        for (const ba of buildAffixNames) {
+          if (allEquippedAffixes.some((ea) => affixMatches(ea, ba))) matched.push(ba)
+          else missing.push(ba)
+        }
+
+        const total = matched.length + missing.length
+        const pct = total > 0 ? Math.round((matched.length / total) * 100) : 100
+        const status = getStatus(pct)
+
+        // Aspect check
+        const expectedAspect = buildSlot?.requiredAspect?.name ?? null
+        const equippedAspect = equipped.aspect?.name ?? null
+        let aspectMatch = true
+        if (expectedAspect && equippedAspect) {
+          aspectMatch =
+            equippedAspect.toLowerCase().includes(expectedAspect.toLowerCase()) ||
+            expectedAspect.toLowerCase().includes(equippedAspect.toLowerCase())
+        } else if (expectedAspect && !equippedAspect) {
+          aspectMatch = false
+        }
+
+        // Tempered check
+        const buildTemperedNames = buildSlot
+          ? [...new Set(buildSlot.temperedAffixes.map((a) => a.name))]
+          : []
+        const missingTempers = buildTemperedNames.filter(
+          (bt) => !allEquippedAffixes.some((ea) => affixMatches(ea, bt))
+        )
+
+        // Build tooltip actions
+        const actions: { icon: string; vendor: string; text: string }[] = []
+        if (missing.length > 0) {
+          actions.push({
+            icon: '🔧',
+            vendor: 'Occultist',
+            text: `Reroll → ${missing[0]}`
+          })
+        }
+        for (const mt of missingTempers) {
+          actions.push({ icon: '⚒️', vendor: 'Blacksmith', text: `Temper: ${mt}` })
+        }
+        if (!aspectMatch && expectedAspect) {
+          actions.push({
+            icon: '🔮',
+            vendor: 'Occultist',
+            text: `Imprint: ${expectedAspect}`
+          })
+        }
+        if (matched.length > 0) {
+          actions.push({
+            icon: '⭐',
+            vendor: 'Blacksmith',
+            text: `Masterwork: ${matched[0]}`
+          })
+        }
+
+        const needsWork = missing.length > 0 || missingTempers.length > 0 || !aspectMatch
 
         return (
-          <div key={slot.slot} className={`gear-slot gear-slot--${rc(slot.itemType)}`}>
-            {/* Header */}
-            <div className="gear-slot__header">
-              <span className="gear-slot__name">{slot.slot}</span>
-              <span
-                className={`gear-slot__type-badge gear-slot__type-badge--${rc(slot.itemType)}`}
-              >
-                {slot.itemType}
+          <div key={slotName} className={`gear-card gear-card--${status.cls}`}>
+            {/* Compact summary — always visible */}
+            <div className="gear-card__row">
+              <span className="gear-card__slot">{slotName}</span>
+              <span className={`gear-card__badge gear-card__badge--${status.cls}`}>
+                {status.icon} {pct}%
               </span>
             </div>
-
-            {/* Item name */}
-            <div
-              className={`gear-slot__item-name gear-slot__item-name--${slot.itemName ? rc(slot.itemType) : 'empty'}`}
-            >
-              {slot.itemName || 'No item specified'}
+            <div className="gear-card__name">
+              {equipped.itemName || 'Unknown'}
+              {equipped.itemPower > 0 && (
+                <span className="gear-card__ip"> · {equipped.itemPower} iP</span>
+              )}
             </div>
-
-            {hasDetails && <div className="gear-slot__divider" />}
-
-            {/* Aspect */}
-            {slot.requiredAspect && (
-              <div className="gear-slot__aspect">
-                <div className="gear-slot__aspect-name">{slot.requiredAspect.name}</div>
-                {slot.requiredAspect.description && (
-                  <div className="gear-slot__aspect-desc">{slot.requiredAspect.description}</div>
-                )}
+            {needsWork && (
+              <div className="gear-card__action-hint">
+                {actions.length > 0 && `${actions[0].icon} ${actions[0].text}`}
+                {actions.length > 1 && ` +${actions.length - 1} more`}
+              </div>
+            )}
+            {!needsWork && (
+              <div className="gear-card__action-hint gear-card__action-hint--good">
+                ✅ Build match — Masterwork {matched[0]}
               </div>
             )}
 
-            {/* Implicit affixes */}
-            {slot.implicitAffixes.length > 0 && (
-              <>
-                <div className="gear-slot__section-label">Implicit</div>
-                <ul className="gear-slot__affix-list">
-                  {slot.implicitAffixes.map((affix, i) => (
-                    <li key={i} className="gear-slot__affix-item gear-slot__affix-item--implicit">
-                      {affix.name}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-
-            {/* Regular + greater affixes */}
-            {slot.affixes.length > 0 && (
-              <>
-                <div className="gear-slot__section-label">Affixes</div>
-                <ul className="gear-slot__affix-list">
-                  {slot.affixes.map((affix, i) => (
-                    <li
-                      key={i}
-                      className={`gear-slot__affix-item${affix.isGreater ? ' gear-slot__affix-item--greater' : ''}`}
-                    >
-                      {affix.name}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-
-            {/* Tempered affixes */}
-            {slot.temperedAffixes.length > 0 && (
-              <>
-                <div className="gear-slot__section-label">Tempered</div>
-                <ul className="gear-slot__affix-list">
-                  {slot.temperedAffixes.map((affix, i) => (
-                    <li key={i} className="gear-slot__affix-item gear-slot__affix-item--tempered">
-                      {affix.name}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-
-            {/* Rampage / Feast */}
-            {slot.rampageEffect && (
-              <div className="gear-slot__effect gear-slot__effect--rampage">
-                {slot.rampageEffect}
+            {/* Hover tooltip — detailed recommendations */}
+            <div className="gear-tooltip">
+              <div className="gear-tooltip__header">
+                <span className={`gear-tooltip__status gear-tooltip__status--${status.cls}`}>
+                  {status.icon} {status.label}
+                </span>
+                <span className="gear-tooltip__score">
+                  {matched.length}/{total} affixes
+                </span>
               </div>
-            )}
-            {slot.feastEffect && (
-              <div className="gear-slot__effect gear-slot__effect--feast">
-                {slot.feastEffect}
-              </div>
-            )}
 
-            {/* Socketed gems */}
-            {slot.socketedGems && slot.socketedGems.length > 0 && (
-              <>
-                <div className="gear-slot__section-label">Sockets</div>
-                <ul className="gear-slot__affix-list">
-                  {slot.socketedGems.map((gem, i) => (
-                    <li key={i} className="gear-slot__affix-item gear-slot__affix-item--socket">
-                      💎 {gem}
-                    </li>
+              <div className="gear-tooltip__divider" />
+
+              {/* Affix breakdown */}
+              <div className="gear-tooltip__section">Affixes</div>
+              {matched.map((a, i) => (
+                <div key={`m${i}`} className="gear-tooltip__affix gear-tooltip__affix--match">
+                  ✅ {a}
+                </div>
+              ))}
+              {missing.map((a, i) => (
+                <div key={`x${i}`} className="gear-tooltip__affix gear-tooltip__affix--miss">
+                  ❌ {a}
+                </div>
+              ))}
+
+              {expectedAspect && (
+                <div
+                  className={`gear-tooltip__affix gear-tooltip__affix--${aspectMatch ? 'match' : 'miss'}`}
+                >
+                  {aspectMatch ? '✅' : '❌'} Aspect: {expectedAspect}
+                </div>
+              )}
+
+              {/* Actions */}
+              {actions.length > 0 && (
+                <>
+                  <div className="gear-tooltip__divider" />
+                  <div className="gear-tooltip__section">Actions</div>
+                  {actions.map((act, i) => (
+                    <div key={i} className="gear-tooltip__action">
+                      <span className="gear-tooltip__action-icon">{act.icon}</span>
+                      <span className="gear-tooltip__action-text">{act.text}</span>
+                      <span className="gear-tooltip__action-vendor">{act.vendor}</span>
+                    </div>
                   ))}
-                </ul>
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
         )
       })}
 
-      {/* ── Active Runes Section ── */}
+      {/* Active Runes */}
       {activeRunes.length > 0 && (
         <div className="rune-section">
           <div className="rune-section__header">
@@ -150,7 +227,6 @@ function GearPanel({ gearSlots, activeRunes }: GearPanelProps): React.JSX.Elemen
           {activeRunes.map((rune, i) => {
             const isLegendary = rune.runeType.toLowerCase().includes('legendary')
             const rarityClass = isLegendary ? 'legendary' : 'rare'
-
             return (
               <div key={i} className={`rune-card rune-card--${rarityClass}`}>
                 <div className="rune-card__header">
@@ -178,4 +254,3 @@ function GearPanel({ gearSlots, activeRunes }: GearPanelProps): React.JSX.Elemen
 }
 
 export default GearPanel
-

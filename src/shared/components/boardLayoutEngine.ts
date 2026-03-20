@@ -120,8 +120,9 @@ function measureBoard(board: IParagonBoard): {
 function hasSitePositions(boards: IParagonBoard[]): boolean {
   if (boards.length <= 1) return false
   // If any board has non-zero position data, the site provided positions
-  return boards.some((b) => (b.boardX !== undefined && b.boardX !== 0) ||
-                             (b.boardY !== undefined && b.boardY !== 0))
+  return boards.some(
+    (b) => (b.boardX !== undefined && b.boardX !== 0) || (b.boardY !== undefined && b.boardY !== 0)
+  )
 }
 
 /**

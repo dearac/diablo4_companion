@@ -10,11 +10,11 @@ A desktop companion app for Diablo IV that imports builds from popular build sit
 
 Import complete build data from any of the three major Diablo IV build sites:
 
-| Site | Skills | Paragon | Gear |
-|------|--------|---------|------|
-| [d4builds.gg](https://d4builds.gg) | ✅ | ✅ (with spatial layout) | ✅ |
-| [maxroll.gg](https://maxroll.gg) | ✅ | ✅ | ✅ |
-| [icy-veins.com](https://icy-veins.com) | ✅ | ✅ | ✅ |
+| Site                                   | Skills | Paragon                  | Gear |
+| -------------------------------------- | ------ | ------------------------ | ---- |
+| [d4builds.gg](https://d4builds.gg)     | ✅     | ✅ (with spatial layout) | ✅   |
+| [maxroll.gg](https://maxroll.gg)       | ✅     | ✅                       | ✅   |
+| [icy-veins.com](https://icy-veins.com) | ✅     | ✅                       | ✅   |
 
 Each scraper uses **Playwright** to launch a headless Chromium browser, navigate to the build page, and extract structured data — skills, paragon boards, gear slots, and all associated stats.
 
@@ -107,10 +107,10 @@ Each scraper uses **Playwright** to launch a headless Chromium browser, navigate
 
 ### Dual-Window Design
 
-| Window | Purpose | Behavior |
-|--------|---------|----------|
-| **Config Window** | Import builds, manage library, preview data | Standard resizable desktop window (1280×800 default) |
-| **Overlay Window** | In-game HUD showing build info | Transparent, frameless, always-on-top, click-through |
+| Window             | Purpose                                     | Behavior                                             |
+| ------------------ | ------------------------------------------- | ---------------------------------------------------- |
+| **Config Window**  | Import builds, manage library, preview data | Standard resizable desktop window (1280×800 default) |
+| **Overlay Window** | In-game HUD showing build info              | Transparent, frameless, always-on-top, click-through |
 
 ---
 
@@ -220,16 +220,16 @@ diablo4-companion/
 
 ## 🛠️ Tech Stack
 
-| Technology | Purpose |
-|------------|---------|
-| **Electron 39** | Desktop app framework |
-| **React 19** | UI components |
-| **TypeScript 5.9** | Type safety |
-| **Vite 7** (via electron-vite) | Build tooling & HMR |
-| **Playwright** | Headless browser scraping |
-| **Vitest** | Unit testing |
-| **electron-store** | User settings persistence |
-| **electron-builder** | Packaging & distribution |
+| Technology                     | Purpose                   |
+| ------------------------------ | ------------------------- |
+| **Electron 39**                | Desktop app framework     |
+| **React 19**                   | UI components             |
+| **TypeScript 5.9**             | Type safety               |
+| **Vite 7** (via electron-vite) | Build tooling & HMR       |
+| **Playwright**                 | Headless browser scraping |
+| **Vitest**                     | Unit testing              |
+| **electron-store**             | User settings persistence |
+| **electron-builder**           | Packaging & distribution  |
 
 ---
 

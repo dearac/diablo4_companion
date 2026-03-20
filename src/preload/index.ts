@@ -1,6 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { RawBuildData, SavedBuild } from '../shared/types'
+import type {
+  RawBuildData,
+  SavedBuild,
+  ScanMode,
+  ScanVerdict,
+  ScannedGearPiece,
+  ScanHistoryEntry
+} from '../shared/types'
 
 // ============================================================
 // PRELOAD SCRIPT — The Bridge Between Main and Renderer
@@ -151,7 +158,9 @@ const api = {
    * Listens for update download progress events from the main process.
    * Callback receives { percent, downloadedMB, totalMB }.
    */
-  onUpdateProgress: (callback: (progress: { percent: number; downloadedMB: number; totalMB: number }) => void): void => {
+  onUpdateProgress: (
+    callback: (progress: { percent: number; downloadedMB: number; totalMB: number }) => void
+  ): void => {
     ipcRenderer.on('update-download-progress', (_event, progress) => callback(progress))
   },
 
@@ -161,6 +170,78 @@ const api = {
    */
   onUpdateStarted: (callback: () => void): void => {
     ipcRenderer.on('update-started', callback)
+  },
+
+  // ---- Scan Pipeline ----
+
+  /**
+   * Performs a full scan: capture → OCR → parse → compare/equip.
+   */
+  performScan: (): Promise<{
+    mode: ScanMode
+    verdict: ScanVerdict | null
+    equippedItem: ScannedGearPiece | null
+    error: string | null
+  }> => {
+    return ipcRenderer.invoke('perform-scan')
+  },
+
+  /**
+   * Toggles between compare and equip scan modes.
+   * Returns the new mode.
+   */
+  toggleScanMode: (): Promise<ScanMode> => {
+    return ipcRenderer.invoke('toggle-scan-mode')
+  },
+
+  /**
+   * Gets the current scan mode.
+   */
+  getScanMode: (): Promise<ScanMode> => {
+    return ipcRenderer.invoke('get-scan-mode')
+  },
+
+  /**
+   * Gets all currently equipped gear.
+   */
+  getEquippedGear: (): Promise<Record<string, ScannedGearPiece>> => {
+    return ipcRenderer.invoke('get-equipped-gear')
+  },
+
+  /**
+   * Clears all equipped gear.
+   */
+  clearEquippedGear: (): Promise<{ success: boolean }> => {
+    return ipcRenderer.invoke('clear-equipped-gear')
+  },
+
+  /**
+   * Gets the scan history (compare-mode verdicts with timestamps).
+   */
+  getScanHistory: (): Promise<ScanHistoryEntry[]> => {
+    return ipcRenderer.invoke('get-scan-history')
+  },
+
+  /**
+   * Clears all scan history.
+   */
+  clearScanHistory: (): Promise<{ success: boolean }> => {
+    return ipcRenderer.invoke('clear-scan-history')
+  },
+
+  /**
+   * Listens for scan results pushed from the main process.
+   * Fired when the scan hotkey triggers a scan.
+   */
+  onScanResult: (
+    callback: (result: {
+      mode: ScanMode
+      verdict: ScanVerdict | null
+      equippedItem: ScannedGearPiece | null
+      error: string | null
+    }) => void
+  ): void => {
+    ipcRenderer.on('scan-result', (_event, result) => callback(result))
   }
 }
 
