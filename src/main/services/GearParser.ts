@@ -179,15 +179,20 @@ export function parseTooltip(lines: string[]): ScannedGearPiece {
     for (let offset = 1; offset <= maxLookback; offset++) {
       const candidate = lines[typeSlotLineIndex - offset].trim()
 
-      // STOP conditions (we reached above the name)
-      if (/^(?:EQUIPPED|CHARACTER|Is)$/i.test(candidate)) {
+      // STOP conditions (we reached above the name — character panel area)
+      if (
+        /^(?:EQUIPPED|CHARACTER)$/i.test(candidate) ||
+        /Title\s*Selected/i.test(candidate) || // "No Title Selected"
+        /^Is$/i.test(candidate)
+      ) {
         break
       }
 
-      // SKIP conditions (junk between name and slot)
+      // SKIP conditions (junk between name and slot, or crop noise)
       if (
         candidate.length === 0 ||
         candidate.length >= 35 ||
+        candidate.length <= 3 || // Very short garbage ("cted", "3,", "8)")
         /^[+×x]\s*[\d.]/.test(candidate) || // Affix line
         /^\d{3,4}\s/.test(candidate) || // Item power
         /Item Power/i.test(candidate) ||
@@ -197,7 +202,9 @@ export function parseTooltip(lines: string[]): ScannedGearPiece {
         /Loadout/i.test(candidate) ||
         /Slot\s*Transmog/i.test(candidate) || // "Slot Transmog: ON"
         /^Ed\s*Slot/i.test(candidate) || // Partial "Ed Slot" from crop
-        candidate.length <= 2 // Very short garbage
+        /^ON$/i.test(candidate) || // "ON" from Transmog toggle
+        /^\d+$/.test(candidate) || // Pure numbers like "163>"
+        /^[^a-zA-Z]*$/.test(candidate) // Lines with no letters (pure garbage)
       ) {
         continue // Skip this line, keep going up
       }
@@ -214,6 +221,9 @@ export function parseTooltip(lines: string[]): ScannedGearPiece {
 
       // If we didn't skip or stop, it's a name line!
       nameLineCandidates.unshift(candidate)
+
+      // D4 item names span at most 3 OCR lines — stop once we have enough
+      if (nameLineCandidates.length >= 3) break
     }
 
     result.itemName = nameLineCandidates.join(' ') || lines[typeSlotLineIndex - 1].trim()
