@@ -99,9 +99,7 @@ function initServices(): void {
 
   // Initialize scan pipeline services
   const captureService = new ScreenCaptureService(dataPaths.scans)
-  const equippedStore = new EquippedGearStore(
-    join(dataPaths.userData, 'equipped-gear.json')
-  )
+  const equippedStore = new EquippedGearStore(join(dataPaths.userData, 'equipped-gear.json'))
   const sidecarDir = is.dev
     ? join(app.getAppPath(), 'sidecar', 'bin')
     : join(dirname(app.getPath('exe')), 'sidecar', 'bin')
@@ -453,49 +451,55 @@ app.whenReady().then(async () => {
   // staring at a blank screen. Uses the public releases repo.
   const updater = new AutoUpdateService('dearac/diablo4_companion')
 
-  updater.checkForUpdate(app.getVersion()).then(async (updateInfo) => {
-    if (!updateInfo || !configWindow) return
+  updater
+    .checkForUpdate(app.getVersion())
+    .then(async (updateInfo) => {
+      if (!updateInfo || !configWindow) return
 
-    // Show native dialog with release notes
-    const { dialog } = await import('electron')
-    const { response } = await dialog.showMessageBox(configWindow, {
-      type: 'info',
-      title: 'Update Available',
-      message: `A new version (v${updateInfo.version}) is available.\nYou are running v${app.getVersion()}.`,
-      detail: updateInfo.releaseNotes || 'Bug fixes and improvements.',
-      buttons: ['Update Now', 'Skip'],
-      defaultId: 0,
-      cancelId: 1
-    })
-
-    if (response !== 0) return // User clicked Skip
-
-    // Notify renderer that download is starting
-    configWindow.webContents.send('update-started')
-
-    try {
-      // Download the new exe
-      await updater.downloadUpdate(updateInfo.downloadUrl, appDir, (progress) => {
-        configWindow?.webContents.send('update-download-progress', progress)
+      // Show native dialog with release notes
+      const { dialog } = await import('electron')
+      const { response } = await dialog.showMessageBox(configWindow, {
+        type: 'info',
+        title: 'Update Available',
+        message: `A new version (v${updateInfo.version}) is available.\nYou are running v${app.getVersion()}.`,
+        detail: updateInfo.releaseNotes || 'Bug fixes and improvements.',
+        buttons: ['Update Now', 'Skip'],
+        defaultId: 0,
+        cancelId: 1
       })
 
-      // Generate and launch the swap script
-      const scriptPath = updater.generateUpdateScript(appDir, process.pid)
+      if (response !== 0) return // User clicked Skip
 
-      const { exec } = await import('child_process')
-      exec(`start /min "" "${scriptPath}"`, { windowsHide: true })
+      // Notify renderer that download is starting
+      configWindow.webContents.send('update-started')
 
-      // Quit so the batch script can replace us
-      app.quit()
-    } catch (err) {
-      console.error('[AutoUpdate] Download failed:', err)
-      const { dialog: dlg } = await import('electron')
-      dlg.showErrorBox('Update Failed', 'The update download failed. The app will continue normally.')
-    }
-  }).catch((err) => {
-    console.error('[AutoUpdate] Check failed:', err)
-    // Silent fail — app continues normally
-  })
+      try {
+        // Download the new exe
+        await updater.downloadUpdate(updateInfo.downloadUrl, appDir, (progress) => {
+          configWindow?.webContents.send('update-download-progress', progress)
+        })
+
+        // Generate and launch the swap script
+        const scriptPath = updater.generateUpdateScript(appDir, process.pid)
+
+        const { exec } = await import('child_process')
+        exec(`start /min "" "${scriptPath}"`, { windowsHide: true })
+
+        // Quit so the batch script can replace us
+        app.quit()
+      } catch (err) {
+        console.error('[AutoUpdate] Download failed:', err)
+        const { dialog: dlg } = await import('electron')
+        dlg.showErrorBox(
+          'Update Failed',
+          'The update download failed. The app will continue normally.'
+        )
+      }
+    })
+    .catch((err) => {
+      console.error('[AutoUpdate] Check failed:', err)
+      // Silent fail — app continues normally
+    })
 })
 
 // Clean up shortcuts and kill all tracked browser processes when the app closes
