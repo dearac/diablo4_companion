@@ -89,37 +89,68 @@ export function parseTooltip(lines: string[]): ScannedGearPiece {
   }
 
   // ---- Find the tooltip within the full-screen OCR output ----
-  // The slot line (e.g., "Helm", "Chest Armor") is the primary anchor.
-  // We scan the first 20 lines since the crop may include junk from
-  // the character panel before the actual tooltip content.
+  // The type+slot line (e.g., "Unique Shield", "Legendary Ring") is the anchor.
+  //
+  // Problem: Slot names like "Shield" can appear in affix text (e.g.,
+  // "Blessed Shield deals..."). We solve this with a two-pass approach:
+  //   1. First pass: High-confidence — line must contain BOTH a rarity
+  //      keyword (Unique/Legendary/Rare/Ancestral/Bloodied) AND a slot name.
+  //   2. Second pass: Low-confidence fallback — line contains just a slot name.
+  //      Only used if pass 1 finds nothing.
   let typeSlotLineIndex = -1
+  const searchLimit = Math.min(20, lines.length)
 
-  for (let i = Math.min(20, lines.length) - 1; i >= 0; i--) {
+  /** Rarity/type keywords that appear on the type+slot line */
+  const TYPE_KEYWORDS = ['Unique', 'Legendary', 'Rare', 'Ancestral', 'Bloodied']
+
+  /**
+   * Returns true if a line should be skipped during the slot search
+   * (affix lines, item power, noise, etc.).
+   */
+  const shouldSkipLine = (line: string): boolean => {
+    if (/^[+×x*●•-]\s*[\d.]/.test(line)) return true
+    if (ITEM_POWER_REGEX.test(line)) return true
+    if (/(?:^\d|,|Armor)/i.test(line) && !/Chest Armor/i.test(line)) return true
+    if (/^(?:CHARACTER|EQUIPPED|Stats|Materials|Equipment|Weapon\s+Dam)/i.test(line)) return true
+    if (line.length <= 2) return true
+    return false
+  }
+
+  // Pass 1: Find a line with BOTH a type keyword AND a slot name
+  for (let i = 0; i < searchLimit; i++) {
     const line = lines[i].trim()
-
-    // Skip obvious non-slot lines like affixes or item power
-    if (/^[+×x*●•-]\s*[\d.]/.test(line)) continue
-    if (ITEM_POWER_REGEX.test(line)) continue
-    if (/(?:^\d|,|Armor)/i.test(line) && !/Chest Armor/i.test(line)) continue // e.g. "942 Armor"
-
-    // Skip character screen noise that may bleed into the crop
-    if (/^(?:CHARACTER|EQUIPPED|Stats|Materials|Equipment|Weapon\s+Dam)/i.test(line)) continue
-    // Skip very short garbage fragments from misaligned crops
-    if (line.length <= 2) continue
+    if (shouldSkipLine(line)) continue
 
     const upper = line.toUpperCase()
-    let foundSlot = ''
+    const hasTypeKeyword = TYPE_KEYWORDS.some((kw) => upper.includes(kw.toUpperCase()))
+    if (!hasTypeKeyword) continue
+
     for (const slot of GEAR_SLOTS) {
       if (upper.includes(slot.toUpperCase())) {
-        foundSlot = slot
+        result.slot = slot
+        typeSlotLineIndex = i
         break
       }
     }
+    if (typeSlotLineIndex >= 0) break
+  }
 
-    if (foundSlot) {
-      result.slot = foundSlot
-      typeSlotLineIndex = i
-      break
+  // Pass 2 fallback: If no type+slot combo found, accept slot-only match
+  // Search forward (first occurrence is more reliable than last)
+  if (typeSlotLineIndex < 0) {
+    for (let i = 0; i < searchLimit; i++) {
+      const line = lines[i].trim()
+      if (shouldSkipLine(line)) continue
+
+      const upper = line.toUpperCase()
+      for (const slot of GEAR_SLOTS) {
+        if (upper.includes(slot.toUpperCase())) {
+          result.slot = slot
+          typeSlotLineIndex = i
+          break
+        }
+      }
+      if (typeSlotLineIndex >= 0) break
     }
   }
 
@@ -149,7 +180,7 @@ export function parseTooltip(lines: string[]): ScannedGearPiece {
       const candidate = lines[typeSlotLineIndex - offset].trim()
 
       // STOP conditions (we reached above the name)
-      if (/EQUIPPED/i.test(candidate) || candidate === 'Is') {
+      if (/^(?:EQUIPPED|CHARACTER|Is)$/i.test(candidate)) {
         break
       }
 
