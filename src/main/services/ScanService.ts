@@ -3,6 +3,8 @@ import { runOcr } from './OcrService'
 import { parseTooltip } from './GearParser'
 import { compareGear } from './GearComparer'
 import { EquippedGearStore } from './EquippedGearStore'
+import { ScanHistoryStore } from './ScanHistoryStore'
+import type { ScanHistoryEntry } from '../../shared/types'
 import type { ScanMode, ScanVerdict, ScannedGearPiece, RawBuildData } from '../../shared/types'
 import { statSync } from 'fs'
 import { basename } from 'path'
@@ -18,16 +20,19 @@ import { basename } from 'path'
 export class ScanService {
   private captureService: ScreenCaptureService
   private equippedStore: EquippedGearStore
+  private scanHistory: ScanHistoryStore
   private sidecarDir: string
   private scanMode: ScanMode = 'compare'
 
   constructor(
     captureService: ScreenCaptureService,
     equippedStore: EquippedGearStore,
+    scanHistory: ScanHistoryStore,
     sidecarDir: string
   ) {
     this.captureService = captureService
     this.equippedStore = equippedStore
+    this.scanHistory = scanHistory
     this.sidecarDir = sidecarDir
   }
 
@@ -52,6 +57,16 @@ export class ScanService {
   /** Clears all equipped gear (pass-through to EquippedGearStore). */
   clearEquippedGear(): void {
     this.equippedStore.clearAll()
+  }
+
+  /** Returns all scan history entries (pass-through to ScanHistoryStore). */
+  getScanHistory(): ScanHistoryEntry[] {
+    return this.scanHistory.getAll()
+  }
+
+  /** Clears all scan history (pass-through to ScanHistoryStore). */
+  clearScanHistory(): void {
+    this.scanHistory.clearAll()
   }
 
   /**
@@ -149,6 +164,9 @@ export class ScanService {
           )
         })
       }
+
+      // Store compare-mode verdict in scan history
+      this.scanHistory.addVerdict(verdict)
 
       return { mode: 'compare', verdict, equippedItem: null, error: null }
     } catch (err) {

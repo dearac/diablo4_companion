@@ -5,7 +5,8 @@ import type {
   SavedBuild,
   ScanMode,
   ScanVerdict,
-  ScannedGearPiece
+  ScannedGearPiece,
+  ScanHistoryEntry
 } from '../shared/types'
 
 // ============================================================
@@ -212,6 +213,20 @@ const api = {
    */
   clearEquippedGear: (): Promise<{ success: boolean }> => {
     return ipcRenderer.invoke('clear-equipped-gear')
+  },
+
+  /**
+   * Gets the scan history (compare-mode verdicts with timestamps).
+   */
+  getScanHistory: (): Promise<ScanHistoryEntry[]> => {
+    return ipcRenderer.invoke('get-scan-history')
+  },
+
+  /**
+   * Clears all scan history.
+   */
+  clearScanHistory: (): Promise<{ success: boolean }> => {
+    return ipcRenderer.invoke('clear-scan-history')
   },
 
   /**

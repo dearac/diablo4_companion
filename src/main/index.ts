@@ -13,6 +13,7 @@ import { AutoUpdateService } from './services/AutoUpdateService'
 import { ScanService } from './services/ScanService'
 import { ScreenCaptureService } from './services/ScreenCaptureService'
 import { EquippedGearStore } from './services/EquippedGearStore'
+import { ScanHistoryStore } from './services/ScanHistoryStore'
 import type { RawBuildData } from '../shared/types'
 
 // ============================================================
@@ -100,10 +101,11 @@ function initServices(): void {
   // Initialize scan pipeline services
   const captureService = new ScreenCaptureService(dataPaths.scans)
   const equippedStore = new EquippedGearStore(join(dataPaths.userData, 'equipped-gear.json'))
+  const scanHistoryStore = new ScanHistoryStore(join(dataPaths.userData, 'scan-history.json'))
   const sidecarDir = is.dev
     ? join(app.getAppPath(), 'sidecar', 'bin')
     : join(dirname(app.getPath('exe')), 'sidecar', 'bin')
-  scanService = new ScanService(captureService, equippedStore, sidecarDir)
+  scanService = new ScanService(captureService, equippedStore, scanHistoryStore, sidecarDir)
 }
 
 // ============================================================
@@ -349,6 +351,17 @@ function setupIpcHandlers(): void {
   /** Clear all equipped gear */
   ipcMain.handle('clear-equipped-gear', () => {
     scanService.clearEquippedGear()
+    return { success: true }
+  })
+
+  /** Get scan history (compare-mode verdicts) */
+  ipcMain.handle('get-scan-history', () => {
+    return scanService.getScanHistory()
+  })
+
+  /** Clear scan history */
+  ipcMain.handle('clear-scan-history', () => {
+    scanService.clearScanHistory()
     return { success: true }
   })
 }

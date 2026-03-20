@@ -238,3 +238,9 @@ export interface ScanVerdict {
   } | null
   recommendations: CraftingRecommendation[]
 }
+
+/** A timestamped scan verdict in the scan history. */
+export interface ScanHistoryEntry {
+  verdict: ScanVerdict
+  scannedAt: number // Date.now() timestamp
+}

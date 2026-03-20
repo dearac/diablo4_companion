@@ -4,7 +4,8 @@ import type {
   SavedBuild,
   ScanMode,
   ScanVerdict,
-  ScannedGearPiece
+  ScannedGearPiece,
+  ScanHistoryEntry
 } from '../shared/types'
 
 declare global {
@@ -42,6 +43,8 @@ declare global {
       getScanMode: () => Promise<ScanMode>
       getEquippedGear: () => Promise<Record<string, ScannedGearPiece>>
       clearEquippedGear: () => Promise<{ success: boolean }>
+      getScanHistory: () => Promise<ScanHistoryEntry[]>
+      clearScanHistory: () => Promise<{ success: boolean }>
       onScanResult: (
         callback: (result: {
           mode: ScanMode
