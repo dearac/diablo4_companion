@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { RawBuildData, ScanMode, ScanVerdict, ScannedGearPiece } from '../../shared/types'
+import type {
+  RawBuildData,
+  ScanMode,
+  ScanVerdict,
+  ScannedGearPiece,
+  ScanHistoryEntry
+} from '../../shared/types'
 import OverlayHeader from './components/OverlayHeader'
 import TabBar from './components/TabBar'
 import type { TabId } from './components/TabBar'
@@ -9,6 +15,7 @@ import GearPanel from './components/GearPanel'
 import OverlayFooter from './components/OverlayFooter'
 import ScanControls from './components/ScanControls'
 import VerdictCard from './components/VerdictCard'
+import ScansPanel from './components/ScansPanel'
 
 /** Shape of a scan result received from the main process */
 interface ScanResult {
@@ -33,6 +40,8 @@ function App(): React.JSX.Element {
   const [buildData, setBuildData] = useState<RawBuildData | null>(null)
   const [activeTab, setActiveTab] = useState<TabId>('skills')
   const [scanResult, setScanResult] = useState<ScanResult | null>(null)
+  const [scanHistory, setScanHistory] = useState<ScanHistoryEntry[]>([])
+  const [equippedGear, setEquippedGear] = useState<Record<string, ScannedGearPiece>>({})
 
   /** Dismiss the verdict card */
   const dismissVerdict = useCallback(() => {
@@ -53,7 +62,27 @@ function App(): React.JSX.Element {
   useEffect(() => {
     window.api.onScanResult((result: ScanResult) => {
       setScanResult(result)
+      // Refresh scan history after a compare-mode scan
+      if (result.mode === 'compare' && result.verdict) {
+        window.api.getScanHistory().then(setScanHistory)
+      }
+      // Refresh equipped gear after an equip-mode scan
+      if (result.mode === 'equip' && result.equippedItem) {
+        window.api.getEquippedGear().then(setEquippedGear)
+      }
     })
+  }, [])
+
+  /** Load scan history and equipped gear on mount */
+  useEffect(() => {
+    window.api.getScanHistory().then(setScanHistory)
+    window.api.getEquippedGear().then(setEquippedGear)
+  }, [])
+
+  /** Clear all scan history */
+  const handleClearScans = useCallback(async () => {
+    await window.api.clearScanHistory()
+    setScanHistory([])
   }, [])
 
   /** Mouse passthrough: interactive when hovering, click-through when not */
@@ -84,8 +113,13 @@ function App(): React.JSX.Element {
           {activeTab === 'skills' && <SkillsPanel skills={buildData.skills} />}
           {activeTab === 'paragon' && <ParagonPanel boards={buildData.paragonBoards} />}
           {activeTab === 'gear' && (
-            <GearPanel gearSlots={buildData.gearSlots} activeRunes={buildData.activeRunes || []} />
+            <GearPanel
+              gearSlots={buildData.gearSlots}
+              activeRunes={buildData.activeRunes || []}
+              equippedGear={equippedGear}
+            />
           )}
+          {activeTab === 'scans' && <ScansPanel entries={scanHistory} onClear={handleClearScans} />}
         </div>
 
         <OverlayFooter />

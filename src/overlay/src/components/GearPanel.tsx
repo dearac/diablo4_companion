@@ -1,8 +1,19 @@
-import type { IGearSlot, IRune } from '../../../shared/types'
+import type { IGearSlot, IRune, ScannedGearPiece } from '../../../shared/types'
 
 interface GearPanelProps {
   gearSlots: IGearSlot[]
   activeRunes: IRune[]
+  equippedGear?: Record<string, ScannedGearPiece>
+}
+
+/**
+ * Checks if a scanned affix matches a build-expected affix name.
+ * Uses case-insensitive substring matching.
+ */
+function affixMatches(scannedAffix: string, buildAffixName: string): boolean {
+  const scan = scannedAffix.toLowerCase()
+  const build = buildAffixName.toLowerCase()
+  return scan.includes(build) || build.includes(scan)
 }
 
 /**
@@ -17,12 +28,13 @@ interface GearPanelProps {
  * - Tempered affixes (orange anvil icons)
  * - Implicit affixes (muted)
  * - Rampage/Feast special effects
+ * - Equipped Status: matched/missing affixes + improvement suggestions
  *
  * Active Runes section shows:
  * - Rune name + type badge
  * - Effects list
  */
-function GearPanel({ gearSlots, activeRunes }: GearPanelProps): React.JSX.Element {
+function GearPanel({ gearSlots, activeRunes, equippedGear }: GearPanelProps): React.JSX.Element {
   const rc = (type: string): string => type.toLowerCase()
 
   return (
@@ -35,6 +47,9 @@ function GearPanel({ gearSlots, activeRunes }: GearPanelProps): React.JSX.Elemen
           slot.temperedAffixes.length > 0 ||
           slot.rampageEffect ||
           slot.feastEffect
+
+        // Get equipped item for this slot (if any)
+        const equipped = equippedGear?.[slot.slot] ?? null
 
         return (
           <div key={slot.slot} className={`gear-slot gear-slot--${rc(slot.itemType)}`}>
@@ -133,6 +148,106 @@ function GearPanel({ gearSlots, activeRunes }: GearPanelProps): React.JSX.Elemen
                 </ul>
               </>
             )}
+
+            {/* ── Equipped Status ── */}
+            {equipped &&
+              (() => {
+                const allBuildAffixes = slot.affixes.map((a) => a.name)
+                const allEquippedAffixes = [
+                  ...equipped.affixes,
+                  ...equipped.temperedAffixes,
+                  ...equipped.greaterAffixes
+                ]
+
+                const matched: string[] = []
+                const missing: string[] = []
+                for (const buildAffix of allBuildAffixes) {
+                  const found = allEquippedAffixes.some((ea) => affixMatches(ea, buildAffix))
+                  if (found) matched.push(buildAffix)
+                  else missing.push(buildAffix)
+                }
+
+                const expectedAspectName = slot.requiredAspect?.name ?? null
+                const equippedAspectName = equipped.aspect?.name ?? null
+                let aspectMatch = true
+                if (expectedAspectName && equippedAspectName) {
+                  aspectMatch =
+                    equippedAspectName.toLowerCase().includes(expectedAspectName.toLowerCase()) ||
+                    expectedAspectName.toLowerCase().includes(equippedAspectName.toLowerCase())
+                } else if (expectedAspectName && !equippedAspectName) {
+                  aspectMatch = false
+                }
+
+                const hasSuggestions = missing.length > 0 || !aspectMatch
+
+                return (
+                  <div className="equipped-status">
+                    <div className="equipped-status__label">Equipped Status</div>
+                    <div className="equipped-status__item-name">
+                      {equipped.itemName} ({equipped.itemPower} iP)
+                    </div>
+
+                    {matched.length > 0 && (
+                      <div className="equipped-status__matches">
+                        {matched.map((a, i) => (
+                          <div
+                            key={i}
+                            className="equipped-status__affix equipped-status__affix--match"
+                          >
+                            ✅ {a}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {missing.length > 0 && (
+                      <div className="equipped-status__matches">
+                        {missing.map((a, i) => (
+                          <div
+                            key={i}
+                            className="equipped-status__affix equipped-status__affix--missing"
+                          >
+                            ❌ {a}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {expectedAspectName && (
+                      <div
+                        className={`equipped-status__aspect ${aspectMatch ? 'equipped-status__aspect--match' : 'equipped-status__aspect--missing'}`}
+                      >
+                        {aspectMatch ? '✅' : '❌'} Aspect: {expectedAspectName}
+                      </div>
+                    )}
+
+                    {hasSuggestions && (
+                      <div className="equipped-status__suggestions">
+                        <div className="equipped-status__suggestion-label">Suggestions</div>
+                        {missing.length > 0 && (
+                          <div className="equipped-status__suggestion">
+                            🔧 <strong>Enchant:</strong> Reroll a non-build affix → {missing[0]}
+                          </div>
+                        )}
+                        {missing.length > 1 && (
+                          <div className="equipped-status__suggestion">
+                            ⚒️ <strong>Temper:</strong> Add {missing[1]} at Blacksmith
+                          </div>
+                        )}
+                        {matched.length > 0 && (
+                          <div className="equipped-status__suggestion">
+                            ⭐ <strong>Masterwork:</strong> Prioritize {matched[0]}
+                          </div>
+                        )}
+                        {!aspectMatch && expectedAspectName && (
+                          <div className="equipped-status__suggestion">
+                            🔮 <strong>Aspect:</strong> Replace with {expectedAspectName}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
           </div>
         )
       })}
