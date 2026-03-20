@@ -49,6 +49,13 @@ function EquippedGearTab({ buildData }: EquippedGearTabProps): React.JSX.Element
       .catch(() => setIsLoading(false))
   }, [])
 
+  /** Clears all equipped gear from storage and resets local state */
+  const handleClearAll = (): void => {
+    window.api.clearEquippedGear().then(() => {
+      setEquippedGear({})
+    })
+  }
+
   if (isLoading) {
     return <div className="main-tab-panel main-tab-panel--loading">Loading equipped gear...</div>
   }
@@ -73,6 +80,9 @@ function EquippedGearTab({ buildData }: EquippedGearTabProps): React.JSX.Element
     <div className="main-tab-panel">
       <div className="main-tab-panel__header">
         <span className="main-tab-panel__title">Equipped Gear</span>
+        <button className="main-tab-panel__clear-btn" onClick={handleClearAll}>
+          🗑️ Clear All
+        </button>
       </div>
 
       <div className="equipped-grid">
