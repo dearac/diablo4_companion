@@ -195,7 +195,8 @@ export function compareGear(
   // ---- Build match scoring ----
   const { matched, missing } = matchAffixes(scannedItem.affixes, buildSlot.affixes)
   const extraAffixes = findExtraAffixes(scannedItem.affixes, buildSlot.affixes)
-  const totalExpected = buildSlot.affixes.length
+  // Use deduplicated count: matched + missing = total unique build affixes
+  const totalExpected = matched.length + missing.length
   const matchPercent = totalExpected > 0 ? (matched.length / totalExpected) * 100 : 100
 
   // ---- Socket delta ----

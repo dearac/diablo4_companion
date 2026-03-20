@@ -90,16 +90,22 @@ export function parseTooltip(lines: string[]): ScannedGearPiece {
 
   // ---- Find the tooltip within the full-screen OCR output ----
   // The slot line (e.g., "Helm", "Chest Armor") is the primary anchor.
-  // We scan the first few lines to find it, then work outward.
+  // We scan the first 20 lines since the crop may include junk from
+  // the character panel before the actual tooltip content.
   let typeSlotLineIndex = -1
 
-  for (let i = Math.min(8, lines.length) - 1; i >= 0; i--) {
+  for (let i = Math.min(20, lines.length) - 1; i >= 0; i--) {
     const line = lines[i].trim()
-    
+
     // Skip obvious non-slot lines like affixes or item power
     if (/^[+×x*●•-]\s*[\d.]/.test(line)) continue
     if (ITEM_POWER_REGEX.test(line)) continue
     if (/(?:^\d|,|Armor)/i.test(line) && !/Chest Armor/i.test(line)) continue // e.g. "942 Armor"
+
+    // Skip character screen noise that may bleed into the crop
+    if (/^(?:CHARACTER|EQUIPPED|Stats|Materials|Equipment|Weapon\s+Dam)/i.test(line)) continue
+    // Skip very short garbage fragments from misaligned crops
+    if (line.length <= 2) continue
 
     const upper = line.toUpperCase()
     let foundSlot = ''

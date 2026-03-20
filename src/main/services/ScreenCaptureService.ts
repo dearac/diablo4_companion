@@ -11,7 +11,7 @@ import { join } from 'path'
  */
 
 /** Tooltip crop dimensions (generous to avoid clipping long tooltips) */
-const TOOLTIP_WIDTH = 620
+const TOOLTIP_WIDTH = 550
 const TOOLTIP_HEIGHT = 1200
 
 /**
@@ -19,7 +19,7 @@ const TOOLTIP_HEIGHT = 1200
  * The tooltip is fully to the left of the mouse, so we offset
  * by the full width plus a small margin.
  */
-const CURSOR_LEFT_OFFSET = 640
+const CURSOR_LEFT_OFFSET = 570
 
 /**
  * Vertical offset above the cursor. The tooltip extends both above
