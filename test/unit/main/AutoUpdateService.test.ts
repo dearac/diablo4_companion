@@ -13,7 +13,11 @@ vi.mock('https', () => ({
 }))
 
 /** Creates a fake https.get response with the given status code and body */
-function mockHttpsGet(statusCode: number, body: string, headers: Record<string, string> = {}): void {
+function mockHttpsGet(
+  statusCode: number,
+  body: string,
+  headers: Record<string, string> = {}
+): void {
   const mockResponse = new EventEmitter() as any
   mockResponse.statusCode = statusCode
   mockResponse.headers = headers
@@ -51,7 +55,9 @@ describe('AutoUpdateService', () => {
       const release = {
         tag_name: 'v1.0.0',
         body: 'Bug fixes and improvements',
-        assets: [{ name: 'diablo4_companion.exe', browser_download_url: 'https://example.com/dl.exe' }]
+        assets: [
+          { name: 'diablo4_companion.exe', browser_download_url: 'https://example.com/dl.exe' }
+        ]
       }
       mockHttpsGet(200, JSON.stringify(release))
 

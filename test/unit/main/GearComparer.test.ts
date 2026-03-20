@@ -63,11 +63,7 @@ describe('GearComparer', () => {
 
     it('should return 100% match when all affixes present', () => {
       const scanned = makeScanned({
-        affixes: [
-          '+10% Critical Strike Chance',
-          '+12% Vulnerable Damage',
-          '+8% Cooldown Reduction'
-        ]
+        affixes: ['+10% Critical Strike Chance', '+12% Vulnerable Damage', '+8% Cooldown Reduction']
       })
       const verdict = compareGear(scanned, makeBuildSlot(), null)
 
@@ -107,8 +103,11 @@ describe('GearComparer', () => {
 
     it('should return UPGRADE at 90%+ match', () => {
       // 9 out of 10 affixes
-      const affixes = Array.from({ length: 10 }, (_, i) => ({ name: `Affix${i}`, isGreater: false }))
-      const scannedAffixes = affixes.slice(0, 9).map(a => `+10% ${a.name}`)
+      const affixes = Array.from({ length: 10 }, (_, i) => ({
+        name: `Affix${i}`,
+        isGreater: false
+      }))
+      const scannedAffixes = affixes.slice(0, 9).map((a) => `+10% ${a.name}`)
       const scanned = makeScanned({ affixes: scannedAffixes })
       const buildSlot = makeBuildSlot({ affixes })
       const verdict = compareGear(scanned, buildSlot, null)
@@ -139,7 +138,7 @@ describe('GearComparer', () => {
       const verdict = compareGear(scanned, buildSlot, null)
 
       expect(verdict.socketDelta).toBe(-1)
-      expect(verdict.recommendations.some(r => r.action === 'socket')).toBe(true)
+      expect(verdict.recommendations.some((r) => r.action === 'socket')).toBe(true)
     })
 
     it('should not recommend sockets when count matches', () => {
@@ -148,7 +147,7 @@ describe('GearComparer', () => {
       const verdict = compareGear(scanned, buildSlot, null)
 
       expect(verdict.socketDelta).toBe(0)
-      expect(verdict.recommendations.some(r => r.action === 'socket')).toBe(false)
+      expect(verdict.recommendations.some((r) => r.action === 'socket')).toBe(false)
     })
 
     it('should handle builds with no socket requirements', () => {
@@ -167,7 +166,7 @@ describe('GearComparer', () => {
       })
       const verdict = compareGear(scanned, makeBuildSlot(), null)
 
-      const enchantRec = verdict.recommendations.find(r => r.action === 'enchant')
+      const enchantRec = verdict.recommendations.find((r) => r.action === 'enchant')
       expect(enchantRec).toBeDefined()
       expect(enchantRec!.removeAffix).toBe('+100 Thorns')
     })
@@ -179,7 +178,7 @@ describe('GearComparer', () => {
       })
       const verdict = compareGear(scanned, makeBuildSlot(), null)
 
-      const enchantRecs = verdict.recommendations.filter(r => r.action === 'enchant')
+      const enchantRecs = verdict.recommendations.filter((r) => r.action === 'enchant')
       for (const rec of enchantRecs) {
         // The removeAffix should never be a greater affix
         expect(rec.removeAffix).not.toContain('Thorns')
@@ -188,15 +187,11 @@ describe('GearComparer', () => {
 
     it('should not recommend enchanting when all affixes match build', () => {
       const scanned = makeScanned({
-        affixes: [
-          '+10% Critical Strike Chance',
-          '+12% Vulnerable Damage',
-          '+8% Cooldown Reduction'
-        ]
+        affixes: ['+10% Critical Strike Chance', '+12% Vulnerable Damage', '+8% Cooldown Reduction']
       })
       const verdict = compareGear(scanned, makeBuildSlot(), null)
 
-      const enchantRecs = verdict.recommendations.filter(r => r.action === 'enchant')
+      const enchantRecs = verdict.recommendations.filter((r) => r.action === 'enchant')
       expect(enchantRecs).toHaveLength(0)
     })
 
@@ -207,7 +202,7 @@ describe('GearComparer', () => {
       })
       const verdict = compareGear(scanned, makeBuildSlot(), null)
 
-      const enchantRec = verdict.recommendations.find(r => r.action === 'enchant')
+      const enchantRec = verdict.recommendations.find((r) => r.action === 'enchant')
       expect(enchantRec).toBeDefined()
       // Should suggest adding one of the missing affixes
       expect(['Vulnerable Damage', 'Cooldown Reduction']).toContain(enchantRec!.addAffix)
@@ -281,7 +276,7 @@ describe('GearComparer', () => {
       })
       const verdict = compareGear(scanned, buildSlot, null)
 
-      const temperRec = verdict.recommendations.find(r => r.action === 'temper')
+      const temperRec = verdict.recommendations.find((r) => r.action === 'temper')
       expect(temperRec).toBeDefined()
       expect(temperRec!.addAffix).toBe('Core Skill Damage')
       expect(temperRec!.vendor).toBe('Blacksmith')
@@ -296,7 +291,7 @@ describe('GearComparer', () => {
       })
       const verdict = compareGear(scanned, buildSlot, null)
 
-      const temperRecs = verdict.recommendations.filter(r => r.action === 'temper')
+      const temperRecs = verdict.recommendations.filter((r) => r.action === 'temper')
       expect(temperRecs).toHaveLength(0)
     })
   })

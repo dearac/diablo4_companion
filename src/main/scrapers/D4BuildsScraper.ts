@@ -600,10 +600,7 @@ export class D4BuildsScraper extends BuildScraper {
             const text = row.textContent?.trim() || ''
 
             // Check for "Implicit Stat" header
-            if (
-              row.classList.contains('implicit') ||
-              text.toLowerCase() === 'implicit stat'
-            ) {
+            if (row.classList.contains('implicit') || text.toLowerCase() === 'implicit stat') {
               isImplicitSection = true
               return
             }
@@ -672,9 +669,7 @@ export class D4BuildsScraper extends BuildScraper {
           const gearItems = document.querySelectorAll('.builder__gear__item')
           for (let i = 0; i < gearItems.length; i++) {
             const item = gearItems[i]
-            item.dispatchEvent(
-              new MouseEvent('mouseover', { bubbles: true, cancelable: true })
-            )
+            item.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, cancelable: true }))
             await delay(150)
 
             const tooltip = document.querySelector('.codex__tooltip')
@@ -688,55 +683,54 @@ export class D4BuildsScraper extends BuildScraper {
               })
             }
 
-            item.dispatchEvent(
-              new MouseEvent('mouseout', { bubbles: true, cancelable: true })
-            )
+            item.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, cancelable: true }))
             await delay(50)
           }
           return results
         })
         .catch(
-          () =>
-            [] as Array<{ index: number; name: string | null; description: string | null }>
+          () => [] as Array<{ index: number; name: string | null; description: string | null }>
         )
 
       // ── Merge all three data sources ──
-      return topGear
-        // Filter out rune items (they show as "Unknown Slot" in gear items)
-        .filter((gear) => gear.slot !== 'Unknown Slot')
-        .map((gear, i) => {
-        // Match stats data by slot name
-        const stats = statsData.find(
-          (s) => s.slot.toLowerCase() === gear.slot.toLowerCase()
-        ) || {
-          affixes: [],
-          implicitAffixes: [],
-          temperedAffixes: [],
-          greaterAffixes: [],
-          rampageEffect: null,
-          feastEffect: null
-        }
+      return (
+        topGear
+          // Filter out rune items (they show as "Unknown Slot" in gear items)
+          .filter((gear) => gear.slot !== 'Unknown Slot')
+          .map((gear, i) => {
+            // Match stats data by slot name
+            const stats = statsData.find(
+              (s) => s.slot.toLowerCase() === gear.slot.toLowerCase()
+            ) || {
+              affixes: [],
+              implicitAffixes: [],
+              temperedAffixes: [],
+              greaterAffixes: [],
+              rampageEffect: null,
+              feastEffect: null
+            }
 
-        // Match aspect tooltip by index
-        const aspect = aspectData.find((a) => a.index === i)
+            // Match aspect tooltip by index
+            const aspect = aspectData.find((a) => a.index === i)
 
-        return {
-          slot: gear.slot,
-          itemName: gear.itemName,
-          itemType: gear.itemType,
-          requiredAspect: aspect?.name
-            ? { name: aspect.name, description: aspect.description || null }
-            : null,
-          affixes: stats.affixes,
-          implicitAffixes: stats.implicitAffixes,
-          temperedAffixes: stats.temperedAffixes,
-          greaterAffixes: stats.greaterAffixes,
-          masterworkPriority: [],
-          rampageEffect: stats.rampageEffect,
-          feastEffect: stats.feastEffect,
-          socketedGems: gear.socketedGems || []
-        }
-      })
+            return {
+              slot: gear.slot,
+              itemName: gear.itemName,
+              itemType: gear.itemType,
+              requiredAspect: aspect?.name
+                ? { name: aspect.name, description: aspect.description || null }
+                : null,
+              affixes: stats.affixes,
+              implicitAffixes: stats.implicitAffixes,
+              temperedAffixes: stats.temperedAffixes,
+              greaterAffixes: stats.greaterAffixes,
+              masterworkPriority: [],
+              rampageEffect: stats.rampageEffect,
+              feastEffect: stats.feastEffect,
+              socketedGems: gear.socketedGems || []
+            }
+          })
+      )
     } catch {
       return []
     }
@@ -784,9 +778,9 @@ export class D4BuildsScraper extends BuildScraper {
         try {
           // Build a selector for the i-th standalone rune
           // Target rune items that come AFTER the "Active Runes" label
-          const runeEl = page.locator(
-            '.builder__gems:not(.builder__gear__item .builder__gems) .builder__gems__item'
-          ).nth(i)
+          const runeEl = page
+            .locator('.builder__gems:not(.builder__gear__item .builder__gems) .builder__gems__item')
+            .nth(i)
 
           const isVisible = await runeEl.isVisible().catch(() => false)
           if (!isVisible) {

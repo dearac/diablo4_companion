@@ -41,9 +41,7 @@ function GearPanel({ gearSlots, activeRunes }: GearPanelProps): React.JSX.Elemen
             {/* Header */}
             <div className="gear-slot__header">
               <span className="gear-slot__name">{slot.slot}</span>
-              <span
-                className={`gear-slot__type-badge gear-slot__type-badge--${rc(slot.itemType)}`}
-              >
+              <span className={`gear-slot__type-badge gear-slot__type-badge--${rc(slot.itemType)}`}>
                 {slot.itemType}
               </span>
             </div>
@@ -119,9 +117,7 @@ function GearPanel({ gearSlots, activeRunes }: GearPanelProps): React.JSX.Elemen
               </div>
             )}
             {slot.feastEffect && (
-              <div className="gear-slot__effect gear-slot__effect--feast">
-                {slot.feastEffect}
-              </div>
+              <div className="gear-slot__effect gear-slot__effect--feast">{slot.feastEffect}</div>
             )}
 
             {/* Socketed gems */}
@@ -178,4 +174,3 @@ function GearPanel({ gearSlots, activeRunes }: GearPanelProps): React.JSX.Elemen
 }
 
 export default GearPanel
-

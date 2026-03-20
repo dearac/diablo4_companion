@@ -238,4 +238,3 @@ export interface ScanVerdict {
   } | null
   recommendations: CraftingRecommendation[]
 }
-

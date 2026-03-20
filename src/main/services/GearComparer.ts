@@ -45,7 +45,7 @@ function matchAffixes(
   const missing: string[] = []
 
   for (const buildAffix of buildAffixes) {
-    const found = scannedAffixes.some(sa => affixMatches(sa, buildAffix.name))
+    const found = scannedAffixes.some((sa) => affixMatches(sa, buildAffix.name))
     if (found) {
       matched.push(buildAffix.name)
     } else {
@@ -61,8 +61,8 @@ function matchAffixes(
  * These are "extra" affixes — candidates for enchanting away.
  */
 function findExtraAffixes(scannedAffixes: string[], buildAffixes: IAffix[]): string[] {
-  return scannedAffixes.filter(sa => {
-    return !buildAffixes.some(ba => affixMatches(sa, ba.name))
+  return scannedAffixes.filter((sa) => {
+    return !buildAffixes.some((ba) => affixMatches(sa, ba.name))
   })
 }
 
@@ -73,7 +73,7 @@ function findExtraAffixes(scannedAffixes: string[], buildAffixes: IAffix[]): str
  * greaterAffixes array. We check if the full affix string contains the name.
  */
 function isGreaterAffix(scannedAffix: string, greaterAffixes: string[]): boolean {
-  return greaterAffixes.some(ga => scannedAffix.toLowerCase().includes(ga.toLowerCase()))
+  return greaterAffixes.some((ga) => scannedAffix.toLowerCase().includes(ga.toLowerCase()))
 }
 
 /**
@@ -110,18 +110,20 @@ function generateEnchantRecommendations(
   if (missingAffixes.length === 0) return []
 
   // Find expendable affixes that are NOT greater
-  const expendable = extraAffixes.filter(ea => !isGreaterAffix(ea, greaterAffixes))
+  const expendable = extraAffixes.filter((ea) => !isGreaterAffix(ea, greaterAffixes))
 
   if (expendable.length === 0) return []
 
   // Recommend enchanting the first expendable affix → first missing affix
-  return [{
-    action: 'enchant',
-    removeAffix: expendable[0],
-    addAffix: missingAffixes[0],
-    vendor: 'Occultist',
-    resultScore: `${missingAffixes.length - 1} remaining missing`
-  }]
+  return [
+    {
+      action: 'enchant',
+      removeAffix: expendable[0],
+      addAffix: missingAffixes[0],
+      vendor: 'Occultist',
+      resultScore: `${missingAffixes.length - 1} remaining missing`
+    }
+  ]
 }
 
 /**
@@ -141,9 +143,7 @@ function generateTemperRecommendations(
   const recommendations: CraftingRecommendation[] = []
 
   for (const buildTemper of buildTemperedAffixes) {
-    const alreadyHas = scannedTemperedAffixes.some(st =>
-      affixMatches(st, buildTemper.name)
-    )
+    const alreadyHas = scannedTemperedAffixes.some((st) => affixMatches(st, buildTemper.name))
 
     if (!alreadyHas) {
       recommendations.push({
@@ -169,13 +169,15 @@ function generateSocketRecommendations(socketDelta: number): CraftingRecommendat
   if (socketDelta >= 0) return []
 
   const needed = Math.abs(socketDelta)
-  return [{
-    action: 'socket',
-    removeAffix: null,
-    addAffix: `${needed} socket${needed > 1 ? 's' : ''}`,
-    vendor: 'Jeweler',
-    resultScore: `Add ${needed} socket${needed > 1 ? 's' : ''}`
-  }]
+  return [
+    {
+      action: 'socket',
+      removeAffix: null,
+      addAffix: `${needed} socket${needed > 1 ? 's' : ''}`,
+      vendor: 'Jeweler',
+      resultScore: `Add ${needed} socket${needed > 1 ? 's' : ''}`
+    }
+  ]
 }
 
 /**
@@ -198,9 +200,7 @@ export function compareGear(
   const { matched, missing } = matchAffixes(scannedItem.affixes, buildSlot.affixes)
   const extraAffixes = findExtraAffixes(scannedItem.affixes, buildSlot.affixes)
   const totalExpected = buildSlot.affixes.length
-  const matchPercent = totalExpected > 0
-    ? (matched.length / totalExpected) * 100
-    : 100
+  const matchPercent = totalExpected > 0 ? (matched.length / totalExpected) * 100 : 100
 
   // ---- Socket delta ----
   const expectedSockets = buildSlot.socketedGems.length

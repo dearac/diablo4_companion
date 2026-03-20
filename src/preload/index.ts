@@ -1,6 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { RawBuildData, SavedBuild, ScanMode, ScanVerdict, ScannedGearPiece } from '../shared/types'
+import type {
+  RawBuildData,
+  SavedBuild,
+  ScanMode,
+  ScanVerdict,
+  ScannedGearPiece
+} from '../shared/types'
 
 // ============================================================
 // PRELOAD SCRIPT — The Bridge Between Main and Renderer
@@ -151,7 +157,9 @@ const api = {
    * Listens for update download progress events from the main process.
    * Callback receives { percent, downloadedMB, totalMB }.
    */
-  onUpdateProgress: (callback: (progress: { percent: number; downloadedMB: number; totalMB: number }) => void): void => {
+  onUpdateProgress: (
+    callback: (progress: { percent: number; downloadedMB: number; totalMB: number }) => void
+  ): void => {
     ipcRenderer.on('update-download-progress', (_event, progress) => callback(progress))
   },
 
@@ -210,12 +218,14 @@ const api = {
    * Listens for scan results pushed from the main process.
    * Fired when the scan hotkey triggers a scan.
    */
-  onScanResult: (callback: (result: {
-    mode: ScanMode
-    verdict: ScanVerdict | null
-    equippedItem: ScannedGearPiece | null
-    error: string | null
-  }) => void): void => {
+  onScanResult: (
+    callback: (result: {
+      mode: ScanMode
+      verdict: ScanVerdict | null
+      equippedItem: ScannedGearPiece | null
+      error: string | null
+    }) => void
+  ): void => {
     ipcRenderer.on('scan-result', (_event, result) => callback(result))
   }
 }

@@ -101,7 +101,7 @@ export class AutoUpdateService {
     }
 
     // Same version numbers — pre-release < release
-    if (c.pre && !r.pre) return true  // current is pre-release, remote is release
+    if (c.pre && !r.pre) return true // current is pre-release, remote is release
     if (!c.pre && r.pre) return false // current is release, remote is pre-release
 
     return false // Same version
@@ -117,28 +117,30 @@ export class AutoUpdateService {
         headers: { 'User-Agent': 'Diablo4Companion-Updater' }
       }
 
-      https.get(url, options, (res: IncomingMessage) => {
-        // Follow one redirect
-        if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
-          this.fetchJson(res.headers.location).then(resolve)
-          return
-        }
-
-        if (res.statusCode !== 200) {
-          resolve(null)
-          return
-        }
-
-        const chunks: Buffer[] = []
-        res.on('data', (chunk: Buffer) => chunks.push(chunk))
-        res.on('end', () => {
-          try {
-            resolve(JSON.parse(Buffer.concat(chunks).toString()))
-          } catch {
-            resolve(null)
+      https
+        .get(url, options, (res: IncomingMessage) => {
+          // Follow one redirect
+          if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
+            this.fetchJson(res.headers.location).then(resolve)
+            return
           }
+
+          if (res.statusCode !== 200) {
+            resolve(null)
+            return
+          }
+
+          const chunks: Buffer[] = []
+          res.on('data', (chunk: Buffer) => chunks.push(chunk))
+          res.on('end', () => {
+            try {
+              resolve(JSON.parse(Buffer.concat(chunks).toString()))
+            } catch {
+              resolve(null)
+            }
+          })
         })
-      }).on('error', () => resolve(null))
+        .on('error', () => resolve(null))
     })
   }
 
@@ -197,44 +199,48 @@ del "%~f0"
         headers: { 'User-Agent': 'Diablo4Companion-Updater' }
       }
 
-      https.get(url, options, (res: IncomingMessage) => {
-        // Follow redirects (GitHub serves assets via redirect)
-        if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
-          this.downloadFile(res.headers.location, destPath, onProgress).then(resolve).catch(reject)
-          return
-        }
-
-        if (res.statusCode !== 200) {
-          reject(new Error(`Download failed with status ${res.statusCode}`))
-          return
-        }
-
-        const totalBytes = parseInt(res.headers['content-length'] || '0', 10)
-        let downloadedBytes = 0
-
-        const file = createWriteStream(destPath)
-        res.on('data', (chunk: Buffer) => {
-          downloadedBytes += chunk.length
-          file.write(chunk)
-          if (onProgress && totalBytes > 0) {
-            onProgress({
-              percent: Math.round((downloadedBytes / totalBytes) * 100),
-              downloadedMB: Math.round((downloadedBytes / (1024 * 1024)) * 10) / 10,
-              totalMB: Math.round((totalBytes / (1024 * 1024)) * 10) / 10
-            })
+      https
+        .get(url, options, (res: IncomingMessage) => {
+          // Follow redirects (GitHub serves assets via redirect)
+          if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
+            this.downloadFile(res.headers.location, destPath, onProgress)
+              .then(resolve)
+              .catch(reject)
+            return
           }
-        })
 
-        res.on('end', () => {
-          file.end()
-          resolve(destPath)
-        })
+          if (res.statusCode !== 200) {
+            reject(new Error(`Download failed with status ${res.statusCode}`))
+            return
+          }
 
-        res.on('error', (err) => {
-          file.end()
-          reject(err)
+          const totalBytes = parseInt(res.headers['content-length'] || '0', 10)
+          let downloadedBytes = 0
+
+          const file = createWriteStream(destPath)
+          res.on('data', (chunk: Buffer) => {
+            downloadedBytes += chunk.length
+            file.write(chunk)
+            if (onProgress && totalBytes > 0) {
+              onProgress({
+                percent: Math.round((downloadedBytes / totalBytes) * 100),
+                downloadedMB: Math.round((downloadedBytes / (1024 * 1024)) * 10) / 10,
+                totalMB: Math.round((totalBytes / (1024 * 1024)) * 10) / 10
+              })
+            }
+          })
+
+          res.on('end', () => {
+            file.end()
+            resolve(destPath)
+          })
+
+          res.on('error', (err) => {
+            file.end()
+            reject(err)
+          })
         })
-      }).on('error', reject)
+        .on('error', reject)
     })
   }
 }

@@ -118,10 +118,7 @@ function BuildSummaryCard({ build, onLaunchOverlay }: BuildSummaryCardProps): Re
                     slot.feastEffect
 
                   return (
-                    <div
-                      key={slot.slot}
-                      className={`gear-slot gear-slot--${rc(slot.itemType)}`}
-                    >
+                    <div key={slot.slot} className={`gear-slot gear-slot--${rc(slot.itemType)}`}>
                       {/* Header */}
                       <div className="gear-slot__header">
                         <span className="gear-slot__name">{slot.slot}</span>
@@ -144,9 +141,7 @@ function BuildSummaryCard({ build, onLaunchOverlay }: BuildSummaryCardProps): Re
                       {/* Aspect */}
                       {slot.requiredAspect && (
                         <div className="gear-slot__aspect">
-                          <div className="gear-slot__aspect-name">
-                            {slot.requiredAspect.name}
-                          </div>
+                          <div className="gear-slot__aspect-name">{slot.requiredAspect.name}</div>
                           {slot.requiredAspect.description && (
                             <div className="gear-slot__aspect-desc">
                               {slot.requiredAspect.description}
@@ -247,20 +242,13 @@ function BuildSummaryCard({ build, onLaunchOverlay }: BuildSummaryCardProps): Re
                   <span className="rune-section__title">Active Runes</span>
                 </div>
                 {build.activeRunes.map((rune, i) => {
-                  const isLegendary = rune.runeType
-                    .toLowerCase()
-                    .includes('legendary')
+                  const isLegendary = rune.runeType.toLowerCase().includes('legendary')
                   const rarityClass = isLegendary ? 'legendary' : 'rare'
                   return (
-                    <div
-                      key={i}
-                      className={`rune-card rune-card--${rarityClass}`}
-                    >
+                    <div key={i} className={`rune-card rune-card--${rarityClass}`}>
                       <div className="rune-card__header">
                         <span className="rune-card__name">{rune.name}</span>
-                        <span
-                          className={`rune-card__type rune-card__type--${rarityClass}`}
-                        >
+                        <span className={`rune-card__type rune-card__type--${rarityClass}`}>
                           {rune.runeType}
                         </span>
                       </div>

@@ -1,5 +1,11 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
-import type { RawBuildData, SavedBuild, ScanMode, ScanVerdict, ScannedGearPiece } from '../shared/types'
+import type {
+  RawBuildData,
+  SavedBuild,
+  ScanMode,
+  ScanVerdict,
+  ScannedGearPiece
+} from '../shared/types'
 
 declare global {
   interface Window {
@@ -21,7 +27,9 @@ declare global {
       loadBuild: (id: string) => Promise<SavedBuild>
       deleteBuild: (id: string) => Promise<boolean>
       clearParagonCache: () => Promise<{ success: boolean }>
-      onUpdateProgress: (callback: (progress: { percent: number; downloadedMB: number; totalMB: number }) => void) => void
+      onUpdateProgress: (
+        callback: (progress: { percent: number; downloadedMB: number; totalMB: number }) => void
+      ) => void
       onUpdateStarted: (callback: () => void) => void
       // Scan pipeline
       performScan: () => Promise<{
@@ -34,12 +42,14 @@ declare global {
       getScanMode: () => Promise<ScanMode>
       getEquippedGear: () => Promise<Record<string, ScannedGearPiece>>
       clearEquippedGear: () => Promise<{ success: boolean }>
-      onScanResult: (callback: (result: {
-        mode: ScanMode
-        verdict: ScanVerdict | null
-        equippedItem: ScannedGearPiece | null
-        error: string | null
-      }) => void) => void
+      onScanResult: (
+        callback: (result: {
+          mode: ScanMode
+          verdict: ScanVerdict | null
+          equippedItem: ScannedGearPiece | null
+          error: string | null
+        }) => void
+      ) => void
     }
   }
 }

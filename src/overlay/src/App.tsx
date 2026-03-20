@@ -83,7 +83,9 @@ function App(): React.JSX.Element {
         <div className="tab-content">
           {activeTab === 'skills' && <SkillsPanel skills={buildData.skills} />}
           {activeTab === 'paragon' && <ParagonPanel boards={buildData.paragonBoards} />}
-          {activeTab === 'gear' && <GearPanel gearSlots={buildData.gearSlots} activeRunes={buildData.activeRunes || []} />}
+          {activeTab === 'gear' && (
+            <GearPanel gearSlots={buildData.gearSlots} activeRunes={buildData.activeRunes || []} />
+          )}
         </div>
 
         <OverlayFooter />

@@ -25,8 +25,7 @@ const SCREENSHOTS_DIR = path.join(__dirname, '../../test-results/paragon-visual'
  * Default build URL to import when no saved builds exist.
  * @see TESTING_RULES.md
  */
-const FALLBACK_BUILD_URL =
-  'https://d4builds.gg/builds/blessed-hammer-paladin-endgame/?var=0'
+const FALLBACK_BUILD_URL = 'https://d4builds.gg/builds/blessed-hammer-paladin-endgame/?var=0'
 
 /**
  * Expected board data for the Hammerdin build from d4builds.gg.
@@ -347,7 +346,10 @@ test.describe('Paragon Board Visual Layout', () => {
       const rotation = boardData[i]?.rotation || 0
 
       await configPage.screenshot({
-        path: path.join(SCREENSHOTS_DIR, `02-board-${i}-${boardName.replace(/\s+/g, '-').toLowerCase()}-rot${rotation}.png`)
+        path: path.join(
+          SCREENSHOTS_DIR,
+          `02-board-${i}-${boardName.replace(/\s+/g, '-').toLowerCase()}-rot${rotation}.png`
+        )
       })
       console.log(
         `✓ Saved: 02-board-${i}-${boardName.replace(/\s+/g, '-').toLowerCase()}-rot${rotation}.png`
