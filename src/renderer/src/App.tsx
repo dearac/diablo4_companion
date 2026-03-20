@@ -5,17 +5,19 @@ import StatusIndicator from './components/StatusIndicator'
 import BuildSummaryCard from './components/BuildSummaryCard'
 import BuildLibrary from './components/BuildLibrary'
 import UpdateBanner from './components/UpdateBanner'
+import EquippedGearTab from './components/EquippedGearTab'
+import ScanHistoryTab from './components/ScanHistoryTab'
 
 /**
- * Config Window App — The build import launcher.
+ * Config Window App — The build import launcher + equipment & scan dashboard.
  *
- * This is a focused, single-purpose window:
- * 1. Paste a build URL → scrape + auto-save
- * 2. See the import result
- * 3. Browse saved builds
- * 4. Launch the overlay
+ * Tabs:
+ * 1. "Builds" — Import/browse builds + launch overlay (original flow)
+ * 2. "Equipped" — View all equipped gear with build comparison
+ * 3. "Scans" — Recently scanned items with verdicts
  */
 type ImportStatus = 'idle' | 'loading' | 'success' | 'error'
+type MainTab = 'builds' | 'equipped' | 'scans'
 
 function App(): React.JSX.Element {
   const [status, setStatus] = useState<ImportStatus>('idle')
@@ -23,6 +25,7 @@ function App(): React.JSX.Element {
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [refreshCounter, setRefreshCounter] = useState<number>(0)
   const [cacheCleared, setCacheCleared] = useState<boolean>(false)
+  const [activeTab, setActiveTab] = useState<MainTab>('builds')
 
   /** Called when the user clicks Import */
   const handleImportStart = (): void => {
@@ -71,21 +74,54 @@ function App(): React.JSX.Element {
         <hr className="config-header__divider" />
       </header>
 
+      {/* ── Main Tab Bar ── */}
+      <nav className="main-tabs" id="main-tab-bar">
+        <button
+          className={`main-tabs__tab ${activeTab === 'builds' ? 'main-tabs__tab--active' : ''}`}
+          onClick={() => setActiveTab('builds')}
+        >
+          📦 Builds
+        </button>
+        <button
+          className={`main-tabs__tab ${activeTab === 'equipped' ? 'main-tabs__tab--active' : ''}`}
+          onClick={() => setActiveTab('equipped')}
+        >
+          🛡️ Equipped
+        </button>
+        <button
+          className={`main-tabs__tab ${activeTab === 'scans' ? 'main-tabs__tab--active' : ''}`}
+          onClick={() => setActiveTab('scans')}
+        >
+          🔍 Scans
+        </button>
+      </nav>
+
       <main className="config-main">
-        <ImportForm
-          onImportStart={handleImportStart}
-          onImportSuccess={handleImportSuccess}
-          onImportError={handleImportError}
-          isLoading={status === 'loading'}
-        />
+        {/* ── Builds Tab (original flow) ── */}
+        {activeTab === 'builds' && (
+          <>
+            <ImportForm
+              onImportStart={handleImportStart}
+              onImportSuccess={handleImportSuccess}
+              onImportError={handleImportError}
+              isLoading={status === 'loading'}
+            />
 
-        <StatusIndicator status={status} errorMessage={errorMessage} />
+            <StatusIndicator status={status} errorMessage={errorMessage} />
 
-        {status === 'success' && buildData && (
-          <BuildSummaryCard build={buildData} onLaunchOverlay={handleLaunchOverlay} />
+            {status === 'success' && buildData && (
+              <BuildSummaryCard build={buildData} onLaunchOverlay={handleLaunchOverlay} />
+            )}
+
+            <BuildLibrary onLoadBuild={handleLoadBuild} refreshTrigger={refreshCounter} />
+          </>
         )}
 
-        <BuildLibrary onLoadBuild={handleLoadBuild} refreshTrigger={refreshCounter} />
+        {/* ── Equipped Gear Tab ── */}
+        {activeTab === 'equipped' && <EquippedGearTab buildData={buildData} />}
+
+        {/* ── Scan History Tab ── */}
+        {activeTab === 'scans' && <ScanHistoryTab />}
       </main>
 
       <footer className="config-footer">
