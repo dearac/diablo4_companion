@@ -136,16 +136,18 @@ function generateTemperRecommendations(
 ): CraftingRecommendation[] {
   if (buildTemperedAffixes.length === 0) return []
 
+  // Deduplicate by name (build data stores greater + non-greater variants)
+  const uniqueTemperNames = [...new Set(buildTemperedAffixes.map((a) => a.name))]
   const recommendations: CraftingRecommendation[] = []
 
-  for (const buildTemper of buildTemperedAffixes) {
-    const alreadyHas = scannedTemperedAffixes.some((st) => affixMatches(st, buildTemper.name))
+  for (const temperName of uniqueTemperNames) {
+    const alreadyHas = scannedTemperedAffixes.some((st) => affixMatches(st, temperName))
 
     if (!alreadyHas) {
       recommendations.push({
         action: 'temper',
         removeAffix: null,
-        addAffix: buildTemper.name,
+        addAffix: temperName,
         vendor: 'Blacksmith',
         resultScore: 'Temper via manual'
       })
