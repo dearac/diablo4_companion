@@ -45,7 +45,7 @@ describe('GearParser', () => {
     expect(parseTooltip(['Test', 'Legendary Helm', '800 IP']).itemPower).toBe(800)
   })
 
-  it('should include rarity keywords when extracting multi-line item names', () => {
+  it('should exclude rarity keywords when extracting multi-line item names', () => {
     const lines = [
       'EQUIPPED',
       'MANTLE OF THE',
@@ -55,7 +55,7 @@ describe('GearParser', () => {
       '800 Item Power'
     ]
     const result = parseTooltip(lines)
-    expect(result.itemName).toBe('MANTLE OF THE GREY * * Ancestral Bloodied Unique')
+    expect(result.itemName).toBe('MANTLE OF THE GREY * *')
     expect(result.slot).toBe('Chest Armor')
     expect(result.itemType).toBe('Unique')
   })

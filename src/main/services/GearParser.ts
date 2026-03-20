@@ -194,9 +194,22 @@ export function parseTooltip(lines: string[]): ScannedGearPiece {
         /Quality/i.test(candidate) ||
         /(?:^\d|,|Armor)/i.test(candidate) ||
         /Armory/i.test(candidate) ||
-        /Loadout/i.test(candidate)
+        /Loadout/i.test(candidate) ||
+        /Slot\s*Transmog/i.test(candidate) || // "Slot Transmog: ON"
+        /^Ed\s*Slot/i.test(candidate) || // Partial "Ed Slot" from crop
+        candidate.length <= 2 // Very short garbage
       ) {
         continue // Skip this line, keep going up
+      }
+
+      // SKIP rarity descriptor lines like "Ancestral Bloodied Unique",
+      // "Legendary", "Rare", etc. These sit between the slot line and the name.
+      const candidateUpper = candidate.toUpperCase()
+      const isRarityLine = ['UNIQUE', 'LEGENDARY', 'RARE', 'ANCESTRAL', 'BLOODIED'].some((kw) =>
+        candidateUpper.includes(kw)
+      )
+      if (isRarityLine) {
+        continue // Skip rarity descriptors, name is above
       }
 
       // If we didn't skip or stop, it's a name line!
