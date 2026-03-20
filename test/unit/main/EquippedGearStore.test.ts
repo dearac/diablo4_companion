@@ -30,7 +30,11 @@ describe('EquippedGearStore', () => {
     const helm = makeGear('Helm', 'Test Helm')
     store.equip(helm)
 
-    expect(store.getEquipped('Helm')).toEqual(helm)
+    // Canonical slot name preserved, item slot updated to canonical
+    const equipped = store.getEquipped('Helm')
+    expect(equipped).not.toBeNull()
+    expect(equipped!.itemName).toBe('Test Helm')
+    expect(equipped!.slot).toBe('Helm')
   })
 
   it('should replace existing equipped gear in same slot', () => {
@@ -70,5 +74,64 @@ describe('EquippedGearStore', () => {
 
     expect(store.getEquipped('Helm')?.itemName).toBe('My Helm')
     expect(store.getEquipped('Gloves')?.itemName).toBe('My Gloves')
+  })
+
+  // ── Slot Normalization Tests ──
+
+  it('should normalize "Sword" to "Weapon"', () => {
+    store.equip(makeGear('Sword', 'Griswold Opus'))
+
+    expect(store.getEquipped('Weapon')?.itemName).toBe('Griswold Opus')
+    expect(store.getEquipped('Weapon')?.slot).toBe('Weapon')
+    expect(store.getEquipped('Sword')).toBeNull() // Raw slot not used as key
+  })
+
+  it('should normalize "Shield" to "Offhand"', () => {
+    store.equip(makeGear('Shield', 'Ward of the Dove'))
+
+    expect(store.getEquipped('Offhand')?.itemName).toBe('Ward of the Dove')
+    expect(store.getEquipped('Offhand')?.slot).toBe('Offhand')
+    expect(store.getEquipped('Shield')).toBeNull()
+  })
+
+  it('should normalize "Focus" to "Offhand"', () => {
+    store.equip(makeGear('Focus', 'Arcane Focus'))
+
+    expect(store.getEquipped('Offhand')?.itemName).toBe('Arcane Focus')
+  })
+
+  it('should disambiguate first Ring to "Ring 1"', () => {
+    store.equip(makeGear('Ring', 'First Ring'))
+
+    expect(store.getEquipped('Ring 1')?.itemName).toBe('First Ring')
+    expect(store.getEquipped('Ring 1')?.slot).toBe('Ring 1')
+    expect(store.getEquipped('Ring')).toBeNull()
+  })
+
+  it('should disambiguate second Ring to "Ring 2"', () => {
+    store.equip(makeGear('Ring', 'First Ring'))
+    store.equip(makeGear('Ring', 'Second Ring'))
+
+    expect(store.getEquipped('Ring 1')?.itemName).toBe('First Ring')
+    expect(store.getEquipped('Ring 2')?.itemName).toBe('Second Ring')
+    expect(store.getEquipped('Ring 2')?.slot).toBe('Ring 2')
+  })
+
+  it('should normalize Two-Handed weapon types to "Weapon"', () => {
+    store.equip(makeGear('Two-Handed Sword', 'Big Blade'))
+
+    expect(store.getEquipped('Weapon')?.itemName).toBe('Big Blade')
+    expect(store.getEquipped('Two-Handed Sword')).toBeNull()
+  })
+
+  it('should keep canonical slot names unchanged', () => {
+    // These should NOT be normalized further
+    store.equip(makeGear('Pants', 'Nice Pants'))
+    store.equip(makeGear('Boots', 'Fast Boots'))
+    store.equip(makeGear('Amulet', 'Shiny Amulet'))
+
+    expect(store.getEquipped('Pants')?.itemName).toBe('Nice Pants')
+    expect(store.getEquipped('Boots')?.itemName).toBe('Fast Boots')
+    expect(store.getEquipped('Amulet')?.itemName).toBe('Shiny Amulet')
   })
 })
