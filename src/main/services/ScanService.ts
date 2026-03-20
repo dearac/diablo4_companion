@@ -42,6 +42,16 @@ export class ScanService {
     return this.scanMode
   }
 
+  /** Returns all currently equipped gear (pass-through to EquippedGearStore). */
+  getEquippedGear(): Record<string, ScannedGearPiece> {
+    return this.equippedStore.getAllEquipped()
+  }
+
+  /** Clears all equipped gear (pass-through to EquippedGearStore). */
+  clearEquippedGear(): void {
+    this.equippedStore.clearAll()
+  }
+
   /**
    * Executes the full scan pipeline.
    *

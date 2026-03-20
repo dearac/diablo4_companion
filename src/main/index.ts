@@ -10,6 +10,9 @@ import { BuildRepository } from './services/BuildRepository'
 import { ProcessManager } from './services/ProcessManager'
 import { D4BuildsScraper } from './scrapers/D4BuildsScraper'
 import { AutoUpdateService } from './services/AutoUpdateService'
+import { ScanService } from './services/ScanService'
+import { ScreenCaptureService } from './services/ScreenCaptureService'
+import { EquippedGearStore } from './services/EquippedGearStore'
 import type { RawBuildData } from '../shared/types'
 
 // ============================================================
@@ -60,6 +63,7 @@ let hotkeyService: HotkeyService
 let buildService: BuildImportService
 let buildRepo: BuildRepository
 let d4BuildsScraper: D4BuildsScraper
+let scanService: ScanService
 
 /**
  * Two-window architecture:
@@ -92,6 +96,16 @@ function initServices(): void {
   // Register supported scrapers (d4builds only)
   d4BuildsScraper = new D4BuildsScraper(dataPaths.classes)
   buildService.registerScraper(d4BuildsScraper)
+
+  // Initialize scan pipeline services
+  const captureService = new ScreenCaptureService(dataPaths.scans)
+  const equippedStore = new EquippedGearStore(
+    join(dataPaths.userData, 'equipped-gear.json')
+  )
+  const sidecarDir = is.dev
+    ? join(app.getAppPath(), 'sidecar', 'bin')
+    : join(dirname(app.getPath('exe')), 'sidecar', 'bin')
+  scanService = new ScanService(captureService, equippedStore, sidecarDir)
 }
 
 // ============================================================
@@ -311,6 +325,34 @@ function setupIpcHandlers(): void {
     d4BuildsScraper.clearCache()
     return { success: true }
   })
+
+  // ---- Scan Pipeline IPC ----
+
+  /** Perform a full scan: capture → OCR → parse → compare/equip */
+  ipcMain.handle('perform-scan', async () => {
+    return await scanService.scan(currentBuildData)
+  })
+
+  /** Toggle between compare and equip scan modes */
+  ipcMain.handle('toggle-scan-mode', () => {
+    return scanService.toggleScanMode()
+  })
+
+  /** Get the current scan mode */
+  ipcMain.handle('get-scan-mode', () => {
+    return scanService.getScanMode()
+  })
+
+  /** Get all currently equipped gear */
+  ipcMain.handle('get-equipped-gear', () => {
+    return scanService.getEquippedGear()
+  })
+
+  /** Clear all equipped gear */
+  ipcMain.handle('clear-equipped-gear', () => {
+    scanService.clearEquippedGear()
+    return { success: true }
+  })
 }
 
 // ============================================================
@@ -345,10 +387,22 @@ function registerGlobalHotkeys(): void {
       })
     }
 
-    // Scan a gear tooltip (captures screen, sends to OCR)
+    // Scan a gear tooltip — runs the full pipeline and sends result to overlay
     if (hotkeys.scan) {
-      globalShortcut.register(hotkeys.scan, () => {
-        overlayWindow?.webContents.send('trigger-scan')
+      globalShortcut.register(hotkeys.scan, async () => {
+        if (!overlayWindow) return
+        try {
+          const result = await scanService.scan(currentBuildData)
+          overlayWindow.webContents.send('scan-result', result)
+        } catch (err) {
+          console.error('[Scan] Hotkey scan failed:', err)
+          overlayWindow.webContents.send('scan-result', {
+            mode: scanService.getScanMode(),
+            verdict: null,
+            equippedItem: null,
+            error: err instanceof Error ? err.message : String(err)
+          })
+        }
       })
     }
 
