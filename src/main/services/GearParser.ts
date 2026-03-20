@@ -88,50 +88,112 @@ export function parseTooltip(lines: string[]): ScannedGearPiece {
     rawText: lines.join('\n')
   }
 
-  // ---- Header parsing (first 5 lines) ----
-  const headerLines = lines.slice(0, Math.min(5, lines.length))
+  // ---- Find the tooltip within the full-screen OCR output ----
+  // The slot line (e.g., "Helm", "Chest Armor") is the primary anchor.
+  // We scan the first few lines to find it, then work outward.
+  let typeSlotLineIndex = -1
 
-  // Find item type + slot from header
-  for (const line of headerLines) {
+  for (let i = Math.min(8, lines.length) - 1; i >= 0; i--) {
+    const line = lines[i].trim()
+    
+    // Skip obvious non-slot lines like affixes or item power
+    if (/^[+×x*●•-]\s*[\d.]/.test(line)) continue
+    if (ITEM_POWER_REGEX.test(line)) continue
+    if (/(?:^\d|,|Armor)/i.test(line) && !/Chest Armor/i.test(line)) continue // e.g. "942 Armor"
+
     const upper = line.toUpperCase()
-    for (const typeInfo of ITEM_TYPES) {
-      if (upper.includes(typeInfo.keyword.toUpperCase())) {
-        result.itemType = typeInfo.type
-        // Now find the slot in this same line
-        for (const slot of GEAR_SLOTS) {
-          if (upper.includes(slot.toUpperCase())) {
-            result.slot = slot
-            break
-          }
-        }
+    let foundSlot = ''
+    for (const slot of GEAR_SLOTS) {
+      if (upper.includes(slot.toUpperCase())) {
+        foundSlot = slot
         break
       }
     }
-    if (result.slot !== 'Unknown') break
+
+    if (foundSlot) {
+      result.slot = foundSlot
+      typeSlotLineIndex = i
+      break
+    }
   }
 
-  // Item name is typically the first line
-  if (lines.length > 0) {
+  // Look for rarity/type on the same line or the line above
+  if (typeSlotLineIndex >= 0) {
+    const searchLines = [lines[typeSlotLineIndex]]
+    if (typeSlotLineIndex > 0) searchLines.push(lines[typeSlotLineIndex - 1])
+
+    for (const line of searchLines) {
+      const upper = line.toUpperCase()
+      for (const typeInfo of ITEM_TYPES) {
+        if (upper.includes(typeInfo.keyword.toUpperCase())) {
+          result.itemType = typeInfo.type
+          break
+        }
+      }
+    }
+  }
+
+  // ---- Item Name: line(s) immediately above the type+slot line ----
+  // D4 item names can span 1–3 OCR lines (e.g., "VULGAR CHAIN" / "OF CELESTIAL" / "STRIFE")
+  if (typeSlotLineIndex > 0) {
+    const nameLineCandidates: string[] = []
+    const maxLookback = Math.min(6, typeSlotLineIndex)
+
+    for (let offset = 1; offset <= maxLookback; offset++) {
+      const candidate = lines[typeSlotLineIndex - offset].trim()
+
+      // STOP conditions (we reached above the name)
+      if (/EQUIPPED/i.test(candidate) || candidate === 'Is') {
+        break
+      }
+
+      // SKIP conditions (junk between name and slot)
+      if (
+        candidate.length === 0 ||
+        candidate.length >= 35 ||
+        /^[+×x]\s*[\d.]/.test(candidate) || // Affix line
+        /^\d{3,4}\s/.test(candidate) || // Item power
+        /Item Power/i.test(candidate) ||
+        /Quality/i.test(candidate) ||
+        /(?:^\d|,|Armor)/i.test(candidate) ||
+        /Armory/i.test(candidate) ||
+        /Loadout/i.test(candidate)
+      ) {
+        continue // Skip this line, keep going up
+      }
+
+      // If we didn't skip or stop, it's a name line!
+      nameLineCandidates.unshift(candidate)
+    }
+
+    result.itemName = nameLineCandidates.join(' ') || lines[typeSlotLineIndex - 1].trim()
+  } else if (lines.length > 0) {
+    // Fallback: first line
     result.itemName = lines[0].trim()
   }
 
-  // ---- Item Power ----
-  for (const line of headerLines) {
-    const ipMatch = line.match(ITEM_POWER_REGEX)
+  // ---- Item Power: search near the type+slot line ----
+  const ipSearchStart = Math.max(0, typeSlotLineIndex - 1)
+  const ipSearchEnd = Math.min(lines.length, typeSlotLineIndex + 5)
+  for (let i = ipSearchStart; i < ipSearchEnd; i++) {
+    const ipMatch = lines[i].match(ITEM_POWER_REGEX)
     if (ipMatch) {
       result.itemPower = parseInt(ipMatch[1], 10)
       break
     }
   }
 
-  // ---- Body parsing (remaining lines) ----
-  for (let i = 1; i < lines.length; i++) {
+  // ---- Body parsing (lines after the tooltip header) ----
+  const bodyStart = typeSlotLineIndex >= 0 ? typeSlotLineIndex + 1 : 1
+  for (let i = bodyStart; i < lines.length; i++) {
     const line = lines[i].trim()
     if (!line) continue
 
-    // Skip header lines we already processed
-    if (i < 3 && (ITEM_POWER_REGEX.test(line) || ITEM_TYPES.some((t) => line.includes(t.keyword))))
-      continue
+    // Skip the item power line (already processed)
+    if (ITEM_POWER_REGEX.test(line)) continue
+
+    // Skip lines that just repeat the type keyword
+    if (ITEM_TYPES.some((t) => line.includes(t.keyword))) continue
 
     // Check for greater affix markers
     let isGreater = false

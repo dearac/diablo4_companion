@@ -33,7 +33,7 @@ describe('GearParser', () => {
   })
 
   it('should match Chest Armor before shorter slots', () => {
-    const lines = ['Tyrael\'s Might', 'Unique Chest Armor', '925 Item Power']
+    const lines = ["Tyrael's Might", 'Unique Chest Armor', '925 Item Power']
     const result = parseTooltip(lines)
 
     expect(result.slot).toBe('Chest Armor')
@@ -43,6 +43,21 @@ describe('GearParser', () => {
     expect(parseTooltip(['Test', 'Legendary Helm', '925 Item Power']).itemPower).toBe(925)
     expect(parseTooltip(['Test', 'Rare Helm', '1000 iP']).itemPower).toBe(1000)
     expect(parseTooltip(['Test', 'Legendary Helm', '800 IP']).itemPower).toBe(800)
+  })
+
+  it('should include rarity keywords when extracting multi-line item names', () => {
+    const lines = [
+      'EQUIPPED',
+      'MANTLE OF THE',
+      'GREY * *',
+      'Ancestral Bloodied Unique',
+      'Chest Armor',
+      '800 Item Power'
+    ]
+    const result = parseTooltip(lines)
+    expect(result.itemName).toBe('MANTLE OF THE GREY * * Ancestral Bloodied Unique')
+    expect(result.slot).toBe('Chest Armor')
+    expect(result.itemType).toBe('Unique')
   })
 
   it('should return 0 sockets when none present', () => {
