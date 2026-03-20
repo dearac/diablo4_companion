@@ -83,8 +83,8 @@ function EquippedGearTab({ buildData }: EquippedGearTabProps): React.JSX.Element
           )
 
           // Calculate affix comparison
-          let matched: string[] = []
-          let missing: string[] = []
+          const matched: string[] = []
+          const missing: string[] = []
           if (equipped && buildSlot) {
             const allBuildAffixes = buildSlot.affixes.map((a) => a.name)
             const allEquippedAffixes = [

@@ -72,11 +72,7 @@ body {
 /* ---- Overlay Panel ---- */
 
 .overlay-panel {
-  position: fixed;
-  right: 20px;
-  top: 10%;
-  width: 380px;
-  height: 70vh;
+  /* Position, top, left, width, height set via inline style */
   background: rgba(10, 10, 15, 0.88);
   backdrop-filter: blur(4px);
   border: 1px solid var(--d4-border-ornate);
@@ -87,6 +83,43 @@ body {
     0 0 30px rgba(0, 0, 0, 0.6),
     inset 0 1px 0 rgba(212, 169, 74, 0.1);
   animation: panelSlideIn 0.3s ease;
+  overflow: hidden;
+}
+
+/* Drag handle wraps the header */
+.overlay-panel__drag-handle {
+  cursor: grab;
+  user-select: none;
+}
+
+.overlay-panel__drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Resize handle — bottom-right corner triangle */
+.overlay-panel__resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  z-index: 10;
+  background:
+    linear-gradient(135deg,
+      transparent 50%,
+      rgba(212, 169, 74, 0.3) 50%,
+      rgba(212, 169, 74, 0.15) 100%);
+  border-radius: 0 0 8px 0;
+  transition: background 0.15s ease;
+}
+
+.overlay-panel__resize-handle:hover {
+  background:
+    linear-gradient(135deg,
+      transparent 50%,
+      rgba(212, 169, 74, 0.5) 50%,
+      rgba(212, 169, 74, 0.3) 100%);
 }
 
 @keyframes panelSlideIn {
