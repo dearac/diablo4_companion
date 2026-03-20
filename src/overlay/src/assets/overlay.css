@@ -642,102 +642,234 @@ body {
   margin-top: 4px;
 }
 
-/* ---- Match Badge ---- */
+/* ============================================================
+   GEAR CARD — Compact equipped item card with hover tooltip
+   ============================================================ */
 
-.gear-slot__match-badge {
+.gear-card {
+  position: relative;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, rgba(20, 20, 32, 0.95) 0%, rgba(14, 14, 24, 0.98) 100%);
+  border: 1px solid var(--d4-border);
+  border-left: 3px solid var(--d4-border);
+  border-radius: 6px;
+  cursor: default;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.gear-card:hover {
+  border-color: var(--d4-border-ornate);
+  box-shadow: 0 0 16px rgba(74, 58, 42, 0.25);
+}
+
+.gear-card--perfect {
+  border-left-color: #4ade80;
+}
+
+.gear-card--good {
+  border-left-color: #a3e635;
+}
+
+.gear-card--fair {
+  border-left-color: #fbbf24;
+}
+
+.gear-card--poor {
+  border-left-color: #ef4444;
+}
+
+.gear-card__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.gear-card__slot {
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: var(--d4-text-muted);
+  text-transform: uppercase;
+}
+
+.gear-card__badge {
   font-size: 11px;
   font-weight: 700;
   padding: 1px 8px;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.gear-slot__match-badge--perfect {
+.gear-card__badge--perfect {
   color: #4ade80;
-  border-color: rgba(74, 222, 128, 0.3);
-  background: rgba(74, 222, 128, 0.08);
 }
 
-.gear-slot__match-badge--good {
+.gear-card__badge--good {
   color: #a3e635;
-  border-color: rgba(163, 230, 53, 0.3);
-  background: rgba(163, 230, 53, 0.08);
 }
 
-.gear-slot__match-badge--fair {
+.gear-card__badge--fair {
   color: #fbbf24;
-  border-color: rgba(251, 191, 36, 0.3);
-  background: rgba(251, 191, 36, 0.08);
 }
 
-.gear-slot__match-badge--poor {
+.gear-card__badge--poor {
   color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.3);
-  background: rgba(239, 68, 68, 0.08);
 }
 
-/* ---- Item Power ---- */
+.gear-card__name {
+  font-size: 12px;
+  color: var(--d4-gold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-.gear-slot__item-power {
-  font-size: 11px;
+.gear-card__ip {
   color: var(--d4-text-muted);
-  margin-bottom: 2px;
+  font-size: 10px;
 }
 
-/* ---- Equipped Variant ---- */
-
-.gear-slot--equipped {
-  border-left: 3px solid var(--d4-item-legendary);
+.gear-card__action-hint {
+  font-size: 10px;
+  color: var(--d4-text-muted);
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* ---- Affix match styling ---- */
-
-.gear-slot__affix-item--matched {
+.gear-card__action-hint--good {
   color: #4ade80;
 }
 
-.gear-slot__affix-item--missing {
-  color: #ef4444;
+/* ============================================================
+   GEAR TOOLTIP — Hover popup with details
+   ============================================================ */
+
+.gear-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  padding: 10px 12px;
+  background: linear-gradient(145deg, rgba(16, 14, 28, 0.98) 0%, rgba(10, 8, 18, 0.99) 100%);
+  border: 1px solid var(--d4-border-ornate);
+  border-radius: 6px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+  animation: tooltipFadeIn 0.15s ease-out;
+  pointer-events: none;
 }
 
-/* ---- Aspect Status ---- */
-
-.gear-slot__aspect-status {
-  font-size: 11px;
-  padding: 4px 0;
-  margin-top: 4px;
+.gear-card:hover .gear-tooltip {
+  display: block;
 }
 
-.gear-slot__aspect-status--match {
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.gear-tooltip__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.gear-tooltip__status {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.gear-tooltip__status--perfect {
   color: #4ade80;
 }
 
-.gear-slot__aspect-status--missing {
+.gear-tooltip__status--good {
+  color: #a3e635;
+}
+
+.gear-tooltip__status--fair {
+  color: #fbbf24;
+}
+
+.gear-tooltip__status--poor {
   color: #ef4444;
 }
 
-/* ---- Suggestions ---- */
-
-.gear-slot__suggestions {
-  margin-top: 6px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.gear-slot__suggestion {
+.gear-tooltip__score {
   font-size: 11px;
   color: var(--d4-text-muted);
-  padding: 2px 0;
+}
+
+.gear-tooltip__divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  margin: 6px 0;
+}
+
+.gear-tooltip__section {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--d4-text-dim);
+  margin-bottom: 4px;
+}
+
+.gear-tooltip__affix {
+  font-size: 11px;
+  padding: 1px 0;
   line-height: 1.4;
 }
 
-.gear-slot__suggestion strong {
+.gear-tooltip__affix--match {
+  color: #4ade80;
+}
+
+.gear-tooltip__affix--miss {
+  color: #ef4444;
+}
+
+.gear-tooltip__action {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  padding: 3px 0;
+  color: var(--d4-text);
+}
+
+.gear-tooltip__action-icon {
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+}
+
+.gear-tooltip__action-text {
+  flex: 1;
   color: var(--d4-gold);
 }
 
-.gear-slot__suggestion--good {
-  color: #4ade80;
+.gear-tooltip__action-vendor {
+  font-size: 9px;
+  color: var(--d4-text-dim);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 1px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
 }
 
 /* ---- Gear Slot Card ---- */
