@@ -9,13 +9,38 @@ build/chromium
 # Runtime data
 data
 
+# Environment variables / secrets
+.env
+.env.*
+.env.local
+
+# Python virtual environment
+.venv/
+
 # OS files
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Editor/IDE caches
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Editor caches & linting
 .eslintcache
 *.log*
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Debug / temp output
+temp.txt
+tsc-error*.txt
+vitest-error*.txt
+test-output*.log
 
 # Test artifacts
 playwright-report
@@ -34,3 +59,11 @@ sidecar/ocr-cli/obj/
 
 # Large generated files
 tree.txt
+
+# Certificates / keys (safety net)
+*.pem
+*.key
+*.crt
+*.cer
+*.pfx
+*.p12
