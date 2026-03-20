@@ -23,7 +23,7 @@ export type D4Class =
 /**
  * The three build websites we can import from.
  */
-export type BuildSourceSite = 'd4builds'
+export type BuildSourceSite = 'd4builds' | 'maxroll' | 'icy-veins'
 
 /**
  * Represents a complete D4 build — everything we know about
