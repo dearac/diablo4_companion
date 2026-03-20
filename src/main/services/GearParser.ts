@@ -63,8 +63,21 @@ const ADDITIVE_AFFIX_REGEX = /^[+]\s*[\d.]+%?\s+.+/
 /** Regex to detect multiplicative affixes like "×12% Vulnerable Damage" */
 const MULTIPLICATIVE_AFFIX_REGEX = /^[×x]\s*[\d.]+%?\s+.+/i
 
-/** Greater affix marker — star emoji or "Greater" prefix */
-const GREATER_AFFIX_MARKERS = ['⭐', '★', '☆', 'Greater']
+/** Regex to detect bare-number affixes like "10.8% Cooldown Reduction" (no +/× prefix) */
+const BARE_AFFIX_REGEX = /^\d+[.]?\d*%\s+[A-Z].+/
+
+/**
+ * Greater affix marker — star emoji, asterisk (OCR reads ✦ as *), or "Greater" prefix.
+ * The D4 tooltip uses ✦ for greater affixes, but OCR often reads it as *.
+ */
+const GREATER_AFFIX_MARKERS = ['⭐', '★', '☆', '*', 'Greater']
+
+/**
+ * Leading bullet characters that D4 uses before affixes.
+ * OCR may read ◆ as ·, •, o, or garbled characters like ÇÇó.
+ * These must be stripped before affix regex matching.
+ */
+const BULLET_REGEX = /^[·•◆ÇÇóo᪥◈⬥⬦]\s*/
 
 /**
  * Parses an array of OCR text lines from a tooltip into a ScannedGearPiece.
@@ -255,37 +268,45 @@ export function parseTooltip(lines: string[]): ScannedGearPiece {
     // Skip lines that just repeat the type keyword
     if (ITEM_TYPES.some((t) => line.includes(t.keyword))) continue
 
+    // Strip leading bullet characters (·, •, ◆, etc.) that D4 uses before affixes
+    let cleanLine = line.replace(BULLET_REGEX, '')
+
     // Check for greater affix markers
     let isGreater = false
-    let cleanLine = line
     for (const marker of GREATER_AFFIX_MARKERS) {
-      if (line.startsWith(marker)) {
+      if (cleanLine.startsWith(marker)) {
         isGreater = true
-        cleanLine = line.slice(marker.length).trim()
+        cleanLine = cleanLine.slice(marker.length).trim()
         break
       }
     }
 
     // Socket detection
-    const socketMatch = line.match(SOCKET_REGEX)
+    const socketMatch = cleanLine.match(SOCKET_REGEX)
     if (socketMatch) {
       const count = socketMatch[1] || socketMatch[2]
       result.sockets = count ? parseInt(count, 10) : 1
 
       // Check for socket contents like "Empty Socket" or gem names
-      if (line.toLowerCase().includes('empty')) {
+      if (cleanLine.toLowerCase().includes('empty')) {
         result.socketContents.push('Empty')
       }
       continue
     }
 
-    // Affix detection
-    if (ADDITIVE_AFFIX_REGEX.test(cleanLine) || MULTIPLICATIVE_AFFIX_REGEX.test(cleanLine)) {
-      result.affixes.push(cleanLine)
+    // Affix detection — additive (+), multiplicative (×), or bare number (10.8% ...)
+    if (
+      ADDITIVE_AFFIX_REGEX.test(cleanLine) ||
+      MULTIPLICATIVE_AFFIX_REGEX.test(cleanLine) ||
+      BARE_AFFIX_REGEX.test(cleanLine)
+    ) {
+      // Normalize: ensure the affix string starts with + for consistency
+      const normalizedAffix = /^[+×x]/.test(cleanLine) ? cleanLine : `+${cleanLine}`
+      result.affixes.push(normalizedAffix)
 
       if (isGreater) {
         // Extract the affix name without the numeric prefix for greater affix tracking
-        const nameMatch = cleanLine.match(/^[+×x]\s*[\d.]+%?\s+(.+)/i)
+        const nameMatch = normalizedAffix.match(/^[+×x]\s*[\d.]+%?\s+(.+)/i)
         if (nameMatch) {
           result.greaterAffixes.push(nameMatch[1].trim())
         }
