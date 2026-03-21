@@ -2,6 +2,7 @@ import { ElectronAPI } from '@electron-toolkit/preload'
 import type {
   RawBuildData,
   SavedBuild,
+  IParagonBoard,
   ScanMode,
   ScanVerdict,
   ScannedGearPiece,
@@ -59,6 +60,14 @@ declare global {
           error: string | null
         }) => void
       ) => void
+      // Paragon Detach
+      detachParagonBoard: (boardIndex: number) => void
+      onDetachBoardData: (
+        callback: (data: { board: IParagonBoard; opacity: number }) => void
+      ) => void
+      detachSetIgnoreMouse: (ignore: boolean, options?: { forward: boolean }) => void
+      detachSaveOpacity: (opacity: number) => void
+      detachClose: () => void
     }
   }
 }
