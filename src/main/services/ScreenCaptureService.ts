@@ -103,4 +103,33 @@ export class ScreenCaptureService {
 
     return filePath
   }
+
+  /**
+   * Captures the full primary display without cropping.
+   * Used for board scanning where the tooltip position is unknown.
+   *
+   * @returns Absolute path to the saved screenshot.
+   */
+  async captureFullScreen(): Promise<string> {
+    const primaryDisplay = screen.getPrimaryDisplay()
+    const { width, height } = primaryDisplay.size
+
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: { width, height }
+    })
+
+    if (sources.length === 0) {
+      throw new Error('No screen source available for capture')
+    }
+
+    const thumbnail = sources[0].thumbnail
+    const jpegBuffer = thumbnail.toJPEG(90)
+
+    const filename = `board-scan-${Date.now()}.jpg`
+    const filePath = join(this.scansDir, filename)
+    await writeFile(filePath, jpegBuffer)
+
+    return filePath
+  }
 }

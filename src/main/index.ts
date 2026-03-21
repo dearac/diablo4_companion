@@ -14,6 +14,8 @@ import { ScanService } from './services/ScanService'
 import { ScreenCaptureService } from './services/ScreenCaptureService'
 import { EquippedGearStore } from './services/EquippedGearStore'
 import { ScanHistoryStore } from './services/ScanHistoryStore'
+import { BoardScanService } from './services/BoardScanService'
+import { runOcr } from './services/OcrService'
 import type { RawBuildData } from '../shared/types'
 import type { ImportProgress } from './scrapers/BuildScraper'
 
@@ -66,6 +68,7 @@ let buildService: BuildImportService
 let buildRepo: BuildRepository
 let d4BuildsScraper: D4BuildsScraper
 let scanService: ScanService
+let boardScanService: BoardScanService
 
 /**
  * Two-window architecture:
@@ -77,6 +80,9 @@ let overlayWindow: BrowserWindow | null = null
 
 /** The detach window — shows a single paragon board for alignment */
 let detachWindow: BrowserWindow | null = null
+
+/** Tracks which board to detach next when the user presses the detach hotkey */
+let detachBoardIndex = 0
 
 /** Holds the most recently imported build data, shared between windows */
 let currentBuildData: RawBuildData | null = null
@@ -110,6 +116,7 @@ function initServices(): void {
     ? join(app.getAppPath(), 'sidecar', 'bin')
     : join(process.resourcesPath, 'sidecar', 'bin')
   scanService = new ScanService(captureService, equippedStore, scanHistoryStore, sidecarDir)
+  boardScanService = new BoardScanService()
 }
 
 // ============================================================
@@ -280,9 +287,14 @@ function createDetachWindow(boardIndex: number): void {
     const board = currentBuildData.paragonBoards[boardIndex]
     if (!board) return
 
-    // Also send the saved opacity
+    // Also send the saved opacity and board position info
     const savedOpacity = store?.get('paragon-detach-opacity', 50) as number
-    detachWindow.webContents.send('detach-board-data', { board, opacity: savedOpacity })
+    detachWindow.webContents.send('detach-board-data', {
+      board,
+      opacity: savedOpacity,
+      boardNumber: boardIndex + 1,
+      boardTotal: currentBuildData.paragonBoards.length
+    })
   })
 }
 
@@ -347,6 +359,9 @@ function setupIpcHandlers(): void {
       const result = await buildService.importFromUrl(url, onProgress)
       currentBuildData = result
 
+      // Reset detach cycling index for the new build
+      detachBoardIndex = 0
+
       // Auto-save the imported build (async — doesn't block main process)
       const site = buildService.detectSite(url)
       const saved = await buildRepo.save(result, url, site)
@@ -371,6 +386,10 @@ function setupIpcHandlers(): void {
     const build = await buildRepo.load(id)
     if (!build) throw new Error(`Build not found: ${id}`)
     currentBuildData = build.data
+
+    // Reset detach cycling index for the newly loaded build
+    detachBoardIndex = 0
+
     return build
   })
 
@@ -489,6 +508,14 @@ function setupIpcHandlers(): void {
       detachWindow = null
     }
   })
+
+  /** Move the detach window by a pixel delta (right-click drag) */
+  ipcMain.on('detach-move-window', (_event, dx: number, dy: number) => {
+    if (detachWindow) {
+      const [x, y] = detachWindow.getPosition()
+      detachWindow.setPosition(x + dx, y + dy)
+    }
+  })
 }
 
 // ============================================================
@@ -530,7 +557,9 @@ function registerGlobalHotkeys(): void {
         }
       })
       status.toggle = ok
-      console.log(`[Hotkeys] ${hotkeys.toggle} (toggle): ${ok ? '✓ registered' : '✗ FAILED — key may be claimed by another app'}`)
+      console.log(
+        `[Hotkeys] ${hotkeys.toggle} (toggle): ${ok ? '✓ registered' : '✗ FAILED — key may be claimed by another app'}`
+      )
     }
 
     // Scan a gear tooltip — runs the full pipeline and sends result to overlay
@@ -551,7 +580,9 @@ function registerGlobalHotkeys(): void {
         }
       })
       status.scan = ok
-      console.log(`[Hotkeys] ${hotkeys.scan} (scan): ${ok ? '✓ registered' : '✗ FAILED — key may be claimed by another app'}`)
+      console.log(
+        `[Hotkeys] ${hotkeys.scan} (scan): ${ok ? '✓ registered' : '✗ FAILED — key may be claimed by another app'}`
+      )
     }
 
     // Open/close the gear report panel
@@ -560,7 +591,95 @@ function registerGlobalHotkeys(): void {
         overlayWindow?.webContents.send('trigger-report')
       })
       status.report = ok
-      console.log(`[Hotkeys] ${hotkeys.report} (report): ${ok ? '✓ registered' : '✗ FAILED — key may be claimed by another app'}`)
+      console.log(
+        `[Hotkeys] ${hotkeys.report} (report): ${ok ? '✓ registered' : '✗ FAILED — key may be claimed by another app'}`
+      )
+    }
+
+    // Cycle through paragon boards — detach the next board
+    if (hotkeys.detach) {
+      const ok = globalShortcut.register(hotkeys.detach, () => {
+        if (!currentBuildData || !currentBuildData.paragonBoards?.length) return
+        const boards = currentBuildData.paragonBoards
+        // Wrap around if past the end
+        if (detachBoardIndex >= boards.length) detachBoardIndex = 0
+        createDetachWindow(detachBoardIndex)
+        detachBoardIndex++
+      })
+      status.detach = ok
+      console.log(
+        `[Hotkeys] ${hotkeys.detach} (detach): ${ok ? '✓ registered' : '✗ FAILED — key may be claimed by another app'}`
+      )
+    }
+
+    // Board scan — OCR the screen to identify and overlay the correct paragon board
+    if (hotkeys.boardScan) {
+      const ok = globalShortcut.register(hotkeys.boardScan, async () => {
+        if (!currentBuildData || !currentBuildData.paragonBoards?.length) {
+          console.log('[BoardScan] No build loaded or no paragon boards')
+          return
+        }
+
+        try {
+          console.log('[BoardScan] ═══ SCANNING ═══')
+
+          // Step 1: Full-screen capture
+          const captureService = new ScreenCaptureService(dataPaths.scans)
+          const imagePath = await captureService.captureFullScreen()
+          console.log(`[BoardScan] Screenshot saved: ${imagePath}`)
+
+          // Step 2: OCR the full screen
+          const sidecarDir = is.dev
+            ? join(app.getAppPath(), 'sidecar', 'bin')
+            : join(process.resourcesPath, 'sidecar', 'bin')
+          const ocrResult = await runOcr(imagePath, sidecarDir)
+          console.log(`[BoardScan] OCR text (first 200): ${ocrResult.text.substring(0, 200)}`)
+
+          // Step 3: Match against loaded build's boards
+          const match = boardScanService.matchBoard(ocrResult.text, currentBuildData.paragonBoards)
+
+          if (match) {
+            console.log(
+              `[BoardScan] ✓ MATCHED: "${match.matchedNodeName}" → ` +
+                `Board #${match.boardIndex + 1} "${match.boardName}" ` +
+                `(confidence: ${match.confidence})`
+            )
+            // Auto-detach the matched board
+            createDetachWindow(match.boardIndex)
+
+            // Notify the overlay/config windows
+            overlayWindow?.webContents.send('board-scan-result', {
+              success: true,
+              ...match
+            })
+            configWindow?.webContents.send('board-scan-result', {
+              success: true,
+              ...match
+            })
+          } else {
+            console.log('[BoardScan] ✗ No matching board found in OCR text')
+            console.log('[BoardScan] Full OCR text:')
+            ocrResult.lines.forEach((line, i) => {
+              console.log(`[BoardScan]   [${i}] "${line.text}"`)
+            })
+
+            overlayWindow?.webContents.send('board-scan-result', {
+              success: false,
+              error: 'No matching paragon board found. Try hovering over a Legendary or Rare node.'
+            })
+          }
+        } catch (err) {
+          console.error('[BoardScan] Pipeline error:', err)
+          overlayWindow?.webContents.send('board-scan-result', {
+            success: false,
+            error: err instanceof Error ? err.message : String(err)
+          })
+        }
+      })
+      status.boardScan = ok
+      console.log(
+        `[Hotkeys] ${hotkeys.boardScan} (boardScan): ${ok ? '✓ registered' : '✗ FAILED — key may be claimed by another app'}`
+      )
     }
 
     // Escape closes the detach window if it's open

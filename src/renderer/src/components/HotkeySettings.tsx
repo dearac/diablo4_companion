@@ -14,11 +14,17 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 const HOTKEY_META: Record<string, { icon: string; label: string; desc: string }> = {
   scan: { icon: '📸', label: 'Scan Item', desc: 'Capture and analyze a gear tooltip' },
   report: { icon: '📊', label: 'Gear Report', desc: 'Toggle the gear report panel' },
-  toggle: { icon: '👁️', label: 'Toggle Overlay', desc: 'Show or hide the overlay' }
+  toggle: { icon: '👁️', label: 'Toggle Overlay', desc: 'Show or hide the overlay' },
+  detach: { icon: '⊞', label: 'Detach Board', desc: 'Cycle to the next paragon board overlay' },
+  boardScan: {
+    icon: '🔍',
+    label: 'Board Scan',
+    desc: 'OCR scan to auto-identify & overlay the paragon board'
+  }
 }
 
 /** Ordered list of actions to display */
-const ACTIONS = ['scan', 'report', 'toggle'] as const
+const ACTIONS = ['scan', 'report', 'toggle', 'detach', 'boardScan'] as const
 
 /**
  * Converts a DOM KeyboardEvent into an Electron accelerator string.

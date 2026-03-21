@@ -16,7 +16,9 @@ export class HotkeyService {
   private static readonly DEFAULTS: Record<string, string> = {
     scan: 'F7',
     report: 'F8',
-    toggle: 'F6'
+    toggle: 'F6',
+    detach: 'F9',
+    boardScan: 'F10'
   }
 
   /**
@@ -73,7 +75,9 @@ export class HotkeyService {
     return {
       scan: this.getHotkey('scan'),
       report: this.getHotkey('report'),
-      toggle: this.getHotkey('toggle')
+      toggle: this.getHotkey('toggle'),
+      detach: this.getHotkey('detach'),
+      boardScan: this.getHotkey('boardScan')
     }
   }
 
