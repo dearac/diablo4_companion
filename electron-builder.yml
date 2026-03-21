@@ -16,6 +16,10 @@ extraResources:
     to: chromium
     filter:
       - '**/*'
+  - from: sidecar/bin
+    to: sidecar/bin
+    filter:
+      - 'WinOcr.exe'
 win:
   executableName: diablo4-companion
   target:

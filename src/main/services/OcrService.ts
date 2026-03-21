@@ -1,5 +1,6 @@
 import { execFile } from 'child_process'
 import { join } from 'path'
+import { existsSync } from 'fs'
 
 /**
  * OcrService spawns WinOcr.exe and returns parsed OCR results.
@@ -71,6 +72,17 @@ export function runOcr(imagePath: string, sidecarDir: string): Promise<OcrResult
   return new Promise((resolve, reject) => {
     const exePath = join(sidecarDir, 'WinOcr.exe')
 
+    // Pre-flight: make sure the binary actually exists before spawning
+    if (!existsSync(exePath)) {
+      reject(
+        new Error(
+          `WinOcr.exe not found at: ${exePath}. ` +
+            'Ensure the sidecar/bin/ directory is bundled with the app.'
+        )
+      )
+      return
+    }
+
     execFile(
       exePath,
       [imagePath, '--lang', 'en-US'],
@@ -80,7 +92,7 @@ export function runOcr(imagePath: string, sidecarDir: string): Promise<OcrResult
       },
       (error, stdout, stderr) => {
         if (error) {
-          reject(new Error(`OCR failed: ${stderr || error.message}`))
+          reject(new Error(`OCR failed (${exePath}): ${stderr || error.message}`))
           return
         }
 
@@ -93,3 +105,4 @@ export function runOcr(imagePath: string, sidecarDir: string): Promise<OcrResult
     )
   })
 }
+

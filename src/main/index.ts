@@ -105,7 +105,7 @@ function initServices(): void {
   const scanHistoryStore = new ScanHistoryStore(join(dataPaths.userData, 'scan-history.json'))
   const sidecarDir = is.dev
     ? join(app.getAppPath(), 'sidecar', 'bin')
-    : join(dirname(app.getPath('exe')), 'sidecar', 'bin')
+    : join(process.resourcesPath, 'sidecar', 'bin')
   scanService = new ScanService(captureService, equippedStore, scanHistoryStore, sidecarDir)
 }
 
