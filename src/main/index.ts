@@ -15,6 +15,7 @@ import { ScreenCaptureService } from './services/ScreenCaptureService'
 import { EquippedGearStore } from './services/EquippedGearStore'
 import { ScanHistoryStore } from './services/ScanHistoryStore'
 import { BoardScanService } from './services/BoardScanService'
+import { BoardPositionService } from './services/BoardPositionService'
 import { runOcr } from './services/OcrService'
 import type { RawBuildData } from '../shared/types'
 import type { ImportProgress } from './scrapers/BuildScraper'
@@ -69,6 +70,7 @@ let buildRepo: BuildRepository
 let d4BuildsScraper: D4BuildsScraper
 let scanService: ScanService
 let boardScanService: BoardScanService
+let boardPositionService: BoardPositionService
 
 /**
  * Two-window architecture:
@@ -117,6 +119,7 @@ function initServices(): void {
     : join(process.resourcesPath, 'sidecar', 'bin')
   scanService = new ScanService(captureService, equippedStore, scanHistoryStore, sidecarDir)
   boardScanService = new BoardScanService()
+  boardPositionService = new BoardPositionService()
 }
 
 // ============================================================
@@ -235,8 +238,12 @@ function createOverlayWindow(): void {
  * - NOT click-through by default (user clicks Lock to enable)
  *
  * @param boardIndex - The index of the board to detach
+ * @param position - Optional screen coordinates to auto-position the window
  */
-function createDetachWindow(boardIndex: number): void {
+function createDetachWindow(
+  boardIndex: number,
+  position?: { x: number; y: number; width: number; height: number }
+): void {
   // Close any existing detach window before opening a new one
   if (detachWindow) {
     detachWindow.close()
@@ -246,11 +253,17 @@ function createDetachWindow(boardIndex: number): void {
   const primaryDisplay = screen.getPrimaryDisplay()
   const { width: screenW, height: screenH } = primaryDisplay.workAreaSize
 
+  // Use auto-detected position if available, otherwise center on screen
+  const winW = position ? position.width : 600
+  const winH = position ? position.height : 600
+  const winX = position ? position.x : Math.round(screenW / 2 - 300)
+  const winY = position ? position.y : Math.round(screenH / 2 - 300)
+
   detachWindow = new BrowserWindow({
-    width: 600,
-    height: 600,
-    x: Math.round(screenW / 2 - 300),
-    y: Math.round(screenH / 2 - 300),
+    width: winW,
+    height: winH,
+    x: winX,
+    y: winY,
     transparent: true,
     frame: false,
     alwaysOnTop: true,
@@ -645,7 +658,9 @@ function registerGlobalHotkeys(): void {
                 `(confidence: ${match.confidence})`
             )
             // Auto-detach the matched board
-            createDetachWindow(match.boardIndex)
+            // Step 4: Detect the board's position on screen
+            const boardRegion = boardPositionService.detectBoardRegion(imagePath)
+            createDetachWindow(match.boardIndex, boardRegion ?? undefined)
 
             // Notify the overlay/config windows
             overlayWindow?.webContents.send('board-scan-result', {
