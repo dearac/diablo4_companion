@@ -3,6 +3,7 @@ import { electronAPI } from '@electron-toolkit/preload'
 import type {
   RawBuildData,
   SavedBuild,
+  IParagonBoard,
   ScanMode,
   ScanVerdict,
   ScannedGearPiece,
@@ -276,6 +277,46 @@ const api = {
     }) => void
   ): void => {
     ipcRenderer.on('scan-result', (_event, result) => callback(result))
+  },
+
+  // ---- Paragon Detach ----
+
+  /**
+   * Requests the main process to open a detach window for a specific board.
+   * @param boardIndex - Index of the board in the build's paragonBoards array
+   */
+  detachParagonBoard: (boardIndex: number): void => {
+    ipcRenderer.send('detach-paragon-board', boardIndex)
+  },
+
+  /**
+   * Listens for the single board data sent to the detach window.
+   */
+  onDetachBoardData: (
+    callback: (data: { board: IParagonBoard; opacity: number }) => void
+  ): void => {
+    ipcRenderer.on('detach-board-data', (_event, data) => callback(data))
+  },
+
+  /**
+   * Toggles click-through on the detach window.
+   */
+  detachSetIgnoreMouse: (ignore: boolean, options?: { forward: boolean }): void => {
+    ipcRenderer.send('detach-set-ignore-mouse', ignore, options)
+  },
+
+  /**
+   * Saves the detach opacity preference.
+   */
+  detachSaveOpacity: (opacity: number): void => {
+    ipcRenderer.send('detach-save-opacity', opacity)
+  },
+
+  /**
+   * Closes the detach window.
+   */
+  detachClose: (): void => {
+    ipcRenderer.send('detach-close')
   }
 }
 

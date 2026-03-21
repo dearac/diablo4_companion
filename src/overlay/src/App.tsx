@@ -105,6 +105,11 @@ function App(): React.JSX.Element {
     setEquippedGear({})
   }, [])
 
+  /** Detach a single paragon board into its own overlay */
+  const handleDetachBoard = useCallback((boardIndex: number) => {
+    window.api.detachParagonBoard(boardIndex)
+  }, [])
+
   // ── Drag logic ──
   const handleDragStart = useCallback(
     (e: React.MouseEvent) => {
@@ -199,7 +204,9 @@ function App(): React.JSX.Element {
 
         <div className="tab-content">
           {activeTab === 'skills' && <SkillsPanel skills={buildData.skills} />}
-          {activeTab === 'paragon' && <ParagonPanel boards={buildData.paragonBoards} />}
+          {activeTab === 'paragon' && (
+            <ParagonPanel boards={buildData.paragonBoards} onDetach={handleDetachBoard} />
+          )}
           {activeTab === 'gear' && (
             <GearPanel
               gearSlots={buildData.gearSlots}

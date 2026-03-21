@@ -35,6 +35,7 @@ interface ParagonBoardTilesProps {
   onNodeHover: (node: IParagonNode, boardIndex: number) => void
   onNodeLeave: () => void
   onNodeMouseMove: (e: React.MouseEvent) => void
+  onDetach?: (boardIndex: number) => void
 }
 
 /**
@@ -51,7 +52,8 @@ const ParagonBoardTiles = memo(function ParagonBoardTiles({
   board,
   onNodeHover,
   onNodeLeave,
-  onNodeMouseMove
+  onNodeMouseMove,
+  onDetach
 }: ParagonBoardTilesProps): React.JSX.Element {
   const positionedNodes = board.allocatedNodes.filter(
     (n) => n.row !== undefined && n.col !== undefined
@@ -108,6 +110,18 @@ const ParagonBoardTiles = memo(function ParagonBoardTiles({
         <span className="paragon-canvas-board__count">
           {allocatedCount}/{positionedNodes.length}
         </span>
+        {onDetach && (
+          <button
+            className="detach-toolbar__btn paragon-canvas-board__detach-btn"
+            onClick={(e) => {
+              e.stopPropagation()
+              onDetach(board.boardIndex)
+            }}
+            title="Detach this board as overlay"
+          >
+            ⊞
+          </button>
+        )}
       </div>
 
       {/* Board background — lazy loaded for off-screen boards */}
@@ -226,9 +240,10 @@ const ParagonBoardTiles = memo(function ParagonBoardTiles({
  */
 interface ParagonBoardCanvasProps {
   boards: IParagonBoard[]
+  onDetach?: (boardIndex: number) => void
 }
 
-function ParagonBoardCanvas({ boards }: ParagonBoardCanvasProps): React.JSX.Element {
+function ParagonBoardCanvas({ boards, onDetach }: ParagonBoardCanvasProps): React.JSX.Element {
   // Tooltip state
   const [hoveredNode, setHoveredNode] = useState<IParagonNode | null>(null)
   const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
@@ -411,6 +426,7 @@ function ParagonBoardCanvas({ boards }: ParagonBoardCanvasProps): React.JSX.Elem
                 onNodeHover={handleNodeHover}
                 onNodeLeave={handleNodeLeave}
                 onNodeMouseMove={handleNodeMouseMove}
+                onDetach={onDetach}
               />
             </div>
           )

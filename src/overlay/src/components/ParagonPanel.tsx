@@ -11,6 +11,7 @@ import ParagonBoardCanvas from './ParagonBoardCanvas'
 
 interface ParagonPanelProps {
   boards: IParagonBoard[]
+  onDetach?: (boardIndex: number) => void
 }
 
 /**
@@ -20,10 +21,10 @@ interface ParagonPanelProps {
  * Now delegates to ParagonBoardCanvas for a unified, interactive
  * map with zoom-to-cursor and click-drag pan.
  */
-function ParagonPanel({ boards }: ParagonPanelProps): React.JSX.Element {
+function ParagonPanel({ boards, onDetach }: ParagonPanelProps): React.JSX.Element {
   return (
     <div className="paragon-panel">
-      <ParagonBoardCanvas boards={boards} />
+      <ParagonBoardCanvas boards={boards} onDetach={onDetach} />
     </div>
   )
 }

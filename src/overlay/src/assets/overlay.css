@@ -105,23 +105,19 @@ body {
   height: 16px;
   cursor: nwse-resize;
   z-index: 10;
-  background: linear-gradient(
-    135deg,
-    transparent 50%,
-    rgba(212, 169, 74, 0.3) 50%,
-    rgba(212, 169, 74, 0.15) 100%
-  );
+  background: linear-gradient(135deg,
+      transparent 50%,
+      rgba(212, 169, 74, 0.3) 50%,
+      rgba(212, 169, 74, 0.15) 100%);
   border-radius: 0 0 8px 0;
   transition: background 0.15s ease;
 }
 
 .overlay-panel__resize-handle:hover {
-  background: linear-gradient(
-    135deg,
-    transparent 50%,
-    rgba(212, 169, 74, 0.5) 50%,
-    rgba(212, 169, 74, 0.3) 100%
-  );
+  background: linear-gradient(135deg,
+      transparent 50%,
+      rgba(212, 169, 74, 0.5) 50%,
+      rgba(212, 169, 74, 0.3) 100%);
 }
 
 @keyframes panelSlideIn {
@@ -333,11 +329,9 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: radial-gradient(
-    circle at 50% 50%,
-    rgba(20, 20, 32, 0.95) 0%,
-    rgba(10, 10, 15, 1) 100%
-  );
+  background: radial-gradient(circle at 50% 50%,
+      rgba(20, 20, 32, 0.95) 0%,
+      rgba(10, 10, 15, 1) 100%);
   border-radius: 0 0 8px 8px;
   user-select: none;
 }
@@ -1888,4 +1882,160 @@ body {
 
 .equipped-status__suggestion strong {
   color: var(--d4-text-secondary);
+}
+
+/* ============================================================
+   DETACH OVERLAY — Single board alignment overlay
+   ============================================================ */
+
+.detach-root {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  overflow: hidden;
+  -webkit-app-region: drag;
+}
+
+.detach-board-container {
+  transform-origin: center center;
+  transition: transform 0.2s ease;
+  -webkit-app-region: drag;
+}
+
+.detach-board {
+  box-shadow:
+    0 0 20px rgba(0, 0, 0, 0.5),
+    0 0 60px rgba(0, 0, 0, 0.3);
+}
+
+/* ---- Toolbar (full, unlocked) ---- */
+
+.detach-toolbar--full {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(10, 10, 20, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(212, 169, 74, 0.2);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #bfae8e;
+  -webkit-app-region: no-drag;
+}
+
+.detach-toolbar__group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.detach-toolbar__label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #7a7068;
+  min-width: 42px;
+}
+
+.detach-toolbar__slider {
+  width: 80px;
+  accent-color: #d4a94a;
+  cursor: pointer;
+}
+
+.detach-toolbar__value {
+  font-family: monospace;
+  font-size: 10px;
+  color: #d4a94a;
+  min-width: 30px;
+  text-align: center;
+}
+
+.detach-toolbar__btn {
+  background: rgba(20, 20, 32, 0.9);
+  border: 1px solid rgba(212, 169, 74, 0.2);
+  border-radius: 4px;
+  color: #bfae8e;
+  font-size: 11px;
+  padding: 3px 6px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+}
+
+.detach-toolbar__btn:hover {
+  background: rgba(212, 169, 74, 0.15);
+  border-color: rgba(212, 169, 74, 0.4);
+  color: #d4a94a;
+}
+
+.detach-toolbar__btn--lock {
+  background: rgba(0, 128, 0, 0.15);
+  border-color: rgba(0, 200, 100, 0.3);
+  color: #00cc88;
+}
+
+.detach-toolbar__btn--lock:hover {
+  background: rgba(0, 200, 100, 0.25);
+}
+
+.detach-toolbar__btn--done {
+  background: rgba(196, 30, 58, 0.15);
+  border-color: rgba(196, 30, 58, 0.3);
+  color: #c41e3a;
+}
+
+.detach-toolbar__btn--done:hover {
+  background: rgba(196, 30, 58, 0.25);
+}
+
+/* ---- Toolbar (locked, collapsed pill) ---- */
+
+.detach-toolbar--locked {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  z-index: 100;
+  display: flex;
+  gap: 4px;
+  background: rgba(10, 10, 20, 0.75);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(212, 169, 74, 0.15);
+  border-radius: 12px;
+  padding: 4px 8px;
+  -webkit-app-region: no-drag;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.detach-toolbar--locked:hover {
+  opacity: 1;
+}
+
+.detach-toolbar__btn--unlock {
+  color: #00cc88;
+}
+
+/* ---- Detach button on board label ---- */
+
+.paragon-canvas-board__detach-btn {
+  margin-left: auto;
+  font-size: 13px;
+  padding: 2px 6px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.paragon-canvas-board:hover .paragon-canvas-board__detach-btn {
+  opacity: 1;
 }
