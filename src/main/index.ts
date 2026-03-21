@@ -75,6 +75,9 @@ let scanService: ScanService
 let configWindow: BrowserWindow | null = null
 let overlayWindow: BrowserWindow | null = null
 
+/** The detach window — shows a single paragon board for alignment */
+let detachWindow: BrowserWindow | null = null
+
 /** Holds the most recently imported build data, shared between windows */
 let currentBuildData: RawBuildData | null = null
 
@@ -209,6 +212,78 @@ function createOverlayWindow(): void {
   } else {
     overlayWindow.loadFile(join(__dirname, '../renderer/overlay.html'))
   }
+}
+
+// ============================================================
+// DETACH WINDOW — Single paragon board overlay
+// ============================================================
+
+/**
+ * Creates the Detach Window — a transparent, frameless, always-on-top
+ * window that shows a single paragon board for alignment over the game.
+ *
+ * Unlike the main overlay, this window is:
+ * - User-resizable (OS-level handles)
+ * - Centered on screen at 600×600
+ * - NOT click-through by default (user clicks Lock to enable)
+ *
+ * @param boardIndex - The index of the board to detach
+ */
+function createDetachWindow(boardIndex: number): void {
+  // Close any existing detach window before opening a new one
+  if (detachWindow) {
+    detachWindow.close()
+    detachWindow = null
+  }
+
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { width: screenW, height: screenH } = primaryDisplay.workAreaSize
+
+  detachWindow = new BrowserWindow({
+    width: 600,
+    height: 600,
+    x: Math.round(screenW / 2 - 300),
+    y: Math.round(screenH / 2 - 300),
+    transparent: true,
+    frame: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: true,
+    hasShadow: false,
+    show: false,
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false
+    }
+  })
+
+  detachWindow.on('ready-to-show', () => {
+    detachWindow?.show()
+    detachWindow?.setAlwaysOnTop(true, 'screen-saver')
+  })
+
+  detachWindow.on('closed', () => {
+    detachWindow = null
+  })
+
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    const devUrl = process.env['ELECTRON_RENDERER_URL']
+    detachWindow.loadURL(`${devUrl}/detach.html`)
+  } else {
+    detachWindow.loadFile(join(__dirname, '../renderer/detach.html'))
+  }
+
+  // Send the board data once the window is ready
+  detachWindow.webContents.once('did-finish-load', () => {
+    if (!currentBuildData || !detachWindow) return
+    const board = currentBuildData.paragonBoards[boardIndex]
+    if (!board) return
+
+    // Also send the saved opacity
+    const savedOpacity = store?.get('paragon-detach-opacity', 50) as number
+    detachWindow.webContents.send('detach-board-data', { board, opacity: savedOpacity })
+  })
 }
 
 // ============================================================
@@ -381,6 +456,39 @@ function setupIpcHandlers(): void {
     scanService.clearScanHistory()
     return { success: true }
   })
+
+  // ---- Paragon Detach IPC ----
+
+  /** Open a detach window showing a single paragon board */
+  ipcMain.on('detach-paragon-board', (_event, boardIndex: number) => {
+    createDetachWindow(boardIndex)
+  })
+
+  /** Detach window signals it finished loading — send board data */
+  ipcMain.on('detach-ready', () => {
+    // Board data is sent via did-finish-load in createDetachWindow
+  })
+
+  /** Toggle click-through on the detach window */
+  ipcMain.on(
+    'detach-set-ignore-mouse',
+    (_event, ignore: boolean, options?: { forward: boolean }) => {
+      detachWindow?.setIgnoreMouseEvents(ignore, options)
+    }
+  )
+
+  /** Save opacity preference to electron-store */
+  ipcMain.on('detach-save-opacity', (_event, opacity: number) => {
+    store?.set('paragon-detach-opacity', opacity)
+  })
+
+  /** Close the detach window */
+  ipcMain.on('detach-close', () => {
+    if (detachWindow) {
+      detachWindow.close()
+      detachWindow = null
+    }
+  })
 }
 
 // ============================================================
@@ -453,6 +561,16 @@ function registerGlobalHotkeys(): void {
       })
       status.report = ok
       console.log(`[Hotkeys] ${hotkeys.report} (report): ${ok ? '✓ registered' : '✗ FAILED — key may be claimed by another app'}`)
+    }
+
+    // Escape closes the detach window if it's open
+    if (!globalShortcut.isRegistered('Escape')) {
+      globalShortcut.register('Escape', () => {
+        if (detachWindow) {
+          detachWindow.close()
+          detachWindow = null
+        }
+      })
     }
   } catch (error) {
     console.error('[Hotkeys] Failed to register global hotkeys:', error)
