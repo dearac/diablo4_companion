@@ -1,19 +1,25 @@
 /**
  * DetachToolbar — Compact control bar for the detach overlay.
  *
- * When unlocked: shows full controls (opacity slider, rotation, lock, done).
+ * When unlocked: shows full controls (opacity slider, rotation, scale, lock, done).
  * When locked: collapses to a small floating pill with just Done + Unlock.
+ *
+ * Additional precision controls (not in toolbar, handled by DetachApp):
+ *   - Mouse wheel → scale board up/down
+ *   - Left-click drag → fine-rotate board
  */
 
 interface DetachToolbarProps {
     opacity: number
     rotation: number
+    scale: number
     locked: boolean
     onOpacityChange: (value: number) => void
     onRotateCW: () => void
     onRotateCCW: () => void
     onRotateFineCW: () => void
     onRotateFineCCW: () => void
+    onResetScale: () => void
     onLock: () => void
     onUnlock: () => void
     onDone: () => void
@@ -24,12 +30,14 @@ interface DetachToolbarProps {
 function DetachToolbar({
     opacity,
     rotation,
+    scale,
     locked,
     onOpacityChange,
     onRotateCW,
     onRotateCCW,
     onRotateFineCW,
     onRotateFineCCW,
+    onResetScale,
     onLock,
     onUnlock,
     onDone,
@@ -93,6 +101,15 @@ function DetachToolbar({
                 </button>
                 <button className="detach-toolbar__btn" onClick={onRotateFineCW} title="Rotate +5°">
                     5↻
+                </button>
+            </div>
+
+            {/* Scale readout (controlled via mouse wheel) */}
+            <div className="detach-toolbar__group">
+                <label className="detach-toolbar__label">Scale</label>
+                <span className="detach-toolbar__value">{Math.round(scale * 100)}%</span>
+                <button className="detach-toolbar__btn" onClick={onResetScale} title="Reset scale to 100%">
+                    1:1
                 </button>
             </div>
 

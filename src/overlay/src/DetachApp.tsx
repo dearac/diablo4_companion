@@ -16,7 +16,13 @@ function DetachApp(): React.JSX.Element {
     const [board, setBoard] = useState<IParagonBoard | null>(null)
     const [opacity, setOpacity] = useState(50)
     const [rotation, setRotation] = useState(0)
+    const [scale, setScale] = useState(1)
     const [locked, setLocked] = useState(false)
+
+    // Drag-rotate state
+    const [isDragRotating, setIsDragRotating] = useState(false)
+    const dragStartXRef = useRef(0)
+    const dragStartRotationRef = useRef(0)
 
     // Tooltip state
     const [hoveredNode, setHoveredNode] = useState<IParagonNode | null>(null)
@@ -47,6 +53,56 @@ function DetachApp(): React.JSX.Element {
     const handleRotateCCW = useCallback(() => setRotation((r) => (r - 90 + 360) % 360), [])
     const handleRotateFineCW = useCallback(() => setRotation((r) => r + 5), [])
     const handleRotateFineCCW = useCallback(() => setRotation((r) => r - 5), [])
+
+    // ── Mouse wheel → scale ─────────────────────────────────
+    const handleWheel = useCallback(
+        (e: React.WheelEvent) => {
+            if (locked) return
+            e.preventDefault()
+            // deltaY < 0 → scroll up → zoom in
+            const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08
+            setScale((s) => Math.min(Math.max(s * factor, 0.1), 5))
+        },
+        [locked]
+    )
+
+    // ── Left-click drag → fine rotation ─────────────────────
+    const handleBoardMouseDown = useCallback(
+        (e: React.MouseEvent) => {
+            if (locked) return
+            // Only primary button (left click)
+            if (e.button !== 0) return
+            e.preventDefault()
+            setIsDragRotating(true)
+            dragStartXRef.current = e.clientX
+            dragStartRotationRef.current = rotation
+        },
+        [locked, rotation]
+    )
+
+    useEffect(() => {
+        if (!isDragRotating) return
+
+        const handleMouseMove = (e: MouseEvent): void => {
+            // 1px horizontal = 0.5° rotation for precision
+            const dx = e.clientX - dragStartXRef.current
+            setRotation(dragStartRotationRef.current + dx * 0.5)
+        }
+
+        const handleMouseUp = (): void => {
+            setIsDragRotating(false)
+        }
+
+        window.addEventListener('mousemove', handleMouseMove)
+        window.addEventListener('mouseup', handleMouseUp)
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove)
+            window.removeEventListener('mouseup', handleMouseUp)
+        }
+    }, [isDragRotating])
+
+    // Reset scale
+    const handleResetScale = useCallback(() => setScale(1), [])
 
     // Lock/Unlock
     const handleLock = useCallback(() => {
@@ -127,15 +183,18 @@ function DetachApp(): React.JSX.Element {
             id="detach-root"
             className="detach-root"
             style={{ opacity: opacity / 100 }}
+            onWheel={handleWheel}
         >
-            {/* Board container — scales to fill window */}
+            {/* Board container — scales to fill window, rotatable via drag */}
             <div
-                className="detach-board-container"
+                className={`detach-board-container ${isDragRotating ? 'detach-board-container--rotating' : ''}`}
                 style={{
-                    transform: `rotate(${rotation}deg)`,
+                    transform: `rotate(${rotation}deg) scale(${scale})`,
                     width: `${boardPixelW}px`,
-                    height: `${boardPixelH}px`
+                    height: `${boardPixelH}px`,
+                    cursor: isDragRotating ? 'grabbing' : 'grab'
                 }}
+                onMouseDown={handleBoardMouseDown}
             >
                 {/* Render tiles inline (same logic as ParagonBoardTiles) */}
                 <div
@@ -260,12 +319,14 @@ function DetachApp(): React.JSX.Element {
             <DetachToolbar
                 opacity={opacity}
                 rotation={rotation}
+                scale={scale}
                 locked={locked}
                 onOpacityChange={handleOpacityChange}
                 onRotateCW={handleRotateCW}
                 onRotateCCW={handleRotateCCW}
                 onRotateFineCW={handleRotateFineCW}
                 onRotateFineCCW={handleRotateFineCCW}
+                onResetScale={handleResetScale}
                 onLock={handleLock}
                 onUnlock={handleUnlock}
                 onDone={handleDone}
