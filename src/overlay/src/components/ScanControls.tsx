@@ -6,7 +6,7 @@ import type { ScanMode } from '../../../shared/types'
  *
  * Sits in the overlay header area and shows:
  * - Current scan mode (Compare vs Equip) with a toggle button
- * - Scan hotkey reminder
+ * - Scan hotkey reminder (fetched dynamically from main process)
  */
 
 interface ScanControlsProps {
@@ -16,10 +16,14 @@ interface ScanControlsProps {
 function ScanControls({ onModeChange }: ScanControlsProps): React.JSX.Element {
   const [scanMode, setScanMode] = useState<ScanMode>('compare')
   const [isToggling, setIsToggling] = useState(false)
+  const [scanKey, setScanKey] = useState('F7')
 
-  /** Load initial scan mode from main process */
+  /** Load initial scan mode and hotkey from main process */
   useEffect(() => {
     window.api.getScanMode().then(setScanMode)
+    window.api.getHotkeys().then((keys) => {
+      if (keys.scan) setScanKey(keys.scan)
+    })
   }, [])
 
   /** Toggle between compare and equip modes */
@@ -52,10 +56,11 @@ function ScanControls({ onModeChange }: ScanControlsProps): React.JSX.Element {
       </div>
       <div className="scan-controls__hotkey">
         <span className="scan-controls__hotkey-label">Scan</span>
-        <kbd className="scan-controls__hotkey-key">F7</kbd>
+        <kbd className="scan-controls__hotkey-key">{scanKey}</kbd>
       </div>
     </div>
   )
 }
 
 export default ScanControls
+

@@ -1,5 +1,5 @@
 import type { BuildSourceSite } from '../../shared/types'
-import type { BuildScraper, RawBuildData } from '../scrapers/BuildScraper'
+import type { BuildScraper, RawBuildData, ImportProgressCallback } from '../scrapers/BuildScraper'
 
 // ============================================================
 // BuildImportService — The orchestrator for build imports
@@ -83,7 +83,7 @@ export class BuildImportService {
    * @returns The raw build data from the site
    * @throws Error if the URL isn't from a supported site or scraping fails
    */
-  async importFromUrl(url: string): Promise<RawBuildData> {
+  async importFromUrl(url: string, onProgress?: ImportProgressCallback): Promise<RawBuildData> {
     const scraper = this.findScraper(url)
 
     if (!scraper) {
@@ -94,6 +94,6 @@ export class BuildImportService {
 
     // Let the scraper do its thing — this launches Playwright,
     // navigates to the URL, and extracts all the build data
-    return scraper.scrape(url)
+    return scraper.scrape(url, onProgress)
   }
 }

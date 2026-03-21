@@ -1,5 +1,5 @@
 import { chromium, Page } from 'playwright'
-import { BuildScraper, RawBuildData } from './BuildScraper'
+import { BuildScraper, RawBuildData, type ImportProgressCallback } from './BuildScraper'
 import { ProcessManager } from '../services/ProcessManager'
 import { getBrowserPath } from '../services/BrowserPath'
 import {
@@ -69,7 +69,8 @@ export class D4BuildsScraper extends BuildScraper {
     return normalized.includes('d4builds.gg/builds/')
   }
 
-  async scrape(url: string): Promise<RawBuildData> {
+  async scrape(url: string, onProgress?: ImportProgressCallback): Promise<RawBuildData> {
+    const TOTAL_STEPS = 6
     const browser = await chromium.launch({ headless: true, executablePath: getBrowserPath() })
     ProcessManager.getInstance().register(browser)
     const context = await browser.newContext({
@@ -78,6 +79,9 @@ export class D4BuildsScraper extends BuildScraper {
     const page = await context.newPage()
 
     try {
+      // Step 1: Load the build page
+      onProgress?.({ step: 1, totalSteps: TOTAL_STEPS, label: 'Loading build page' })
+
       // 1. Navigate — use 'domcontentloaded' because d4builds has
       //    persistent connections that prevent 'networkidle'
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 })
@@ -103,21 +107,26 @@ export class D4BuildsScraper extends BuildScraper {
         .catch(() => 'Unknown')
       const d4Class = this.normalizeClass(d4ClassRaw)
 
-      // 5. Extract active skills from Gear & Skills tab (simpler, no duplication)
+      // Step 2: Import skills
+      onProgress?.({ step: 2, totalSteps: TOTAL_STEPS, label: 'Importing skills' })
       const activeSkills = await this.scrapeActiveSkills(page)
 
-      // 6. Click "Skill Tree" tab for point allocations
+      // Step 3: Import skill tree
+      onProgress?.({ step: 3, totalSteps: TOTAL_STEPS, label: 'Importing skill tree' })
       const skillAllocations = await this.scrapeSkillTree(page)
 
-      // 7. Click "Paragon" tab for board data
+      // Step 4: Import paragon boards
+      onProgress?.({ step: 4, totalSteps: TOTAL_STEPS, label: 'Importing paragon' })
       const paragonBoards = await this.scrapeParagon(page)
 
-      // 8. Go back to "Gear & Skills" tab for gear data
+      // Step 5: Import gear
+      onProgress?.({ step: 5, totalSteps: TOTAL_STEPS, label: 'Importing gear' })
       await this.clickTab(page, 'Gear')
       await page.waitForTimeout(1000)
       const gearSlots = await this.scrapeGear(page)
 
-      // 9. Scrape active runes (separate from gear)
+      // Step 6: Import runes
+      onProgress?.({ step: 6, totalSteps: TOTAL_STEPS, label: 'Importing runes' })
       const activeRunes = await this.scrapeRunes(page)
 
       // Use skill tree allocations (deduplicated), fall back to active skills

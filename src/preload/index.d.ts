@@ -15,10 +15,16 @@ declare global {
       setIgnoreMouseEvents: (ignore: boolean, options?: { forward: boolean }) => void
       getHotkeys: () => Promise<Record<string, string>>
       setHotkey: (action: string, key: string) => Promise<Record<string, string>>
+      getHotkeyStatus: () => Promise<Record<string, boolean>>
+      onHotkeyStatus: (callback: (status: Record<string, boolean>) => void) => void
+      resetHotkeys: () => Promise<Record<string, string>>
       onTriggerScan: (callback: () => void) => void
       onTriggerReport: (callback: () => void) => void
       quit: () => void
       importBuild: (url: string) => Promise<{ build: RawBuildData; savedId: string }>
+      onImportProgress: (
+        callback: (progress: { step: number; totalSteps: number; label: string }) => void
+      ) => void
       launchOverlay: () => void
       overlayReady: () => void
       onBuildData: (callback: (data: RawBuildData) => void) => void

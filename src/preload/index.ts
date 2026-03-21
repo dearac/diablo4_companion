@@ -60,6 +60,30 @@ const api = {
   },
 
   /**
+   * Gets the registration status of each hotkey.
+   * Returns something like { scan: true, report: false, toggle: true }
+   */
+  getHotkeyStatus: (): Promise<Record<string, boolean>> => {
+    return ipcRenderer.invoke('get-hotkey-status')
+  },
+
+  /**
+   * Listens for hotkey registration status updates pushed from the main process.
+   * Fires whenever hotkeys are re-registered (e.g., after changing a binding).
+   */
+  onHotkeyStatus: (callback: (status: Record<string, boolean>) => void): void => {
+    ipcRenderer.on('hotkey-status', (_event, status) => callback(status))
+  },
+
+  /**
+   * Resets all hotkeys to factory defaults (F6/F7/F8).
+   * Returns the new (default) hotkey configuration.
+   */
+  resetHotkeys: (): Promise<Record<string, string>> => {
+    return ipcRenderer.invoke('reset-hotkeys')
+  },
+
+  /**
    * Listens for when the user presses the scan hotkey.
    * The callback fires each time the key is pressed.
    */
@@ -88,6 +112,16 @@ const api = {
    */
   importBuild: (url: string): Promise<RawBuildData> => {
     return ipcRenderer.invoke('import-build', url)
+  },
+
+  /**
+   * Listens for import progress updates from the main process.
+   * Callback receives { step, totalSteps, label } at each phase.
+   */
+  onImportProgress: (
+    callback: (progress: { step: number; totalSteps: number; label: string }) => void
+  ): void => {
+    ipcRenderer.on('import-progress', (_event, progress) => callback(progress))
   },
 
   /**

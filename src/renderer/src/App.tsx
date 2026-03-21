@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import type { RawBuildData } from '../../shared/types'
 import ImportForm from './components/ImportForm'
 import StatusIndicator from './components/StatusIndicator'
@@ -7,6 +7,7 @@ import BuildLibrary from './components/BuildLibrary'
 import UpdateBanner from './components/UpdateBanner'
 import EquippedGearTab from './components/EquippedGearTab'
 import ScanHistoryTab from './components/ScanHistoryTab'
+import HotkeySettings from './components/HotkeySettings'
 
 /**
  * Config Window App — The build import launcher + equipment & scan dashboard.
@@ -26,18 +27,32 @@ function App(): React.JSX.Element {
   const [refreshCounter, setRefreshCounter] = useState<number>(0)
   const [cacheCleared, setCacheCleared] = useState<boolean>(false)
   const [activeTab, setActiveTab] = useState<MainTab>('builds')
+  const [importProgress, setImportProgress] = useState<{
+    step: number
+    totalSteps: number
+    label: string
+  } | null>(null)
+
+  // Listen for import progress events from the main process
+  useEffect(() => {
+    window.api.onImportProgress((progress) => {
+      setImportProgress(progress)
+    })
+  }, [])
 
   /** Called when the user clicks Import */
   const handleImportStart = (): void => {
     setStatus('loading')
     setErrorMessage('')
     setBuildData(null)
+    setImportProgress(null)
   }
 
   /** Called when the import succeeds */
   const handleImportSuccess = (result: { build: RawBuildData; savedId: string }): void => {
     setBuildData(result.build)
     setStatus('success')
+    setImportProgress(null)
     setRefreshCounter((c) => c + 1) // Trigger library refresh
   }
 
@@ -45,6 +60,7 @@ function App(): React.JSX.Element {
   const handleImportError = (error: string): void => {
     setErrorMessage(error)
     setStatus('error')
+    setImportProgress(null)
   }
 
   /** Load a build from the library */
@@ -107,7 +123,11 @@ function App(): React.JSX.Element {
               isLoading={status === 'loading'}
             />
 
-            <StatusIndicator status={status} errorMessage={errorMessage} />
+            <StatusIndicator
+              status={status}
+              errorMessage={errorMessage}
+              progress={importProgress}
+            />
 
             {status === 'success' && buildData && (
               <BuildSummaryCard build={buildData} onLaunchOverlay={handleLaunchOverlay} />
@@ -124,8 +144,9 @@ function App(): React.JSX.Element {
         {activeTab === 'scans' && <ScanHistoryTab />}
       </main>
 
+      <HotkeySettings />
+
       <footer className="config-footer">
-        <span>Toggle Overlay: F6</span>
         <button
           className="config-footer__clear-cache"
           onClick={handleClearCache}

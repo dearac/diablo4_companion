@@ -76,4 +76,20 @@ export class HotkeyService {
       toggle: this.getHotkey('toggle')
     }
   }
+
+  /**
+   * Resets all hotkeys to factory defaults.
+   * Clears any user customizations and persists the reset.
+   */
+  resetAll(): void {
+    this.overrides = {}
+    if (this.store) {
+      this.store.set('hotkeys', {})
+    }
+  }
+
+  /** Returns the factory-default keybindings */
+  static getDefaults(): Record<string, string> {
+    return { ...HotkeyService.DEFAULTS }
+  }
 }

@@ -15,6 +15,7 @@ import { ScreenCaptureService } from './services/ScreenCaptureService'
 import { EquippedGearStore } from './services/EquippedGearStore'
 import { ScanHistoryStore } from './services/ScanHistoryStore'
 import type { RawBuildData } from '../shared/types'
+import type { ImportProgress } from './scrapers/BuildScraper'
 
 // ============================================================
 // PORTABLE DATA DIRECTORY SETUP
@@ -245,6 +246,18 @@ function setupIpcHandlers(): void {
     return hotkeyService.getAllHotkeys()
   })
 
+  // Let the renderer query which hotkeys registered successfully
+  ipcMain.handle('get-hotkey-status', () => {
+    return hotkeyStatus
+  })
+
+  // Reset all hotkeys to factory defaults
+  ipcMain.handle('reset-hotkeys', () => {
+    hotkeyService.resetAll()
+    registerGlobalHotkeys()
+    return hotkeyService.getAllHotkeys()
+  })
+
   /**
    * Imports a build from a URL.
    * Hands off to BuildImportService which uses the correct scraper.
@@ -252,7 +265,11 @@ function setupIpcHandlers(): void {
    */
   ipcMain.handle('import-build', async (_event, url: string) => {
     try {
-      const result = await buildService.importFromUrl(url)
+      // Send progress updates to the config window as each import phase completes
+      const onProgress = (progress: ImportProgress): void => {
+        configWindow?.webContents.send('import-progress', progress)
+      }
+      const result = await buildService.importFromUrl(url, onProgress)
       currentBuildData = result
 
       // Auto-save the imported build (async — doesn't block main process)
@@ -370,12 +387,19 @@ function setupIpcHandlers(): void {
 // GLOBAL HOTKEYS
 // ============================================================
 
+/** Tracks which hotkeys registered successfully with the OS */
+let hotkeyStatus: Record<string, boolean> = {}
+
 /**
  * Registers global keyboard shortcuts.
  *
  * These work even when our window isn't focused (i.e., while
  * the user is playing the game). Each hotkey triggers an action
  * that the renderer listens for via IPC.
+ *
+ * Checks the return value of globalShortcut.register() — it
+ * returns false when another app has already claimed the key.
+ * Logs success/failure and pushes status to both windows.
  */
 function registerGlobalHotkeys(): void {
   // Always clear old shortcuts before setting new ones
@@ -383,11 +407,12 @@ function registerGlobalHotkeys(): void {
   globalShortcut.unregisterAll()
 
   const hotkeys = hotkeyService.getAllHotkeys()
+  const status: Record<string, boolean> = {}
 
   try {
     // Toggle overlay visibility
     if (hotkeys.toggle) {
-      globalShortcut.register(hotkeys.toggle, () => {
+      const ok = globalShortcut.register(hotkeys.toggle, () => {
         if (!overlayWindow) return
         if (overlayWindow.isVisible()) {
           overlayWindow.hide()
@@ -396,11 +421,13 @@ function registerGlobalHotkeys(): void {
           overlayWindow.setAlwaysOnTop(true, 'screen-saver')
         }
       })
+      status.toggle = ok
+      console.log(`[Hotkeys] ${hotkeys.toggle} (toggle): ${ok ? '✓ registered' : '✗ FAILED — key may be claimed by another app'}`)
     }
 
     // Scan a gear tooltip — runs the full pipeline and sends result to overlay
     if (hotkeys.scan) {
-      globalShortcut.register(hotkeys.scan, async () => {
+      const ok = globalShortcut.register(hotkeys.scan, async () => {
         if (!overlayWindow) return
         try {
           const result = await scanService.scan(currentBuildData)
@@ -415,17 +442,27 @@ function registerGlobalHotkeys(): void {
           })
         }
       })
+      status.scan = ok
+      console.log(`[Hotkeys] ${hotkeys.scan} (scan): ${ok ? '✓ registered' : '✗ FAILED — key may be claimed by another app'}`)
     }
 
     // Open/close the gear report panel
     if (hotkeys.report) {
-      globalShortcut.register(hotkeys.report, () => {
+      const ok = globalShortcut.register(hotkeys.report, () => {
         overlayWindow?.webContents.send('trigger-report')
       })
+      status.report = ok
+      console.log(`[Hotkeys] ${hotkeys.report} (report): ${ok ? '✓ registered' : '✗ FAILED — key may be claimed by another app'}`)
     }
   } catch (error) {
-    console.error('Failed to register global hotkeys:', error)
+    console.error('[Hotkeys] Failed to register global hotkeys:', error)
   }
+
+  hotkeyStatus = status
+
+  // Push status to both windows so the UI can show success/failure
+  configWindow?.webContents.send('hotkey-status', status)
+  overlayWindow?.webContents.send('hotkey-status', status)
 }
 
 // ============================================================

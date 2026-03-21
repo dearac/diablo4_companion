@@ -52,4 +52,40 @@ describe('HotkeyService', () => {
     // Assert: the store should have been called with the new value
     expect(saved['hotkeys']).toEqual({ toggle: 'F12' })
   })
+
+  it('should reset all overrides to factory defaults', () => {
+    const saved: Record<string, unknown> = {}
+    const mockStore = {
+      get: (_key: string, defaultVal: unknown) => defaultVal,
+      set: (key: string, val: unknown) => {
+        saved[key] = val
+      }
+    }
+
+    const service = new HotkeyService(mockStore)
+
+    // Customize some keys
+    service.setHotkey('scan', 'F10')
+    service.setHotkey('toggle', 'F12')
+
+    // Reset
+    service.resetAll()
+
+    // All should be back to defaults
+    expect(service.getAllHotkeys()).toEqual({
+      scan: 'F7',
+      report: 'F8',
+      toggle: 'F6'
+    })
+    // Store should have been set to empty overrides
+    expect(saved['hotkeys']).toEqual({})
+  })
+
+  it('should expose factory defaults via static method', () => {
+    expect(HotkeyService.getDefaults()).toEqual({
+      scan: 'F7',
+      report: 'F8',
+      toggle: 'F6'
+    })
+  })
 })

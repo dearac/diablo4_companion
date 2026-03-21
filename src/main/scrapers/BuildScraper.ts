@@ -33,6 +33,19 @@ export interface RawBuildData {
   activeRunes: IRune[]
 }
 
+/** Progress update sent during a build import */
+export interface ImportProgress {
+  /** Current step (1-based) */
+  step: number
+  /** Total steps in the import */
+  totalSteps: number
+  /** User-friendly label, e.g. "Importing skills" */
+  label: string
+}
+
+/** Callback fired at each phase boundary during scraping */
+export type ImportProgressCallback = (progress: ImportProgress) => void
+
 /**
  * Abstract base class for all build scrapers.
  *
@@ -61,7 +74,8 @@ export abstract class BuildScraper {
    * Uses Playwright to load the page and read the DOM.
    *
    * @param url - The build URL to scrape
+   * @param onProgress - Optional callback fired at each import phase
    * @returns The raw build data from the page
    */
-  abstract scrape(url: string): Promise<RawBuildData>
+  abstract scrape(url: string, onProgress?: ImportProgressCallback): Promise<RawBuildData>
 }
