@@ -97,6 +97,17 @@ async function initStore(): Promise<void> {
   const { default: Store } = await import('electron-store')
   store = new Store()
   hotkeyService = new HotkeyService(store)
+
+  // Load saved board calibration if it exists
+  const savedCalibration = store.get('board-calibration') as {
+    x: number
+    y: number
+    width: number
+    height: number
+  } | undefined
+  if (savedCalibration) {
+    boardPositionService.loadCalibration(savedCalibration)
+  }
 }
 
 /**
@@ -311,6 +322,144 @@ function createDetachWindow(
   })
 }
 
+/** The calibration snipping window */
+let calibrateWindow: BrowserWindow | null = null
+
+/**
+ * Opens a full-screen transparent window where the user can drag-select
+ * the paragon board area (snipping-tool style).
+ *
+ * The selected rectangle coordinates are sent back via IPC and saved
+ * so subsequent F10 presses place the overlay at the exact position.
+ */
+function openCalibrationWindow(): void {
+  if (calibrateWindow) {
+    calibrateWindow.focus()
+    return
+  }
+
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { width: sw, height: sh } = primaryDisplay.bounds
+
+  calibrateWindow = new BrowserWindow({
+    x: primaryDisplay.bounds.x,
+    y: primaryDisplay.bounds.y,
+    width: sw,
+    height: sh,
+    transparent: true,
+    frame: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    hasShadow: false,
+    fullscreenable: false,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: join(__dirname, '../preload/index.js')
+    }
+  })
+
+  calibrateWindow.setAlwaysOnTop(true, 'screen-saver')
+
+  // Inline HTML for the snipping overlay
+  const html = `<!DOCTYPE html>
+<html><head><style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    cursor: crosshair;
+    user-select: none;
+    overflow: hidden;
+    background: transparent;
+  }
+  #backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+  }
+  #selection {
+    position: fixed;
+    border: 3px solid #ff3333;
+    background: rgba(255, 50, 50, 0.08);
+    box-shadow: 0 0 20px rgba(255, 50, 50, 0.4);
+    display: none;
+    pointer-events: none;
+  }
+  #instructions {
+    position: fixed;
+    top: 40px; left: 50%;
+    transform: translateX(-50%);
+    color: #fff;
+    font: bold 20px/1.4 'Segoe UI', sans-serif;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+    text-align: center;
+    pointer-events: none;
+    z-index: 10;
+  }
+  #instructions small {
+    display: block; font-weight: normal;
+    font-size: 14px; opacity: 0.7; margin-top: 4px;
+  }
+</style></head>
+<body>
+  <div id="backdrop"></div>
+  <div id="selection"></div>
+  <div id="instructions">
+    Drag a rectangle around the paragon board
+    <small>Press Escape to cancel</small>
+  </div>
+  <script>
+    let startX = 0, startY = 0, dragging = false;
+    const sel = document.getElementById('selection');
+    const inst = document.getElementById('instructions');
+
+    document.addEventListener('mousedown', (e) => {
+      startX = e.screenX;
+      startY = e.screenY;
+      dragging = true;
+      inst.style.display = 'none';
+      sel.style.display = 'block';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!dragging) return;
+      const x = Math.min(startX, e.screenX);
+      const y = Math.min(startY, e.screenY);
+      const w = Math.abs(e.screenX - startX);
+      const h = Math.abs(e.screenY - startY);
+      sel.style.left = x + 'px';
+      sel.style.top = y + 'px';
+      sel.style.width = w + 'px';
+      sel.style.height = h + 'px';
+    });
+
+    document.addEventListener('mouseup', (e) => {
+      if (!dragging) return;
+      dragging = false;
+      const x = Math.min(startX, e.screenX);
+      const y = Math.min(startY, e.screenY);
+      const w = Math.abs(e.screenX - startX);
+      const h = Math.abs(e.screenY - startY);
+      if (w > 50 && h > 50) {
+        // Send calibration via IPC
+        window.api.saveCalibration({ x, y, width: w, height: h });
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        window.api.cancelCalibration();
+      }
+    });
+  </script>
+</body></html>`
+
+  calibrateWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
+
+  calibrateWindow.on('closed', () => {
+    calibrateWindow = null
+  })
+}
+
 // ============================================================
 // IPC HANDLERS
 // ============================================================
@@ -442,6 +591,37 @@ function setupIpcHandlers(): void {
   // Quit the app
   ipcMain.on('quit-app', () => {
     app.quit()
+  })
+
+  // ---- Board Calibration IPC ----
+
+  /** Receives the snipping rectangle from the calibration window */
+  ipcMain.on(
+    'save-calibration',
+    (_event, region: { x: number; y: number; width: number; height: number }) => {
+      boardPositionService.saveCalibration(region)
+      store?.set('board-calibration', region)
+      if (calibrateWindow) {
+        calibrateWindow.close()
+        calibrateWindow = null
+      }
+      console.log('[BoardScan] Calibration saved! Press F10 on a node to scan.')
+    }
+  )
+
+  /** Cancels the calibration snipping */
+  ipcMain.on('cancel-calibration', () => {
+    if (calibrateWindow) {
+      calibrateWindow.close()
+      calibrateWindow = null
+    }
+  })
+
+  /** Clears the saved calibration so the next F10 re-opens the snipping tool */
+  ipcMain.handle('clear-board-calibration', () => {
+    boardPositionService.clearCalibration()
+    store?.delete('board-calibration')
+    return { success: true }
   })
 
   // Clear paragon board cache (call after game updates)
@@ -625,7 +805,9 @@ function registerGlobalHotkeys(): void {
       )
     }
 
-    // Board scan — OCR the screen to identify and overlay the correct paragon board
+    // Board scan — two-step flow:
+    //   Step 1 (no calibration): Open snipping overlay to define the board area
+    //   Step 2 (calibrated): OCR scan → identify board → overlay at calibrated position
     if (hotkeys.boardScan) {
       const ok = globalShortcut.register(hotkeys.boardScan, async () => {
         if (!currentBuildData || !currentBuildData.paragonBoards?.length) {
@@ -633,22 +815,27 @@ function registerGlobalHotkeys(): void {
           return
         }
 
+        // If not calibrated, open the snipping overlay
+        if (!boardPositionService.isCalibrated) {
+          console.log('[BoardScan] No calibration — opening snipping tool')
+          openCalibrationWindow()
+          return
+        }
+
+        // Calibrated — run the scan pipeline
         try {
           console.log('[BoardScan] ═══ SCANNING ═══')
 
-          // Step 1: Full-screen capture
           const captureService = new ScreenCaptureService(dataPaths.scans)
           const imagePath = await captureService.captureFullScreen()
           console.log(`[BoardScan] Screenshot saved: ${imagePath}`)
 
-          // Step 2: OCR the full screen
           const sidecarDir = is.dev
             ? join(app.getAppPath(), 'sidecar', 'bin')
             : join(process.resourcesPath, 'sidecar', 'bin')
           const ocrResult = await runOcr(imagePath, sidecarDir)
           console.log(`[BoardScan] OCR text (first 200): ${ocrResult.text.substring(0, 200)}`)
 
-          // Step 3: Match against loaded build's boards
           const match = boardScanService.matchBoard(ocrResult.text, currentBuildData.paragonBoards)
 
           if (match) {
@@ -657,17 +844,11 @@ function registerGlobalHotkeys(): void {
                 `Board #${match.boardIndex + 1} "${match.boardName}" ` +
                 `(confidence: ${match.confidence})`
             )
-            // Auto-detach the matched board
-            // Step 4: Detect the board's position on screen
-            const boardRegion = boardPositionService.detectBoardRegion(imagePath)
-            createDetachWindow(match.boardIndex, boardRegion ?? undefined)
+            // Place overlay at the calibrated position
+            const boardRegion = boardPositionService.getBoardRegion()
+            createDetachWindow(match.boardIndex, boardRegion)
 
-            // Notify the overlay/config windows
             overlayWindow?.webContents.send('board-scan-result', {
-              success: true,
-              ...match
-            })
-            configWindow?.webContents.send('board-scan-result', {
               success: true,
               ...match
             })

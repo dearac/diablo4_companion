@@ -293,7 +293,7 @@ const api = {
    * Listens for the single board data sent to the detach window.
    */
   onDetachBoardData: (
-    callback: (data: { board: IParagonBoard; opacity: number }) => void
+    callback: (data: { board: IParagonBoard; opacity: number; boardNumber: number; boardTotal: number }) => void
   ): void => {
     ipcRenderer.on('detach-board-data', (_event, data) => callback(data))
   },
@@ -317,6 +317,37 @@ const api = {
    */
   detachClose: (): void => {
     ipcRenderer.send('detach-close')
+  },
+
+  /**
+   * Moves the detach window by a pixel delta.
+   * Used for right-click drag repositioning.
+   */
+  detachMoveWindow: (dx: number, dy: number): void => {
+    ipcRenderer.send('detach-move-window', dx, dy)
+  },
+
+  // ---- Board Calibration ----
+
+  /**
+   * Saves the calibrated board region from the snipping overlay.
+   */
+  saveCalibration: (region: { x: number; y: number; width: number; height: number }): void => {
+    ipcRenderer.send('save-calibration', region)
+  },
+
+  /**
+   * Cancels the calibration snipping overlay.
+   */
+  cancelCalibration: (): void => {
+    ipcRenderer.send('cancel-calibration')
+  },
+
+  /**
+   * Clears the saved board calibration.
+   */
+  clearBoardCalibration: (): Promise<{ success: boolean }> => {
+    return ipcRenderer.invoke('clear-board-calibration')
   }
 }
 
