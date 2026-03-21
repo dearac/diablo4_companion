@@ -33,6 +33,16 @@ export class BoardScanService {
 
     const ocrLower = ocrText.toLowerCase()
 
+    // Priority 0: "Paragon Starting Node" always means the starter board (index 0)
+    if (ocrLower.includes('starting node') || ocrLower.includes('paragon starting')) {
+      return {
+        boardIndex: 0,
+        boardName: boards[0].boardName,
+        matchedNodeName: 'Paragon Starting Node',
+        confidence: 'high'
+      }
+    }
+
     // Priority 1: Match legendary node names (most unique per board)
     for (let i = 0; i < boards.length; i++) {
       const board = boards[i]

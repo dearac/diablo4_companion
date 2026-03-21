@@ -105,8 +105,10 @@ export class ScreenCaptureService {
   }
 
   /**
-   * Captures the full primary display without cropping.
-   * Used for board scanning where the tooltip position is unknown.
+   * Captures the Diablo IV game window for board scanning.
+   *
+   * Tries to find the game window by title first (handles windowed mode).
+   * Falls back to full-screen capture if the game window isn't found.
    *
    * @returns Absolute path to the saved screenshot.
    */
@@ -114,16 +116,41 @@ export class ScreenCaptureService {
     const primaryDisplay = screen.getPrimaryDisplay()
     const { width, height } = primaryDisplay.size
 
-    const sources = await desktopCapturer.getSources({
+    // Try to capture just the Diablo IV window first
+    const windowSources = await desktopCapturer.getSources({
+      types: ['window'],
+      thumbnailSize: { width, height }
+    })
+
+    // Look for the game window by title (case-insensitive partial match)
+    const gameWindow = windowSources.find(
+      (s) => s.name.toLowerCase().includes('diablo')
+    )
+
+    if (gameWindow) {
+      console.log(`[BoardScan] Found game window: "${gameWindow.name}"`)
+      const thumbnail = gameWindow.thumbnail
+      const jpegBuffer = thumbnail.toJPEG(90)
+
+      const filename = `board-scan-${Date.now()}.jpg`
+      const filePath = join(this.scansDir, filename)
+      await writeFile(filePath, jpegBuffer)
+
+      return filePath
+    }
+
+    // Fallback: capture the entire screen if game window not found
+    console.log('[BoardScan] Game window not found, falling back to full-screen capture')
+    const screenSources = await desktopCapturer.getSources({
       types: ['screen'],
       thumbnailSize: { width, height }
     })
 
-    if (sources.length === 0) {
+    if (screenSources.length === 0) {
       throw new Error('No screen source available for capture')
     }
 
-    const thumbnail = sources[0].thumbnail
+    const thumbnail = screenSources[0].thumbnail
     const jpegBuffer = thumbnail.toJPEG(90)
 
     const filename = `board-scan-${Date.now()}.jpg`
