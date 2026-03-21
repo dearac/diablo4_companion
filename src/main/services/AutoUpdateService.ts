@@ -163,9 +163,19 @@ export class AutoUpdateService {
    */
   generateUpdateScript(appDir: string, currentPid: number): string {
     const scriptPath = join(appDir, 'update.bat')
-    const exeName = 'diablo4_companion.exe'
-    const updateName = 'diablo4_companion.exe.update'
+    const exePath = join(appDir, 'diablo4_companion.exe').replace(/\//g, '\\')
+    const updatePath = join(appDir, 'diablo4_companion.exe.update').replace(/\//g, '\\')
 
+    // The batch script:
+    // 1. Waits for the current process to exit (up to 30s)
+    // 2. Pauses 2s for Windows to release the file handle
+    // 3. Retries deleting the old exe up to 10 times (1s apart)
+    // 4. Moves the new exe into place
+    // 5. Launches the new exe
+    // 6. Deletes itself
+    //
+    // All paths are double-quoted to handle spaces in directory names
+    // (e.g., "C:\Users\Chris Lawrence\OneDrive\Desktop\d4 companion\")
     const script = `@echo off
 set RETRIES=0
 :wait
@@ -176,9 +186,18 @@ if not errorlevel 1 (
     timeout /t 1 /nobreak >nul
     goto wait
 )
-del "${join(appDir, exeName).replace(/\//g, '\\')}"
-move "${join(appDir, updateName).replace(/\//g, '\\')}" "${join(appDir, exeName).replace(/\//g, '\\')}"
-start "" "${join(appDir, exeName).replace(/\//g, '\\')}"
+timeout /t 2 /nobreak >nul
+set DEL_RETRIES=0
+:trydelete
+del /f /q "${exePath}" 2>nul
+if exist "${exePath}" (
+    set /a DEL_RETRIES+=1
+    if %DEL_RETRIES% GEQ 10 exit /b 1
+    timeout /t 1 /nobreak >nul
+    goto trydelete
+)
+move /y "${updatePath}" "${exePath}"
+start "" "${exePath}"
 del "%~f0"
 `
     writeFileSync(scriptPath, script, 'utf-8')
