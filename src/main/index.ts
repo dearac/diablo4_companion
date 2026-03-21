@@ -99,12 +99,9 @@ async function initStore(): Promise<void> {
   hotkeyService = new HotkeyService(store)
 
   // Load saved board calibration if it exists
-  const savedCalibration = store.get('board-calibration') as {
-    x: number
-    y: number
-    width: number
-    height: number
-  } | undefined
+  const savedCalibration = store.get('board-calibration') as
+    | { x: number; y: number; width: number; height: number }
+    | undefined
   if (savedCalibration) {
     boardPositionService.loadCalibration(savedCalibration)
   }
@@ -355,14 +352,35 @@ function openCalibrationWindow(): void {
     fullscreenable: false,
     webPreferences: {
       nodeIntegration: false,
-      contextIsolation: true,
-      preload: join(__dirname, '../preload/index.js')
+      contextIsolation: true
     }
   })
 
   calibrateWindow.setAlwaysOnTop(true, 'screen-saver')
 
-  // Inline HTML for the snipping overlay
+  // Listen for results via page title changes (data: URLs can't use preload IPC)
+  calibrateWindow.webContents.on('page-title-updated', (_event, title) => {
+    if (title.startsWith('CALIBRATE:')) {
+      try {
+        const region = JSON.parse(title.slice('CALIBRATE:'.length))
+        boardPositionService.saveCalibration(region)
+        store?.set('board-calibration', region)
+        console.log('[BoardScan] ✓ Calibration saved! Press F10 on a node to scan.')
+      } catch (err) {
+        console.error('[BoardScan] Failed to parse calibration:', err)
+      }
+      if (calibrateWindow) {
+        calibrateWindow.close()
+        calibrateWindow = null
+      }
+    } else if (title === 'CANCEL') {
+      if (calibrateWindow) {
+        calibrateWindow.close()
+        calibrateWindow = null
+      }
+    }
+  })
+
   const html = `<!DOCTYPE html>
 <html><head><style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -440,14 +458,13 @@ function openCalibrationWindow(): void {
       const w = Math.abs(e.screenX - startX);
       const h = Math.abs(e.screenY - startY);
       if (w > 50 && h > 50) {
-        // Send calibration via IPC
-        window.api.saveCalibration({ x, y, width: w, height: h });
+        document.title = 'CALIBRATE:' + JSON.stringify({ x, y, width: w, height: h });
       }
     });
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        window.api.cancelCalibration();
+        document.title = 'CANCEL';
       }
     });
   </script>

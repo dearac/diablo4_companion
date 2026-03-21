@@ -1896,13 +1896,11 @@ body {
   justify-content: center;
   background: transparent;
   overflow: hidden;
-  -webkit-app-region: drag;
 }
 
 .detach-board-container {
   transform-origin: center center;
   transition: transform 0.2s ease;
-  -webkit-app-region: drag;
 }
 
 .detach-board {
@@ -1928,6 +1926,12 @@ body {
   padding: 8px 12px;
   font-size: 11px;
   color: #bfae8e;
+  -webkit-app-region: drag;
+}
+
+.detach-toolbar__group,
+.detach-toolbar__btn,
+.detach-toolbar__slider {
   -webkit-app-region: no-drag;
 }
 
@@ -2013,7 +2017,7 @@ body {
   border: 1px solid rgba(212, 169, 74, 0.15);
   border-radius: 12px;
   padding: 4px 8px;
-  -webkit-app-region: no-drag;
+  -webkit-app-region: drag;
   opacity: 0.6;
   transition: opacity 0.2s;
 }
@@ -2038,4 +2042,24 @@ body {
 
 .paragon-canvas-board:hover .paragon-canvas-board__detach-btn {
   opacity: 1;
+}
+
+/* ---- Board position indicator ---- */
+
+.detach-toolbar__board-info {
+  justify-content: center;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(212, 169, 74, 0.15);
+}
+
+.detach-toolbar__board-position {
+  font-size: 11px;
+  color: #d4a94a;
+  font-weight: 600;
+}
+
+.detach-toolbar__board-name {
+  font-size: 10px;
+  color: #7a7068;
+  margin-left: 4px;
 }

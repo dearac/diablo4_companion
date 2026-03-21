@@ -63,11 +63,17 @@ declare global {
       // Paragon Detach
       detachParagonBoard: (boardIndex: number) => void
       onDetachBoardData: (
-        callback: (data: { board: IParagonBoard; opacity: number }) => void
+        callback: (data: {
+          board: IParagonBoard
+          opacity: number
+          boardNumber: number
+          boardTotal: number
+        }) => void
       ) => void
       detachSetIgnoreMouse: (ignore: boolean, options?: { forward: boolean }) => void
       detachSaveOpacity: (opacity: number) => void
       detachClose: () => void
+      detachMoveWindow: (dx: number, dy: number) => void
     }
   }
 }

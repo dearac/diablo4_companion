@@ -30,7 +30,8 @@ describe('HotkeyService', () => {
     expect(all).toEqual({
       scan: 'F7',
       report: 'F8',
-      toggle: 'F6'
+      toggle: 'F6',
+      detach: 'F9'
     })
   })
 
@@ -75,7 +76,8 @@ describe('HotkeyService', () => {
     expect(service.getAllHotkeys()).toEqual({
       scan: 'F7',
       report: 'F8',
-      toggle: 'F6'
+      toggle: 'F6',
+      detach: 'F9'
     })
     // Store should have been set to empty overrides
     expect(saved['hotkeys']).toEqual({})
@@ -85,7 +87,8 @@ describe('HotkeyService', () => {
     expect(HotkeyService.getDefaults()).toEqual({
       scan: 'F7',
       report: 'F8',
-      toggle: 'F6'
+      toggle: 'F6',
+      detach: 'F9'
     })
   })
 })

@@ -6,11 +6,6 @@ import DetachToolbar from './components/DetachToolbar'
 
 /**
  * DetachApp — Root component for the detach overlay window.
- *
- * Receives a single IParagonBoard from the main process and renders
- * it as a transparent overlay. The user can resize the OS window,
- * adjust opacity, rotate the board, lock it (click-through), and
- * close it when done.
  */
 function DetachApp(): React.JSX.Element {
     const [board, setBoard] = useState<IParagonBoard | null>(null)
@@ -18,6 +13,8 @@ function DetachApp(): React.JSX.Element {
     const [rotation, setRotation] = useState(0)
     const [scale, setScale] = useState(1)
     const [locked, setLocked] = useState(false)
+    const [boardNumber, setBoardNumber] = useState(1)
+    const [boardTotal, setBoardTotal] = useState(1)
 
     // Drag-rotate state
     const [isDragRotating, setIsDragRotating] = useState(false)
@@ -28,14 +25,46 @@ function DetachApp(): React.JSX.Element {
     const [hoveredNode, setHoveredNode] = useState<IParagonNode | null>(null)
     const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
 
+    // Keep locked in a ref for the document-level wheel listener
+    const lockedRef = useRef(locked)
+    useEffect(() => {
+        lockedRef.current = locked
+    }, [locked])
+
     // Listen for board data from main process
     useEffect(() => {
         window.api.onDetachBoardData((data) => {
             setBoard(data.board)
             setOpacity(data.opacity)
-            // Set initial rotation from the board's own rotation if available
             setRotation(data.board.boardRotation || 0)
+            setBoardNumber(data.boardNumber)
+            setBoardTotal(data.boardTotal)
+
+            // Auto-fit: use full 21x21 board grid so overlay spacing matches in-game
+            const FULL_GRID = 21
+            const cs = 44, pad = 10
+            const bW = FULL_GRID * cs + pad * 2
+            const bH = FULL_GRID * cs + pad * 2
+            const fitScale = Math.min(
+                (window.innerWidth * 0.9) / bW,
+                (window.innerHeight * 0.9) / bH
+            )
+            setScale(fitScale)
         })
+    }, [])
+
+    // ── Mouse wheel → scale (document-level to bypass app-region) ────
+    useEffect(() => {
+        const handleWheel = (e: WheelEvent): void => {
+            if (lockedRef.current) return
+            e.preventDefault()
+            e.stopPropagation()
+            const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08
+            setScale((s) => Math.min(Math.max(s * factor, 0.1), 5))
+        }
+
+        document.addEventListener('wheel', handleWheel, { passive: false })
+        return () => document.removeEventListener('wheel', handleWheel)
     }, [])
 
     // Handle opacity changes — save debounced
@@ -54,23 +83,10 @@ function DetachApp(): React.JSX.Element {
     const handleRotateFineCW = useCallback(() => setRotation((r) => r + 5), [])
     const handleRotateFineCCW = useCallback(() => setRotation((r) => r - 5), [])
 
-    // ── Mouse wheel → scale ─────────────────────────────────
-    const handleWheel = useCallback(
-        (e: React.WheelEvent) => {
-            if (locked) return
-            e.preventDefault()
-            // deltaY < 0 → scroll up → zoom in
-            const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08
-            setScale((s) => Math.min(Math.max(s * factor, 0.1), 5))
-        },
-        [locked]
-    )
-
     // ── Left-click drag → fine rotation ─────────────────────
     const handleBoardMouseDown = useCallback(
         (e: React.MouseEvent) => {
             if (locked) return
-            // Only primary button (left click)
             if (e.button !== 0) return
             e.preventDefault()
             setIsDragRotating(true)
@@ -84,7 +100,6 @@ function DetachApp(): React.JSX.Element {
         if (!isDragRotating) return
 
         const handleMouseMove = (e: MouseEvent): void => {
-            // 1px horizontal = 0.5° rotation for precision
             const dx = e.clientX - dragStartXRef.current
             setRotation(dragStartRotationRef.current + dx * 0.5)
         }
@@ -100,6 +115,50 @@ function DetachApp(): React.JSX.Element {
             window.removeEventListener('mouseup', handleMouseUp)
         }
     }, [isDragRotating])
+
+    // ── Right-click drag → move window via IPC ─────────────────────
+    const [isDragMoving, setIsDragMoving] = useState(false)
+    const dragMoveLastPos = useRef({ x: 0, y: 0 })
+
+    // Suppress context menu so right-click is reserved for drag
+    useEffect(() => {
+        const suppress = (e: Event): void => e.preventDefault()
+        document.addEventListener('contextmenu', suppress)
+        return () => document.removeEventListener('contextmenu', suppress)
+    }, [])
+
+    const handleRightMouseDown = useCallback(
+        (e: React.MouseEvent) => {
+            if (locked) return
+            if (e.button !== 2) return
+            e.preventDefault()
+            setIsDragMoving(true)
+            dragMoveLastPos.current = { x: e.screenX, y: e.screenY }
+        },
+        [locked]
+    )
+
+    useEffect(() => {
+        if (!isDragMoving) return
+
+        const handleMouseMove = (e: MouseEvent): void => {
+            const dx = e.screenX - dragMoveLastPos.current.x
+            const dy = e.screenY - dragMoveLastPos.current.y
+            dragMoveLastPos.current = { x: e.screenX, y: e.screenY }
+            window.api.detachMoveWindow(dx, dy)
+        }
+
+        const handleMouseUp = (): void => {
+            setIsDragMoving(false)
+        }
+
+        window.addEventListener('mousemove', handleMouseMove)
+        window.addEventListener('mouseup', handleMouseUp)
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove)
+            window.removeEventListener('mouseup', handleMouseUp)
+        }
+    }, [isDragMoving])
 
     // Reset scale
     const handleResetScale = useCallback(() => setScale(1), [])
@@ -156,22 +215,15 @@ function DetachApp(): React.JSX.Element {
         return <div id="detach-root" />
     }
 
-    // Calculate board grid dimensions
+    // Use full 21x21 board grid so node spacing matches the in-game board exactly
+    const FULL_GRID = 21
+    const minRow = 0
+    const minCol = 0
     const positionedNodes = board.allocatedNodes.filter(
         (n) => n.row !== undefined && n.col !== undefined
     )
-    let minRow = Infinity,
-        maxRow = -Infinity
-    let minCol = Infinity,
-        maxCol = -Infinity
-    for (const node of positionedNodes) {
-        if (node.row! < minRow) minRow = node.row!
-        if (node.row! > maxRow) maxRow = node.row!
-        if (node.col! < minCol) minCol = node.col!
-        if (node.col! > maxCol) maxCol = node.col!
-    }
-    const gridCols = maxCol - minCol + 1
-    const gridRows = maxRow - minRow + 1
+    const gridCols = FULL_GRID
+    const gridRows = FULL_GRID
     const tileSize = 40
     const cellSize = 44
     const padding = 10
@@ -183,9 +235,9 @@ function DetachApp(): React.JSX.Element {
             id="detach-root"
             className="detach-root"
             style={{ opacity: opacity / 100 }}
-            onWheel={handleWheel}
+            onMouseDown={handleRightMouseDown}
         >
-            {/* Board container — scales to fill window, rotatable via drag */}
+            {/* Board container — scales + rotates, drag to rotate */}
             <div
                 className={`detach-board-container ${isDragRotating ? 'detach-board-container--rotating' : ''}`}
                 style={{
@@ -196,7 +248,6 @@ function DetachApp(): React.JSX.Element {
                 }}
                 onMouseDown={handleBoardMouseDown}
             >
-                {/* Render tiles inline (same logic as ParagonBoardTiles) */}
                 <div
                     className="paragon-canvas-board detach-board"
                     style={{
@@ -321,6 +372,9 @@ function DetachApp(): React.JSX.Element {
                 rotation={rotation}
                 scale={scale}
                 locked={locked}
+                boardName={board.boardName}
+                boardNumber={boardNumber}
+                boardTotal={boardTotal}
                 onOpacityChange={handleOpacityChange}
                 onRotateCW={handleRotateCW}
                 onRotateCCW={handleRotateCCW}

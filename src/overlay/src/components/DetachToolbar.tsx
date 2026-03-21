@@ -14,6 +14,9 @@ interface DetachToolbarProps {
     rotation: number
     scale: number
     locked: boolean
+    boardName: string
+    boardNumber: number
+    boardTotal: number
     onOpacityChange: (value: number) => void
     onRotateCW: () => void
     onRotateCCW: () => void
@@ -32,6 +35,9 @@ function DetachToolbar({
     rotation,
     scale,
     locked,
+    boardName,
+    boardNumber,
+    boardTotal,
     onOpacityChange,
     onRotateCW,
     onRotateCCW,
@@ -72,6 +78,14 @@ function DetachToolbar({
 
     return (
         <div className="detach-toolbar detach-toolbar--full">
+            {/* Board position indicator */}
+            <div className="detach-toolbar__group detach-toolbar__board-info">
+                <span className="detach-toolbar__board-position">
+                    Board {boardNumber} of {boardTotal}
+                </span>
+                <span className="detach-toolbar__board-name">— {boardName}</span>
+            </div>
+
             {/* Opacity slider */}
             <div className="detach-toolbar__group">
                 <label className="detach-toolbar__label">Opacity</label>
