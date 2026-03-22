@@ -47,7 +47,7 @@ function DetachApp(): React.JSX.Element {
         window.api.onDetachBoardData((data) => {
             setBoard(data.board)
             setOpacity(data.opacity)
-            setRotation(data.board.boardRotation || 0)
+            setRotation(0)
             setBoardNumber(data.boardNumber)
             setBoardTotal(data.boardTotal)
 
@@ -312,10 +312,23 @@ function DetachApp(): React.JSX.Element {
 
                     {/* Tiles */}
                     {positionedNodes.map((node, i) => {
-                        const col = node.col! - minCol
-                        const row = node.row! - minRow
-                        const left = col * cellSize
-                        const top = row * cellSize
+                        // Counter-transform intrinsic d4builds coords to un-rotated in-game frame
+                        const boardRot = board.boardRotation || 0
+                        const maxIdx = FULL_GRID - 1 // 20
+                        let adjRow = node.row! - minRow
+                        let adjCol = node.col! - minCol
+                        if (boardRot === 90) {
+                            adjRow = node.col! - minCol
+                            adjCol = maxIdx - (node.row! - minRow)
+                        } else if (boardRot === 180) {
+                            adjRow = maxIdx - (node.row! - minRow)
+                            adjCol = maxIdx - (node.col! - minCol)
+                        } else if (boardRot === 270) {
+                            adjRow = maxIdx - (node.col! - minCol)
+                            adjCol = node.row! - minRow
+                        }
+                        const left = adjCol * cellSize
+                        const top = adjRow * cellSize
                         const typeColor = getNodeTypeColor(node.nodeType)
                         const tileClasses = [
                             'paragon-canvas-tile',
@@ -335,7 +348,8 @@ function DetachApp(): React.JSX.Element {
                                     top: `${top}px`,
                                     width: `${tileSize}px`,
                                     height: `${tileSize}px`,
-                                    transform: node.styleTransform || undefined,
+                                    // Per-tile rotation removed — no longer needed since we
+                                    // counter-transform coordinates instead of rotating the container
                                     cursor: 'pointer',
                                     zIndex: 1
                                 }}

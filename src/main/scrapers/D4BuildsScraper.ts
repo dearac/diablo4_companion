@@ -338,7 +338,9 @@ export class D4BuildsScraper extends BuildScraper {
             const bgUrl = bgImg?.getAttribute('src') || undefined
 
             const altText = iconImg?.getAttribute('alt')?.trim() || 'Node'
-            const styleTransform = tile.getAttribute('style') || undefined
+            const rawStyle = tile.getAttribute('style') || ''
+            const rotateMatch = rawStyle.match(/rotate\([^)]+\)/)
+            const styleTransform = rotateMatch ? rotateMatch[0] : undefined
             const allocated = tile.classList.contains('active')
 
             const tileClasses = tile.className.toLowerCase()
