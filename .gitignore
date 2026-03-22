@@ -60,6 +60,18 @@ sidecar/ocr-cli/obj/
 # Large generated files
 tree.txt
 
+# Sample / test screenshots
+resources/Samples/
+
+# Research notes
+Research/
+
+# Test coverage
+coverage/
+
+# Local config overrides
+*.local
+
 # Certificates / keys (safety net)
 *.pem
 *.key
