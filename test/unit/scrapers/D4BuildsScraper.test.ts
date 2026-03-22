@@ -212,6 +212,29 @@ const { mockPage } = vi.hoisted(() => {
                     return { textContent: '45% Critical Strike Chance' }
                   return null
                 }
+              },
+              {
+                textContent: '+120 Strength',
+                classList: { contains: () => false },
+                querySelector: (sel: string) => {
+                  // This row has a filled greater affix button
+                  if (sel === '.greater__affix__button--filled') return { className: 'greater__affix__button--filled' }
+                  if (sel.includes('tempering')) return null
+                  if (sel === '.dropdown__button span')
+                    return { textContent: '+120 Strength' }
+                  return null
+                }
+              },
+              {
+                textContent: '+15% Cooldown Reduction',
+                classList: { contains: () => false },
+                querySelector: (sel: string) => {
+                  if (sel === '.greater__affix__button--filled') return null
+                  if (sel.includes('tempering')) return null
+                  if (sel === '.dropdown__button span')
+                    return { textContent: '+15% Cooldown Reduction' }
+                  return null
+                }
               }
             ]
           },
@@ -330,13 +353,29 @@ describe('D4BuildsScraper', () => {
     expect(helm.slot).toBe('Helm')
     expect(helm.itemName).toBe('Heir of Perdition')
     expect(helm.itemType).toBe('Unique') // mythic maps to Unique
-    expect(helm.affixes).toHaveLength(1)
+    // Regular affixes: '45% Critical Strike Chance' and '+15% Cooldown Reduction'
+    expect(helm.affixes).toHaveLength(2)
     expect(helm.affixes[0].name).toBe('45% Critical Strike Chance')
+    expect(helm.affixes[1].name).toBe('+15% Cooldown Reduction')
 
     const chest = data.gearSlots[1]
     expect(chest.slot).toBe('Chest Armor')
     expect(chest.itemName).toBe('Mantle of the Grey')
     expect(chest.itemType).toBe('Unique')
     expect(chest.affixes).toHaveLength(0)
+  })
+
+  it('should NOT duplicate greater affixes into regular affixes', async () => {
+    const data = await scraper.scrape('https://d4builds.gg/builds/test')
+    const helm = data.gearSlots[0]
+
+    // Greater affix '+120 Strength' should ONLY be in greaterAffixes
+    expect(helm.greaterAffixes).toHaveLength(1)
+    expect(helm.greaterAffixes[0].name).toBe('+120 Strength')
+    expect(helm.greaterAffixes[0].isGreater).toBe(true)
+
+    // Regular affixes should NOT contain the greater affix
+    const regularAffixNames = helm.affixes.map((a) => a.name)
+    expect(regularAffixNames).not.toContain('+120 Strength')
   })
 })

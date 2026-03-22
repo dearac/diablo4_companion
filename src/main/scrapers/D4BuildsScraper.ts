@@ -643,21 +643,33 @@ export class D4BuildsScraper extends BuildScraper {
               temperedAffixes.push(affix)
             } else if (isGreater) {
               greaterAffixes.push(affix)
-              affixes.push(affix)
             } else if (isImplicitSection) {
               implicitAffixes.push(affix)
-              isImplicitSection = false
             } else {
+              // Regular affix — also ends any implicit section
+              isImplicitSection = false
               affixes.push(affix)
             }
           })
 
+          // Deduplicate — the CSS selector '.stat__dropdown__wrapper, .builder__stat'
+          // can match both a parent wrapper and its child stat element, producing
+          // duplicate entries with identical text content.
+          const dedup = (arr: Array<{ name: string; isGreater: boolean }>): Array<{ name: string; isGreater: boolean }> => {
+            const seen = new Set<string>()
+            return arr.filter((a) => {
+              if (seen.has(a.name)) return false
+              seen.add(a.name)
+              return true
+            })
+          }
+
           return {
             slot,
-            affixes,
-            implicitAffixes,
-            temperedAffixes,
-            greaterAffixes,
+            affixes: dedup(affixes),
+            implicitAffixes: dedup(implicitAffixes),
+            temperedAffixes: dedup(temperedAffixes),
+            greaterAffixes: dedup(greaterAffixes),
             rampageEffect,
             feastEffect
           }
