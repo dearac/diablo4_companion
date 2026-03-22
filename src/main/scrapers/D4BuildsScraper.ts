@@ -89,8 +89,8 @@ export class D4BuildsScraper extends BuildScraper {
       // 2. Wait for the build header to appear (proves dynamic content loaded)
       await page.waitForSelector('.builder__header__description', { timeout: 30000 })
 
-      // 3. Extra settle time for JS hydration
-      await page.waitForTimeout(2000)
+      // 3. Wait for content hydration (skill wrappers prove JS rendered)
+      await page.waitForSelector('.build__skill__wrapper', { timeout: 5000 }).catch(() => {})
 
       // 4. Extract metadata
       const buildName = await this.extractText(
@@ -122,7 +122,7 @@ export class D4BuildsScraper extends BuildScraper {
       // Step 5: Import gear
       onProgress?.({ step: 5, totalSteps: TOTAL_STEPS, label: 'Importing gear' })
       await this.clickTab(page, 'Gear')
-      await page.waitForTimeout(1000)
+      await page.waitForTimeout(300)
       const gearSlots = await this.scrapeGear(page)
 
       // Step 6: Import runes
@@ -170,7 +170,7 @@ export class D4BuildsScraper extends BuildScraper {
     try {
       const tab = page.locator('.builder__navigation__link', { hasText: tabText }).first()
       await tab.click({ timeout: 5000 })
-      await page.waitForTimeout(1500)
+      await page.waitForTimeout(500)
     } catch {
       console.warn(`Tab "${tabText}" not found, skipping`)
     }
