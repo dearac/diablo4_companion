@@ -97,14 +97,6 @@ async function initStore(): Promise<void> {
   const { default: Store } = await import('electron-store')
   store = new Store()
   hotkeyService = new HotkeyService(store)
-
-  // Load saved board calibration if it exists
-  const savedCalibration = store.get('board-calibration') as
-    | { x: number; y: number; width: number; height: number }
-    | undefined
-  if (savedCalibration) {
-    boardPositionService.loadCalibration(savedCalibration)
-  }
 }
 
 /**
@@ -128,6 +120,16 @@ function initServices(): void {
   scanService = new ScanService(captureService, equippedStore, scanHistoryStore, sidecarDir)
   boardScanService = new BoardScanService()
   boardPositionService = new BoardPositionService()
+
+  // Load saved board calibration if store is already initialized
+  if (store) {
+    const savedCalibration = store.get('board-calibration') as
+      | { x: number; y: number; width: number; height: number }
+      | undefined
+    if (savedCalibration) {
+      boardPositionService.loadCalibration(savedCalibration)
+    }
+  }
 }
 
 // ============================================================
@@ -261,11 +263,16 @@ function createDetachWindow(
   const primaryDisplay = screen.getPrimaryDisplay()
   const { width: screenW, height: screenH } = primaryDisplay.workAreaSize
 
-  // Use auto-detected position if available, otherwise center on screen
-  const winW = position ? position.width : 600
-  const winH = position ? position.height : 600
-  const winX = position ? position.x : Math.round(screenW / 2 - 300)
-  const winY = position ? position.y : Math.round(screenH / 2 - 300)
+  // Restore saved position if user previously repositioned the overlay
+  const savedPos = store?.get('paragon-detach-position') as
+    | { x: number; y: number; width: number; height: number }
+    | undefined
+
+  // Priority: saved position > calibration position > screen center
+  const winW = savedPos?.width ?? (position ? position.width : 600)
+  const winH = savedPos?.height ?? (position ? position.height : 600)
+  const winX = savedPos?.x ?? (position ? position.x : Math.round(screenW / 2 - 300))
+  const winY = savedPos?.y ?? (position ? position.y : Math.round(screenH / 2 - 300))
 
   detachWindow = new BrowserWindow({
     width: winW,
@@ -295,6 +302,16 @@ function createDetachWindow(
     detachWindow = null
   })
 
+  // Save position whenever the window is moved or resized
+  const saveWindowBounds = (): void => {
+    if (detachWindow) {
+      const bounds = detachWindow.getBounds()
+      store?.set('paragon-detach-position', bounds)
+    }
+  }
+  detachWindow.on('moved', saveWindowBounds)
+  detachWindow.on('resized', saveWindowBounds)
+
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     const devUrl = process.env['ELECTRON_RENDERER_URL']
     detachWindow.loadURL(`${devUrl}/detach.html`)
@@ -308,11 +325,13 @@ function createDetachWindow(
     const board = currentBuildData.paragonBoards[boardIndex]
     if (!board) return
 
-    // Also send the saved opacity and board position info
+    // Also send the saved opacity/inset and board position info
     const savedOpacity = store?.get('paragon-detach-opacity', 50) as number
+    const savedInset = store?.get('paragon-detach-inset', 7) as number
     detachWindow.webContents.send('detach-board-data', {
       board,
       opacity: savedOpacity,
+      inset: savedInset,
       boardNumber: boardIndex + 1,
       boardTotal: currentBuildData.paragonBoards.length
     })
@@ -638,6 +657,7 @@ function setupIpcHandlers(): void {
   ipcMain.handle('clear-board-calibration', () => {
     boardPositionService.clearCalibration()
     store?.delete('board-calibration')
+    store?.delete('paragon-detach-position')
     return { success: true }
   })
 
@@ -709,6 +729,20 @@ function setupIpcHandlers(): void {
   /** Save opacity preference to electron-store */
   ipcMain.on('detach-save-opacity', (_event, opacity: number) => {
     store?.set('paragon-detach-opacity', opacity)
+  })
+
+  /** Save inset preference to electron-store */
+  ipcMain.on('detach-save-inset', (_event, inset: number) => {
+    store?.set('paragon-detach-inset', inset)
+  })
+
+  /** Explicitly save the current detach window position (triggered by Save Position button) */
+  ipcMain.on('detach-save-position', () => {
+    if (detachWindow) {
+      const bounds = detachWindow.getBounds()
+      store?.set('paragon-detach-position', bounds)
+      console.log(`[Detach] Position saved: (${bounds.x}, ${bounds.y}) ${bounds.width}x${bounds.height}`)
+    }
   })
 
   /** Close the detach window */

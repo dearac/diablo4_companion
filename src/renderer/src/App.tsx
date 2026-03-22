@@ -26,6 +26,7 @@ function App(): React.JSX.Element {
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [refreshCounter, setRefreshCounter] = useState<number>(0)
   const [cacheCleared, setCacheCleared] = useState<boolean>(false)
+  const [calibrationCleared, setCalibrationCleared] = useState<boolean>(false)
   const [activeTab, setActiveTab] = useState<MainTab>('builds')
   const [importProgress, setImportProgress] = useState<{
     step: number
@@ -79,6 +80,13 @@ function App(): React.JSX.Element {
     await window.api.clearParagonCache()
     setCacheCleared(true)
     setTimeout(() => setCacheCleared(false), 3000)
+  }, [])
+
+  /** Clear board calibration so next F10 re-opens the snipping tool */
+  const handleClearCalibration = useCallback(async (): Promise<void> => {
+    await window.api.clearBoardCalibration()
+    setCalibrationCleared(true)
+    setTimeout(() => setCalibrationCleared(false), 3000)
   }, [])
 
   return (
@@ -153,6 +161,13 @@ function App(): React.JSX.Element {
           title="Clear cached board data (use after a game update)"
         >
           {cacheCleared ? '✓ Cache Cleared' : '🔄 Clear Board Cache'}
+        </button>
+        <button
+          className="config-footer__clear-cache"
+          onClick={handleClearCalibration}
+          title="Reset board calibration — next F10 will re-open the snipping tool"
+        >
+          {calibrationCleared ? '✓ Calibration Reset' : '📐 Reset Calibration'}
         </button>
       </footer>
     </div>

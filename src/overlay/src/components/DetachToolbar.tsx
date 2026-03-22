@@ -14,10 +14,12 @@ interface DetachToolbarProps {
     rotation: number
     scale: number
     locked: boolean
+    inset: number
     boardName: string
     boardNumber: number
     boardTotal: number
     onOpacityChange: (value: number) => void
+    onInsetChange: (value: number) => void
     onRotateCW: () => void
     onRotateCCW: () => void
     onRotateFineCW: () => void
@@ -35,10 +37,12 @@ function DetachToolbar({
     rotation,
     scale,
     locked,
+    inset,
     boardName,
     boardNumber,
     boardTotal,
     onOpacityChange,
+    onInsetChange,
     onRotateCW,
     onRotateCCW,
     onRotateFineCW,
@@ -100,6 +104,21 @@ function DetachToolbar({
                 <span className="detach-toolbar__value">{opacity}%</span>
             </div>
 
+            {/* Inset slider — fine-tune the border-to-node padding */}
+            <div className="detach-toolbar__group">
+                <label className="detach-toolbar__label">Inset</label>
+                <input
+                    type="range"
+                    min={0}
+                    max={15}
+                    step={1}
+                    value={inset}
+                    onChange={(e) => onInsetChange(Number(e.target.value))}
+                    className="detach-toolbar__slider"
+                />
+                <span className="detach-toolbar__value">{inset}%</span>
+            </div>
+
             {/* Rotation controls */}
             <div className="detach-toolbar__group">
                 <label className="detach-toolbar__label">Rotate</label>
@@ -127,14 +146,14 @@ function DetachToolbar({
                 </button>
             </div>
 
-            {/* Lock + Done */}
+            {/* Save Position + Done */}
             <div className="detach-toolbar__group">
                 <button
                     className="detach-toolbar__btn detach-toolbar__btn--lock"
                     onClick={onLock}
-                    title="Lock position — makes overlay click-through"
+                    title="Save position — remembers overlay placement for next time"
                 >
-                    🔒 Lock
+                    💾 Save Position
                 </button>
                 <button
                     className="detach-toolbar__btn detach-toolbar__btn--done"

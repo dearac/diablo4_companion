@@ -293,7 +293,7 @@ const api = {
    * Listens for the single board data sent to the detach window.
    */
   onDetachBoardData: (
-    callback: (data: { board: IParagonBoard; opacity: number; boardNumber: number; boardTotal: number }) => void
+    callback: (data: { board: IParagonBoard; opacity: number; inset: number; boardNumber: number; boardTotal: number }) => void
   ): void => {
     ipcRenderer.on('detach-board-data', (_event, data) => callback(data))
   },
@@ -310,6 +310,20 @@ const api = {
    */
   detachSaveOpacity: (opacity: number): void => {
     ipcRenderer.send('detach-save-opacity', opacity)
+  },
+
+  /**
+   * Saves the detach inset preference.
+   */
+  detachSaveInset: (inset: number): void => {
+    ipcRenderer.send('detach-save-inset', inset)
+  },
+
+  /**
+   * Saves the current detach window position explicitly.
+   */
+  detachSavePosition: (): void => {
+    ipcRenderer.send('detach-save-position')
   },
 
   /**

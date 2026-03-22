@@ -7,6 +7,13 @@ import DetachToolbar from './components/DetachToolbar'
 /**
  * DetachApp — Root component for the detach overlay window.
  */
+/**
+ * Default border inset percentage (0-15%).
+ * Accounts for the padding between the in-game red border and the first node row.
+ * Measured from the screenshot: ~7% on each side.
+ */
+const DEFAULT_INSET = 7
+
 function DetachApp(): React.JSX.Element {
     const [board, setBoard] = useState<IParagonBoard | null>(null)
     const [opacity, setOpacity] = useState(50)
@@ -15,6 +22,7 @@ function DetachApp(): React.JSX.Element {
     const [locked, setLocked] = useState(false)
     const [boardNumber, setBoardNumber] = useState(1)
     const [boardTotal, setBoardTotal] = useState(1)
+    const [inset, setInset] = useState(DEFAULT_INSET)
 
     // Drag-rotate state
     const [isDragRotating, setIsDragRotating] = useState(false)
@@ -31,6 +39,9 @@ function DetachApp(): React.JSX.Element {
         lockedRef.current = locked
     }, [locked])
 
+    // Dynamic cell size — derived from window so grid exactly matches in-game spacing
+    const [cellSize, setCellSize] = useState(44)
+
     // Listen for board data from main process
     useEffect(() => {
         window.api.onDetachBoardData((data) => {
@@ -40,16 +51,18 @@ function DetachApp(): React.JSX.Element {
             setBoardNumber(data.boardNumber)
             setBoardTotal(data.boardTotal)
 
-            // Auto-fit: use full 21x21 board grid so overlay spacing matches in-game
+            // Load saved inset or use default
+            const savedInset = data.inset ?? DEFAULT_INSET
+            setInset(savedInset)
+
+            // Derive cellSize so 21 cells exactly fill the usable window area
             const FULL_GRID = 21
-            const cs = 44, pad = 10
-            const bW = FULL_GRID * cs + pad * 2
-            const bH = FULL_GRID * cs + pad * 2
-            const fitScale = Math.min(
-                (window.innerWidth * 0.9) / bW,
-                (window.innerHeight * 0.9) / bH
-            )
-            setScale(fitScale)
+            const insetFrac = savedInset / 100
+            const usableW = window.innerWidth * (1 - 2 * insetFrac)
+            const usableH = window.innerHeight * (1 - 2 * insetFrac)
+            const cs = Math.min(usableW, usableH) / FULL_GRID
+            setCellSize(cs)
+            setScale(1) // Grid already fits — scale starts at 1:1
         })
     }, [])
 
@@ -74,6 +87,16 @@ function DetachApp(): React.JSX.Element {
         if (opacityTimerRef.current) clearTimeout(opacityTimerRef.current)
         opacityTimerRef.current = setTimeout(() => {
             window.api.detachSaveOpacity(value)
+        }, 500)
+    }, [])
+
+    // Handle inset changes — save debounced
+    const insetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const handleInsetChange = useCallback((value: number) => {
+        setInset(value)
+        if (insetTimerRef.current) clearTimeout(insetTimerRef.current)
+        insetTimerRef.current = setTimeout(() => {
+            window.api.detachSaveInset(value)
         }, 500)
     }, [])
 
@@ -163,10 +186,11 @@ function DetachApp(): React.JSX.Element {
     // Reset scale
     const handleResetScale = useCallback(() => setScale(1), [])
 
-    // Lock/Unlock
+    // Save Position / Lock
     const handleLock = useCallback(() => {
         setLocked(true)
         window.api.detachSetIgnoreMouse(true, { forward: true })
+        window.api.detachSavePosition()
     }, [])
 
     const handleUnlock = useCallback(() => {
@@ -224,11 +248,9 @@ function DetachApp(): React.JSX.Element {
     )
     const gridCols = FULL_GRID
     const gridRows = FULL_GRID
-    const tileSize = 40
-    const cellSize = 44
-    const padding = 10
-    const boardPixelW = gridCols * cellSize + padding * 2
-    const boardPixelH = gridRows * cellSize + padding * 2
+    const tileSize = cellSize * 0.9  // maintain same ratio as original 40/44
+    const boardPixelW = gridCols * cellSize
+    const boardPixelH = gridRows * cellSize
 
     return (
         <div
@@ -237,19 +259,21 @@ function DetachApp(): React.JSX.Element {
             style={{ opacity: opacity / 100 }}
             onMouseDown={handleRightMouseDown}
         >
-            {/* Board container — scales + rotates, drag to rotate */}
+            {/* Board container — scales + rotates + inset from border, drag to rotate */}
             <div
                 className={`detach-board-container ${isDragRotating ? 'detach-board-container--rotating' : ''}`}
                 style={{
                     transform: `rotate(${rotation}deg) scale(${scale})`,
                     width: `${boardPixelW}px`,
                     height: `${boardPixelH}px`,
+                    marginLeft: `${inset}%`,
+                    marginTop: `${inset}%`,
                     cursor: isDragRotating ? 'grabbing' : 'grab'
                 }}
                 onMouseDown={handleBoardMouseDown}
             >
                 <div
-                    className="paragon-canvas-board detach-board"
+                    className={`paragon-canvas-board detach-board${locked ? ' paragon-canvas--locked' : ''}`}
                     style={{
                         position: 'relative',
                         width: `${boardPixelW}px`,
@@ -290,8 +314,8 @@ function DetachApp(): React.JSX.Element {
                     {positionedNodes.map((node, i) => {
                         const col = node.col! - minCol
                         const row = node.row! - minRow
-                        const left = col * cellSize + padding
-                        const top = row * cellSize + padding
+                        const left = col * cellSize
+                        const top = row * cellSize
                         const typeColor = getNodeTypeColor(node.nodeType)
                         const tileClasses = [
                             'paragon-canvas-tile',
@@ -372,10 +396,12 @@ function DetachApp(): React.JSX.Element {
                 rotation={rotation}
                 scale={scale}
                 locked={locked}
+                inset={inset}
                 boardName={board.boardName}
                 boardNumber={boardNumber}
                 boardTotal={boardTotal}
                 onOpacityChange={handleOpacityChange}
+                onInsetChange={handleInsetChange}
                 onRotateCW={handleRotateCW}
                 onRotateCCW={handleRotateCCW}
                 onRotateFineCW={handleRotateFineCW}

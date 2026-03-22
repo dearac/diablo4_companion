@@ -66,14 +66,19 @@ declare global {
         callback: (data: {
           board: IParagonBoard
           opacity: number
+          inset: number
           boardNumber: number
           boardTotal: number
         }) => void
       ) => void
       detachSetIgnoreMouse: (ignore: boolean, options?: { forward: boolean }) => void
       detachSaveOpacity: (opacity: number) => void
+      detachSaveInset: (inset: number) => void
+      detachSavePosition: () => void
       detachClose: () => void
       detachMoveWindow: (dx: number, dy: number) => void
+      // Board Calibration
+      clearBoardCalibration: () => Promise<{ success: boolean }>
     }
   }
 }
