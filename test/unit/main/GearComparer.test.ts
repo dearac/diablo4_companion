@@ -294,6 +294,23 @@ describe('GearComparer', () => {
       const temperRecs = verdict.recommendations.filter((r) => r.action === 'temper')
       expect(temperRecs).toHaveLength(0)
     })
+
+    it('should not recommend tempering when build tempered stat is already in regular affixes (OCR cannot distinguish)', () => {
+      // OCR cannot tell that "+25% Core Skill Damage" is a tempered affix —
+      // it always ends up in affixes[]. This should suppress the temper recommendation.
+      const scanned = makeScanned({
+        affixes: ['+25% Core Skill Damage', '+10% Crit Chance'],
+        temperedAffixes: [] // Always empty from OCR
+      })
+      const buildSlot = makeBuildSlot({
+        affixes: [],
+        temperedAffixes: [{ name: 'Core Skill Damage', isGreater: false }]
+      })
+      const verdict = compareGear(scanned, buildSlot, null)
+
+      const temperRecs = verdict.recommendations.filter((r) => r.action === 'temper')
+      expect(temperRecs).toHaveLength(0)
+    })
   })
 
   describe('scannedItem passthrough', () => {
@@ -302,6 +319,98 @@ describe('GearComparer', () => {
       const verdict = compareGear(scanned, makeBuildSlot(), null)
 
       expect(verdict.scannedItem).toEqual(scanned)
+    })
+  })
+
+  describe('unified affix pool scoring', () => {
+    it('should count tempered affix in build as matched when item has it in regular affixes', () => {
+      // Build has Attack Speed as a tempered affix; scanned item has it in regular affixes
+      const scanned = makeScanned({
+        affixes: ['+9.5% Attack Speed']
+      })
+      const buildSlot = makeBuildSlot({
+        affixes: [],
+        temperedAffixes: [{ name: 'Attack Speed', isGreater: false }]
+      })
+      const verdict = compareGear(scanned, buildSlot, null)
+
+      expect(verdict.buildMatchCount).toBe(1)
+      expect(verdict.matchedAffixes).toContain('Attack Speed')
+    })
+
+    it('should count greater affix in build toward buildTotalExpected', () => {
+      const buildSlot = makeBuildSlot({
+        affixes: [{ name: 'Critical Strike Chance', isGreater: false }],
+        greaterAffixes: [{ name: 'Vulnerable Damage', isGreater: true }]
+      })
+      const scanned = makeScanned({ affixes: ['+10% Critical Strike Chance'] })
+      const verdict = compareGear(scanned, buildSlot, null)
+
+      // totalExpected should be 2 (CSC + Vulnerable Damage from greaterAffixes)
+      expect(verdict.buildTotalExpected).toBeGreaterThanOrEqual(2)
+    })
+
+    it('should match when scanned tempered affix satisfies build tempered affix requirement', () => {
+      const scanned = makeScanned({
+        affixes: [],
+        temperedAffixes: ['+25% Core Skill Damage']
+      })
+      const buildSlot = makeBuildSlot({
+        affixes: [],
+        temperedAffixes: [{ name: 'Core Skill Damage', isGreater: false }]
+      })
+      const verdict = compareGear(scanned, buildSlot, null)
+
+      expect(verdict.buildMatchCount).toBe(1)
+      expect(verdict.matchedAffixes).toContain('Core Skill Damage')
+    })
+  })
+
+  describe('aspect comparison', () => {
+    it('should return hasMatch: true when scanned item aspect matches build required aspect', () => {
+      const scanned = makeScanned({
+        aspect: { name: 'Aspect of the Dire Wolf', description: '' }
+      })
+      const buildSlot = makeBuildSlot({
+        requiredAspect: { name: 'Dire Wolf', description: null }
+      })
+      const verdict = compareGear(scanned, buildSlot, null)
+
+      expect(verdict.aspectComparison).not.toBeNull()
+      expect(verdict.aspectComparison!.hasMatch).toBe(true)
+      expect(verdict.aspectComparison!.expectedAspect).toBe('Dire Wolf')
+    })
+
+    it('should return hasMatch: false when scanned item has no aspect but build requires one', () => {
+      const scanned = makeScanned({ aspect: null })
+      const buildSlot = makeBuildSlot({
+        requiredAspect: { name: 'Ravenous Aspect', description: null }
+      })
+      const verdict = compareGear(scanned, buildSlot, null)
+
+      expect(verdict.aspectComparison).not.toBeNull()
+      expect(verdict.aspectComparison!.hasMatch).toBe(false)
+    })
+
+    it('should generate an aspect recommendation when aspect is missing', () => {
+      const scanned = makeScanned({ aspect: null })
+      const buildSlot = makeBuildSlot({
+        requiredAspect: { name: 'Ravenous Aspect', description: null }
+      })
+      const verdict = compareGear(scanned, buildSlot, null)
+
+      const aspectRec = verdict.recommendations.find((r) => r.action === 'aspect')
+      expect(aspectRec).toBeDefined()
+      expect(aspectRec!.addAffix).toBe('Ravenous Aspect')
+      expect(aspectRec!.vendor).toBe('Occultist')
+    })
+
+    it('should return aspectComparison: null when build has no required aspect', () => {
+      const scanned = makeScanned({ aspect: null })
+      const buildSlot = makeBuildSlot({ requiredAspect: null })
+      const verdict = compareGear(scanned, buildSlot, null)
+
+      expect(verdict.aspectComparison).toBeNull()
     })
   })
 })

@@ -113,6 +113,17 @@ function ScanHistoryTab(): React.JSX.Element {
                     ❌ {a}
                   </span>
                 ))}
+                {v.aspectComparison && (
+                  <span
+                    className={`history-card__affix ${
+                      v.aspectComparison.hasMatch
+                        ? 'history-card__affix--match'
+                        : 'history-card__affix--miss'
+                    }`}
+                  >
+                    {v.aspectComparison.hasMatch ? '✅' : '❌'} Aspect: {v.aspectComparison.expectedAspect}
+                  </span>
+                )}
               </div>
 
               {/* Recommendations */}
@@ -124,6 +135,7 @@ function ScanHistoryTab(): React.JSX.Element {
                         `🔧 Reroll "${rec.removeAffix}" → "${rec.addAffix}"`}
                       {rec.action === 'temper' && `⚒️ Temper: ${rec.addAffix}`}
                       {rec.action === 'socket' && `💎 Add ${rec.addAffix}`}
+                      {rec.action === 'aspect' && `🔮 Imprint: ${rec.addAffix}`}
                     </div>
                   ))}
                 </div>

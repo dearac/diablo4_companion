@@ -71,7 +71,15 @@ function GearPanel({
         const buildSlot: IGearSlot | undefined = gearSlots.find((gs) => gs.slot === slotName)
 
         // Compare affixes
-        const buildAffixNames = buildSlot ? [...new Set(buildSlot.affixes.map((a) => a.name))] : []
+        const buildAffixNames = buildSlot
+          ? [
+              ...new Set([
+                ...buildSlot.affixes.map((a) => a.name),
+                ...buildSlot.temperedAffixes.map((a) => a.name),
+                ...buildSlot.greaterAffixes.map((a) => a.name)
+              ])
+            ]
+          : []
         const allEquippedAffixes = [
           ...equipped.affixes,
           ...equipped.temperedAffixes,

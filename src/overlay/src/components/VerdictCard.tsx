@@ -151,6 +151,20 @@ function VerdictCard({ result, onDismiss }: VerdictCardProps): React.JSX.Element
             <span>Missing: {affix}</span>
           </div>
         ))}
+        {verdict.aspectComparison && (
+          <div
+            className={`verdict-card__affix ${
+              verdict.aspectComparison.hasMatch
+                ? 'verdict-card__affix--matched'
+                : 'verdict-card__affix--missing'
+            }`}
+          >
+            <span className="verdict-card__affix-icon">
+              {verdict.aspectComparison.hasMatch ? '✅' : '❌'}
+            </span>
+            <span>Aspect: {verdict.aspectComparison.expectedAspect}</span>
+          </div>
+        )}
       </div>
 
       {/* Socket info */}
@@ -178,7 +192,13 @@ function VerdictCard({ result, onDismiss }: VerdictCardProps): React.JSX.Element
           {verdict.recommendations.map((rec, i) => (
             <div key={i} className="verdict-card__rec">
               <span className="verdict-card__rec-icon">
-                {rec.action === 'enchant' ? '🔧' : rec.action === 'temper' ? '⚒️' : '💎'}
+                {rec.action === 'enchant'
+                  ? '🔧'
+                  : rec.action === 'temper'
+                    ? '⚒️'
+                    : rec.action === 'aspect'
+                      ? '🔮'
+                      : '💎'}
               </span>
               <span className="verdict-card__rec-text">
                 {rec.action === 'enchant' && (
@@ -195,6 +215,11 @@ function VerdictCard({ result, onDismiss }: VerdictCardProps): React.JSX.Element
                 {rec.action === 'socket' && (
                   <>
                     <strong>SOCKET:</strong> Visit {rec.vendor} to add {rec.addAffix}
+                  </>
+                )}
+                {rec.action === 'aspect' && (
+                  <>
+                    <strong>IMPRINT:</strong> Get &quot;{rec.addAffix}&quot; at {rec.vendor}
                   </>
                 )}
               </span>

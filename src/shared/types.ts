@@ -213,7 +213,7 @@ export type ScanMode = 'compare' | 'equip'
 
 /** A recommendation for how to improve an item. */
 export interface CraftingRecommendation {
-  action: 'enchant' | 'temper' | 'socket' | 'none'
+  action: 'enchant' | 'temper' | 'socket' | 'aspect' | 'none'
   removeAffix: string | null
   addAffix: string
   vendor: string
@@ -235,6 +235,10 @@ export interface ScanVerdict {
   equippedComparison: {
     equippedMatchCount: number
     isUpgrade: boolean
+  } | null
+  aspectComparison: {
+    expectedAspect: string
+    hasMatch: boolean
   } | null
   recommendations: CraftingRecommendation[]
 }

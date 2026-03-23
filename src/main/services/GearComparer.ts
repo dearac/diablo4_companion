@@ -128,10 +128,12 @@ function generateEnchantRecommendations(
  * Rules:
  *   - Tempering ADDS new affixes (doesn't replace)
  *   - Check if build expects tempered affixes that aren't present
+ *     in ANY of the scanned item's affix pools (since OCR cannot distinguish
+ *     tempered from regular affixes in the tooltip — they look identical)
  *   - Uses fuzzy matching same as regular affixes
  */
 function generateTemperRecommendations(
-  scannedTemperedAffixes: string[],
+  allScannedAffixes: string[],
   buildTemperedAffixes: IAffix[]
 ): CraftingRecommendation[] {
   if (buildTemperedAffixes.length === 0) return []
@@ -141,7 +143,9 @@ function generateTemperRecommendations(
   const recommendations: CraftingRecommendation[] = []
 
   for (const temperName of uniqueTemperNames) {
-    const alreadyHas = scannedTemperedAffixes.some((st) => affixMatches(st, temperName))
+    // Check the full scanned pool — OCR puts all affixes in scannedItem.affixes[]
+    // regardless of whether they are tempered or regular in-game
+    const alreadyHas = allScannedAffixes.some((st) => affixMatches(st, temperName))
 
     if (!alreadyHas) {
       recommendations.push({
@@ -194,9 +198,26 @@ export function compareGear(
   buildSlot: IGearSlot,
   equippedItem: ScannedGearPiece | null
 ): ScanVerdict {
+  // ---- Unified affix pools ----
+  // Combine all build affix categories into one required list for scoring.
+  // Intentionally excludes implicitAffixes — they're fixed by item type and
+  // scoring against them would inflate match counts for free.
+  const allBuildAffixes: IAffix[] = [
+    ...buildSlot.affixes,
+    ...buildSlot.temperedAffixes,
+    ...buildSlot.greaterAffixes
+  ]
+
+  // Combine all scanned affix categories into one pool for matching
+  const allScannedAffixes: string[] = [
+    ...scannedItem.affixes,
+    ...scannedItem.temperedAffixes,
+    ...scannedItem.greaterAffixes
+  ]
+
   // ---- Build match scoring ----
-  const { matched, missing } = matchAffixes(scannedItem.affixes, buildSlot.affixes)
-  const extraAffixes = findExtraAffixes(scannedItem.affixes, buildSlot.affixes)
+  const { matched, missing } = matchAffixes(allScannedAffixes, allBuildAffixes)
+  const extraAffixes = findExtraAffixes(allScannedAffixes, allBuildAffixes)
   // Use deduplicated count: matched + missing = total unique build affixes
   const totalExpected = matched.length + missing.length
   const matchPercent = totalExpected > 0 ? (matched.length / totalExpected) * 100 : 100
@@ -208,17 +229,45 @@ export function compareGear(
   // ---- Verdict ----
   const verdict = determineVerdict(matchPercent)
 
+  // ---- Aspect comparison ----
+  const aspectComparison: ScanVerdict['aspectComparison'] = buildSlot.requiredAspect
+    ? {
+        expectedAspect: buildSlot.requiredAspect.name,
+        hasMatch: scannedItem.aspect
+          ? affixMatches(scannedItem.aspect.name, buildSlot.requiredAspect.name)
+          : false
+      }
+    : null
+
   // ---- Recommendations ----
   const recommendations: CraftingRecommendation[] = [
     ...generateEnchantRecommendations(extraAffixes, missing, scannedItem.greaterAffixes),
-    ...generateTemperRecommendations(scannedItem.temperedAffixes, buildSlot.temperedAffixes),
+    // Pass the full unified scanned pool — OCR cannot distinguish tempered from regular
+    // affixes in the tooltip (they appear identically), so we must check all pools
+    ...generateTemperRecommendations(allScannedAffixes, buildSlot.temperedAffixes),
     ...generateSocketRecommendations(socketDelta)
   ]
+
+  // Add aspect recommendation when aspect is missing
+  if (aspectComparison && !aspectComparison.hasMatch) {
+    recommendations.push({
+      action: 'aspect',
+      removeAffix: null,
+      addAffix: aspectComparison.expectedAspect,
+      vendor: 'Occultist',
+      resultScore: 'Imprint required aspect'
+    })
+  }
 
   // ---- Equipped comparison ----
   let equippedComparison: ScanVerdict['equippedComparison'] = null
   if (equippedItem) {
-    const equippedMatch = matchAffixes(equippedItem.affixes, buildSlot.affixes)
+    const allEquippedAffixes: string[] = [
+      ...equippedItem.affixes,
+      ...equippedItem.temperedAffixes,
+      ...equippedItem.greaterAffixes
+    ]
+    const equippedMatch = matchAffixes(allEquippedAffixes, allBuildAffixes)
     equippedComparison = {
       equippedMatchCount: equippedMatch.matched.length,
       isUpgrade: matched.length > equippedMatch.matched.length
@@ -237,6 +286,7 @@ export function compareGear(
     greaterAffixCount: scannedItem.greaterAffixes.length,
     verdict,
     equippedComparison,
+    aspectComparison,
     recommendations
   }
 }
