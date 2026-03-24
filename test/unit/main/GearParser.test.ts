@@ -182,4 +182,64 @@ describe('GearParser', () => {
     const result = parseTooltip(lines)
     expect(result.sockets).toBe(2)
   })
+
+  // ---- Bug fix: Garbage name prefix stripping (live audit session) ----
+
+  it('should strip garbage OCR prefix from "rial REVELATOR\'S Doom GAUNTLETS"', () => {
+    const lines =
+      "'Cted\nrial\n1.2\nREVELATOR'S\nDoom GAUNTLETS\nLegendary Gloves\n750 Item Power\n562 Armor ( 2% Toughness)\n+98 Strength +[89-99]\n+266 Maximum Life [244 - 272]".split(
+        '\n'
+      )
+    const result = parseTooltip(lines)
+    expect(result.slot).toBe('Gloves')
+    expect(result.itemName).not.toContain('rial')
+    expect(result.itemName).toContain("REVELATOR'S")
+  })
+
+  it('should strip "& Materials" UI noise from item name', () => {
+    const lines =
+      "ACTER\nEARAC\ntle Selected\n& Materials\nRAPID Doom\napcj\nLegendary Gloves\n750 Item Power\n+96 Strength +[89 - 99]\n+88 Life OnHit [84-92]".split(
+        '\n'
+      )
+    const result = parseTooltip(lines)
+    expect(result.slot).toBe('Gloves')
+    expect(result.itemName).not.toContain('Materials')
+    expect(result.itemName).not.toContain('ACTER')
+  })
+
+  it('should strip "CHARACTE]" crop artifact from "FISTS OF FATE"', () => {
+    const lines =
+      "CHARACTE]\nFISTS OF FATE\nUnique Gloves\n750 Item Power\n562 Armor\n+3.6% Attack speed [0.1-8.71%\n+5.6% Critical Strike Chance [0.1 -".split(
+        '\n'
+      )
+    const result = parseTooltip(lines)
+    expect(result.slot).toBe('Gloves')
+    expect(result.itemName).not.toContain('CHARACTE')
+    expect(result.itemName).toContain('FISTS OF FATE')
+  })
+
+  it('should strip "iipc" and other garbage from multi-line name', () => {
+    const lines =
+      "ACTER\niARAC\nIle Selected\nEHEmENT\nBRAWLER'S\niipc\nIgh\nIce\nnev\nADVENTURER'S\nGLOVES *\nAncestral Legendary Gloves\n800 Item Power\n754 Armor (+1.8% Toughness)\n+437 Maximum Life [424 - 457]".split(
+        '\n'
+      )
+    const result = parseTooltip(lines)
+    expect(result.slot).toBe('Gloves')
+    expect(result.itemName).not.toContain('iipc')
+    expect(result.itemName).not.toContain('BRAWLER')
+    expect(result.itemName).toContain("ADVENTURER'S")
+    expect(result.itemName).toContain('GLOVES')
+  })
+
+  it('should produce clean name for "CHAR DAWN FIRE" → "DAWN FIRE"', () => {
+    const lines =
+      "CHAR\nDAWN FIRE\nUnique Gloves\n750 Item Power\n562 Armor\n+83 Strength +[73-831\n+244 Maximum Life [244 - 2721".split(
+        '\n'
+      )
+    const result = parseTooltip(lines)
+    expect(result.slot).toBe('Gloves')
+    // "CHAR" is a 4-char fragment from "CHARACTER" panel text — should be stripped
+    expect(result.itemName).not.toMatch(/^CHAR\b/)
+    expect(result.itemName).toContain('DAWN FIRE')
+  })
 })

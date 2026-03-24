@@ -57,6 +57,14 @@ export function affixMatches(scannedAffix: string, buildAffixName: string): bool
     if (cleanScanName.includes(buildName) || buildName.includes(cleanScanName)) {
       return true
     }
+
+    // Strategy 3: Collapse all whitespace and compare
+    // Handles OCR-merged text: "AllStats" should match "All Stats"
+    const scanNoSpace = cleanScanName.replace(/\s+/g, '')
+    const buildNoSpace = buildName.replace(/\s+/g, '')
+    if (scanNoSpace.includes(buildNoSpace) || buildNoSpace.includes(scanNoSpace)) {
+      return true
+    }
   }
 
   return false

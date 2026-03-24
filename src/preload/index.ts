@@ -1,374 +1,94 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type {
-  RawBuildData,
-  SavedBuild,
-  IParagonBoard,
-  ScanMode,
-  ScanVerdict,
-  ScannedGearPiece,
-  ScanHistoryEntry
-} from '../shared/types'
-
-// ============================================================
-// PRELOAD SCRIPT — The Bridge Between Main and Renderer
-// ============================================================
-// Electron has a security model where the main process (Node.js)
-// and the renderer (React) live in separate worlds. This "preload"
-// script is the safe bridge between them.
-//
-// We expose a curated API here so the React UI can:
-//   - Toggle mouse click-through mode
-//   - Read and update hotkey settings
-//   - Listen for scan/report triggers from global hotkeys
-//   - Quit the app
-//   - Import builds from URLs
-//   - Launch and control the overlay window
-// ============================================================
 
 /**
- * Our custom API that the React renderer can call.
- * Everything here is available as `window.api.xxx` in the UI code.
+ * Custom API for Renderer process
  */
 const api = {
-  /**
-   * Tells the main process to allow/block mouse clicks on the overlay.
-   *
-   * When `ignore` is true, clicks pass through to the game.
-   * When `ignore` is false, clicks are captured by our UI.
-   *
-   * @param ignore - true = clicks pass through, false = clicks captured
-   */
-  setIgnoreMouseEvents: (ignore: boolean, options?: { forward: boolean }): void => {
-    ipcRenderer.send('set-ignore-mouse-events', ignore, options)
+  toggleAlwaysOnTop: () => ipcRenderer.send('toggle-always-on-top'),
+  onAlwaysOnTopChanged: (callback: (isOnTop: boolean) => void): (() => void) => {
+    const subscription = (_event: any, isOnTop: boolean) => callback(isOnTop)
+    ipcRenderer.on('always-on-top-changed', subscription)
+    return () => ipcRenderer.removeListener('always-on-top-changed', subscription)
   },
-
-  /**
-   * Gets the current hotkey configuration.
-   * Returns something like { scan: 'F7', report: 'F8', toggle: 'F6' }
-   */
-  getHotkeys: (): Promise<Record<string, string>> => {
-    return ipcRenderer.invoke('get-hotkeys')
+  getHotkeys: () => ipcRenderer.invoke('get-hotkeys'),
+  setHotkey: (action: string, key: string) => ipcRenderer.invoke('set-hotkey', action, key),
+  getHotkeyStatus: () => ipcRenderer.invoke('get-hotkey-status'),
+  onHotkeyStatus: (callback: (status: Record<string, boolean>) => void): (() => void) => {
+    const subscription = (_event: any, status: Record<string, boolean>) => callback(status)
+    ipcRenderer.on('hotkey-status', subscription)
+    return () => ipcRenderer.removeListener('hotkey-status', subscription)
   },
-
-  /**
-   * Changes a hotkey binding.
-   * @param action - Which action to change ('scan', 'report', or 'toggle')
-   * @param key - The new key, like 'F9' or 'Ctrl+Shift+G'
-   */
-  setHotkey: (action: string, key: string): Promise<Record<string, string>> => {
-    return ipcRenderer.invoke('set-hotkey', action, key)
+  resetHotkeys: () => ipcRenderer.invoke('reset-hotkeys'),
+  onScanStarted: (callback: () => void): (() => void) => {
+    const subscription = (_event: any) => callback()
+    ipcRenderer.on('scan-started', subscription)
+    return () => ipcRenderer.removeListener('scan-started', subscription)
   },
-
-  /**
-   * Gets the registration status of each hotkey.
-   * Returns something like { scan: true, report: false, toggle: true }
-   */
-  getHotkeyStatus: (): Promise<Record<string, boolean>> => {
-    return ipcRenderer.invoke('get-hotkey-status')
+  onTriggerReport: (callback: () => void): (() => void) => {
+    const subscription = (_event: any) => callback()
+    ipcRenderer.on('trigger-report', subscription)
+    return () => ipcRenderer.removeListener('trigger-report', subscription)
   },
+  quit: () => ipcRenderer.send('quit-app'),
 
-  /**
-   * Listens for hotkey registration status updates pushed from the main process.
-   * Fires whenever hotkeys are re-registered (e.g., after changing a binding).
-   */
-  onHotkeyStatus: (callback: (status: Record<string, boolean>) => void): void => {
-    ipcRenderer.on('hotkey-status', (_event, status) => callback(status))
-  },
-
-  /**
-   * Resets all hotkeys to factory defaults (F6/F7/F8).
-   * Returns the new (default) hotkey configuration.
-   */
-  resetHotkeys: (): Promise<Record<string, string>> => {
-    return ipcRenderer.invoke('reset-hotkeys')
-  },
-
-  /**
-   * Listens for when the user presses the scan hotkey.
-   * The callback fires each time the key is pressed.
-   */
-  onTriggerScan: (callback: () => void): void => {
-    ipcRenderer.on('trigger-scan', callback)
-  },
-
-  /**
-   * Listens for when the user presses the report hotkey.
-   * The callback fires each time the key is pressed.
-   */
-  onTriggerReport: (callback: () => void): void => {
-    ipcRenderer.on('trigger-report', callback)
-  },
-
-  /**
-   * Quits the application.
-   */
-  quit: (): void => {
-    ipcRenderer.send('quit-app')
-  },
-
-  /**
-   * Imports a build from a URL.
-   * @param url - The build URL to import
-   */
-  importBuild: (url: string): Promise<RawBuildData> => {
-    return ipcRenderer.invoke('import-build', url)
-  },
-
-  /**
-   * Listens for import progress updates from the main process.
-   * Callback receives { step, totalSteps, label } at each phase.
-   */
+  // Builds and persistence
+  importBuild: (url: string) => ipcRenderer.invoke('import-build', url),
+  getCurrentBuild: () => ipcRenderer.invoke('get-current-build'),
   onImportProgress: (
     callback: (progress: { step: number; totalSteps: number; label: string }) => void
-  ): void => {
-    ipcRenderer.on('import-progress', (_event, progress) => callback(progress))
+  ): (() => void) => {
+    const subscription = (_event: any, progress: any) => callback(progress)
+    ipcRenderer.on('import-progress', subscription)
+    return () => ipcRenderer.removeListener('import-progress', subscription)
   },
+  listBuilds: () => ipcRenderer.invoke('list-builds'),
+  loadBuild: (id: string) => ipcRenderer.invoke('load-build', id),
+  deleteBuild: (id: string) => ipcRenderer.invoke('delete-build', id),
 
-  /**
-   * Tells the main process to spawn the overlay window.
-   */
-  launchOverlay: (): void => {
-    ipcRenderer.send('launch-overlay')
-  },
-
-  /**
-   * Signals the main process that the overlay is ready to receive data.
-   */
-  overlayReady: (): void => {
-    ipcRenderer.send('overlay-ready')
-  },
-
-  /**
-   * Listens for build data sent from the main process to the overlay.
-   */
-  onBuildData: (callback: (data: RawBuildData) => void): void => {
-    ipcRenderer.on('send-build-to-overlay', (_event, data) => callback(data))
-  },
-
-  /**
-   * Tells the main process to close the overlay window.
-   */
-  closeOverlay: (): void => {
-    ipcRenderer.send('close-overlay')
-  },
-
-  /**
-   * Tells the main process to re-show the config window.
-   */
-  openConfig: (): void => {
-    ipcRenderer.send('open-config')
-  },
-
-  /**
-   * Lists all saved builds from disk.
-   */
-  listBuilds: (): Promise<SavedBuild[]> => {
-    return ipcRenderer.invoke('list-builds')
-  },
-
-  /**
-   * Loads a saved build by ID.
-   */
-  loadBuild: (id: string): Promise<SavedBuild> => {
-    return ipcRenderer.invoke('load-build', id)
-  },
-
-  /**
-   * Deletes a saved build by ID.
-   */
-  deleteBuild: (id: string): Promise<boolean> => {
-    return ipcRenderer.invoke('delete-build', id)
-  },
-
-  /**
-   * Clears the cached paragon board data.
-   * Call after a game update changes paragon boards.
-   */
-  clearParagonCache: (): Promise<{ success: boolean }> => {
-    return ipcRenderer.invoke('clear-paragon-cache')
-  },
-
-  /**
-   * Listens for update download progress events from the main process.
-   * Callback receives { percent, downloadedMB, totalMB }.
-   */
+  // Updates
+  getUpdateStatus: () => ipcRenderer.invoke('get-update-status'),
   onUpdateProgress: (
     callback: (progress: { percent: number; downloadedMB: number; totalMB: number }) => void
-  ): void => {
-    ipcRenderer.on('update-download-progress', (_event, progress) => callback(progress))
+  ): (() => void) => {
+    const subscription = (_event: any, progress: any) => callback(progress)
+    ipcRenderer.on('update-progress', subscription)
+    return () => ipcRenderer.removeListener('update-progress', subscription)
+  },
+  onUpdateStarted: (callback: () => void): (() => void) => {
+    const subscription = (_event: any) => callback()
+    ipcRenderer.on('update-started', subscription)
+    return () => ipcRenderer.removeListener('update-started', subscription)
   },
 
-  /**
-   * Listens for update-available notification from main process.
-   * This is used when the update starts downloading after user accepts.
-   */
-  onUpdateStarted: (callback: () => void): void => {
-    ipcRenderer.on('update-started', callback)
+  // Scan pipeline and results
+  performScan: () => ipcRenderer.invoke('perform-scan'),
+  onScanResult: (callback: (result: any) => void): (() => void) => {
+    const subscription = (_event: any, result: any) => callback(result)
+    ipcRenderer.on('scan-result', subscription)
+    return () => ipcRenderer.removeListener('scan-result', subscription)
+  },
+  getScanHistory: () => ipcRenderer.invoke('get-scan-history'),
+  clearScanHistory: () => ipcRenderer.invoke('clear-scan-history'),
+  getEquippedGear: () => ipcRenderer.invoke('get-equipped-gear'),
+  setEquippedGear: (gear: any) => ipcRenderer.invoke('set-equipped-gear', gear),
+  getScanMode: () => ipcRenderer.invoke('get-scan-mode'),
+  setScanMode: (mode: any) => ipcRenderer.invoke('set-scan-mode', mode),
+  onLaunchOverlay: (callback: () => void): (() => void) => {
+    const subscription = (_event: any) => callback()
+    ipcRenderer.on('launch-overlay', subscription)
+    return () => ipcRenderer.removeListener('launch-overlay', subscription)
   },
 
-  // ---- Scan Pipeline ----
-
-  /**
-   * Performs a full scan: capture → OCR → parse → compare/equip.
-   */
-  performScan: (): Promise<{
-    mode: ScanMode
-    verdict: ScanVerdict | null
-    equippedItem: ScannedGearPiece | null
-    error: string | null
-  }> => {
-    return ipcRenderer.invoke('perform-scan')
-  },
-
-  /**
-   * Toggles between compare and equip scan modes.
-   * Returns the new mode.
-   */
-  toggleScanMode: (): Promise<ScanMode> => {
-    return ipcRenderer.invoke('toggle-scan-mode')
-  },
-
-  /**
-   * Gets the current scan mode.
-   */
-  getScanMode: (): Promise<ScanMode> => {
-    return ipcRenderer.invoke('get-scan-mode')
-  },
-
-  /**
-   * Gets all currently equipped gear.
-   */
-  getEquippedGear: (): Promise<Record<string, ScannedGearPiece>> => {
-    return ipcRenderer.invoke('get-equipped-gear')
-  },
-
-  /**
-   * Clears all equipped gear.
-   */
-  clearEquippedGear: (): Promise<{ success: boolean }> => {
-    return ipcRenderer.invoke('clear-equipped-gear')
-  },
-
-  /**
-   * Gets the scan history (compare-mode verdicts with timestamps).
-   */
-  getScanHistory: (): Promise<ScanHistoryEntry[]> => {
-    return ipcRenderer.invoke('get-scan-history')
-  },
-
-  /**
-   * Clears all scan history.
-   */
-  clearScanHistory: (): Promise<{ success: boolean }> => {
-    return ipcRenderer.invoke('clear-scan-history')
-  },
-
-  /**
-   * Listens for scan results pushed from the main process.
-   * Fired when the scan hotkey triggers a scan.
-   */
-  onScanResult: (
-    callback: (result: {
-      mode: ScanMode
-      verdict: ScanVerdict | null
-      equippedItem: ScannedGearPiece | null
-      error: string | null
-    }) => void
-  ): void => {
-    ipcRenderer.on('scan-result', (_event, result) => callback(result))
-  },
-
-  // ---- Paragon Detach ----
-
-  /**
-   * Requests the main process to open a detach window for a specific board.
-   * @param boardIndex - Index of the board in the build's paragonBoards array
-   */
-  detachParagonBoard: (boardIndex: number): void => {
-    ipcRenderer.send('detach-paragon-board', boardIndex)
-  },
-
-  /**
-   * Listens for the single board data sent to the detach window.
-   */
-  onDetachBoardData: (
-    callback: (data: { board: IParagonBoard; opacity: number; inset: number; boardNumber: number; boardTotal: number }) => void
-  ): void => {
-    ipcRenderer.on('detach-board-data', (_event, data) => callback(data))
-  },
-
-  /**
-   * Toggles click-through on the detach window.
-   */
-  detachSetIgnoreMouse: (ignore: boolean, options?: { forward: boolean }): void => {
-    ipcRenderer.send('detach-set-ignore-mouse', ignore, options)
-  },
-
-  /**
-   * Saves the detach opacity preference.
-   */
-  detachSaveOpacity: (opacity: number): void => {
-    ipcRenderer.send('detach-save-opacity', opacity)
-  },
-
-  /**
-   * Saves the detach inset preference.
-   */
-  detachSaveInset: (inset: number): void => {
-    ipcRenderer.send('detach-save-inset', inset)
-  },
-
-  /**
-   * Saves the current detach window position explicitly.
-   */
-  detachSavePosition: (): void => {
-    ipcRenderer.send('detach-save-position')
-  },
-
-  /**
-   * Closes the detach window.
-   */
-  detachClose: (): void => {
-    ipcRenderer.send('detach-close')
-  },
-
-  /**
-   * Moves the detach window by a pixel delta.
-   * Used for right-click drag repositioning.
-   */
-  detachMoveWindow: (dx: number, dy: number): void => {
-    ipcRenderer.send('detach-move-window', dx, dy)
-  },
-
-  // ---- Board Calibration ----
-
-  /**
-   * Saves the calibrated board region from the snipping overlay.
-   */
-  saveCalibration: (region: { x: number; y: number; width: number; height: number }): void => {
-    ipcRenderer.send('save-calibration', region)
-  },
-
-  /**
-   * Cancels the calibration snipping overlay.
-   */
-  cancelCalibration: (): void => {
-    ipcRenderer.send('cancel-calibration')
-  },
-
-  /**
-   * Clears the saved board calibration.
-   */
-  clearBoardCalibration: (): Promise<{ success: boolean }> => {
-    return ipcRenderer.invoke('clear-board-calibration')
-  }
+  // Maintenance actions
+  clearParagonCache: () => ipcRenderer.invoke('clear-paragon-cache'),
+  clearBoardCalibration: () => ipcRenderer.invoke('clear-board-calibration'),
+  clearEquippedGear: () => ipcRenderer.invoke('clear-equipped-gear')
 }
 
-// ============================================================
-// EXPOSE APIs TO THE RENDERER
-// ============================================================
-
+// Use `contextBridge` APIs to expose Electron APIs to
+// renderer only if context isolation is enabled, otherwise
+// just add to the DOM global.
 if (process.contextIsolated) {
   try {
     contextBridge.exposeInMainWorld('electron', electronAPI)
@@ -377,8 +97,8 @@ if (process.contextIsolated) {
     console.error(error)
   }
 } else {
-  // @ts-ignore (define in dts)
+  // @ts-ignore (define in d.ts)
   window.electron = electronAPI
-  // @ts-ignore (define in dts)
+  // @ts-ignore (define in d.ts)
   window.api = api
 }

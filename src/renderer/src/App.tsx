@@ -1,47 +1,110 @@
-import { useState, useCallback, useEffect } from 'react'
-import type { RawBuildData } from '../../shared/types'
+import { useState, useEffect } from 'react'
+import type { RawBuildData, ScanHistoryEntry, ScannedGearPiece, ScanVerdict } from '../../shared/types'
 import ImportForm from './components/ImportForm'
 import StatusIndicator from './components/StatusIndicator'
 import BuildSummaryCard from './components/BuildSummaryCard'
 import BuildLibrary from './components/BuildLibrary'
 import UpdateBanner from './components/UpdateBanner'
-import EquippedGearTab from './components/EquippedGearTab'
-import ScanHistoryTab from './components/ScanHistoryTab'
-import HotkeySettings from './components/HotkeySettings'
+import SkillsPanel from './components/SkillsPanel'
+import ParagonPanel from './components/ParagonPanel'
+import GearTab from './components/GearTab'
+import ScansTab from './components/ScansTab'
+import SettingsTab from './components/SettingsTab'
+import { playShutterSound, playSuccessSound, playErrorSound } from './utils/audio'
 
 /**
- * Config Window App — The build import launcher + equipment & scan dashboard.
- *
- * Tabs:
- * 1. "Builds" — Import/browse builds + launch overlay (original flow)
- * 2. "Equipped" — View all equipped gear with build comparison
- * 3. "Scans" — Recently scanned items with verdicts
+ * Diablo IV Companion — Main Application
+ * 
+ * 6-Tab Layout:
+ * 1. Builds — Import and Library
+ * 2. Gear — 2-Column Grid with Build Comparison
+ * 3. Skills — Skills grouped by Tier
+ * 4. Paragon — Interactive Board Canvas
+ * 5. Scans — Inbox + Side-by-Side Comparison
+ * 6. Settings — Hotkeys, Modes, Maintenance
  */
-type ImportStatus = 'idle' | 'loading' | 'success' | 'error'
-type MainTab = 'builds' | 'equipped' | 'scans'
+
+type MainTab = 'builds' | 'gear' | 'skills' | 'paragon' | 'scans' | 'settings'
+
+const TAB_LABELS: { id: MainTab; label: string; icon: string }[] = [
+  { id: 'builds', label: 'Builds', icon: '📦' },
+  { id: 'gear', label: 'Gear', icon: '🛡️' },
+  { id: 'skills', label: 'Skills', icon: '⚔️' },
+  { id: 'paragon', label: 'Paragon', icon: '🌀' },
+  { id: 'scans', label: 'Scans', icon: '🔍' },
+  { id: 'settings', label: 'Settings', icon: '⚙️' }
+]
 
 function App(): React.JSX.Element {
-  const [status, setStatus] = useState<ImportStatus>('idle')
-  const [buildData, setBuildData] = useState<RawBuildData | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string>('')
-  const [refreshCounter, setRefreshCounter] = useState<number>(0)
-  const [cacheCleared, setCacheCleared] = useState<boolean>(false)
-  const [calibrationCleared, setCalibrationCleared] = useState<boolean>(false)
   const [activeTab, setActiveTab] = useState<MainTab>('builds')
-  const [importProgress, setImportProgress] = useState<{
-    step: number
-    totalSteps: number
-    label: string
-  } | null>(null)
+  const [buildData, setBuildData] = useState<RawBuildData | null>(null)
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [errorMessage, setErrorMessage] = useState('')
+  const [importProgress, setImportProgress] = useState<{ step: number; totalSteps: number; label: string } | null>(null)
 
-  // Listen for import progress events from the main process
+  // Scan State
+  const [scanHistory, setScanHistory] = useState<ScanHistoryEntry[]>([])
+  const [latestScanResult, setLatestScanResult] = useState<{
+    mode: string
+    verdict: ScanVerdict | null
+    equippedItem: ScannedGearPiece | null
+    error: string | null
+  } | null>(null)
+  const [equippedGear, setEquippedGear] = useState<Record<string, ScannedGearPiece>>({})
+
+  // Load initial data
   useEffect(() => {
-    window.api.onImportProgress((progress) => {
-      setImportProgress(progress)
+    window.api.getScanHistory().then(setScanHistory)
+    window.api.getEquippedGear().then(setEquippedGear)
+    window.api.getCurrentBuild().then((data) => {
+      if (data) setBuildData(data)
     })
   }, [])
 
-  /** Called when the user clicks Import */
+  // Listen for IPC events
+  useEffect(() => {
+    // Import progress
+    const removeImportListener = window.api.onImportProgress(setImportProgress)
+
+    // Scan started (play shutter)
+    const removeScanStartedListener = window.api.onScanStarted(() => {
+      playShutterSound()
+    })
+
+    // Scan Result (audio + auto-switch)
+    const removeScanResultListener = window.api.onScanResult((result) => {
+      if (result.error) {
+        playErrorSound()
+      } else {
+        playSuccessSound()
+      }
+
+      setLatestScanResult(result)
+
+      // Only add to scan history if we got an actual verdict (not an error)
+      if (result.verdict) {
+        setScanHistory((prev) => [
+          {
+            verdict: result.verdict!,
+            scannedAt: Date.now()
+          },
+          ...prev
+        ])
+      }
+
+      // Auto-switch to Scans tab on result (unless in equip mode)
+      if (result.mode === 'compare') {
+        setActiveTab('scans')
+      }
+    })
+
+    return () => {
+      removeImportListener()
+      removeScanStartedListener()
+      removeScanResultListener()
+    }
+  }, [])
+
   const handleImportStart = (): void => {
     setStatus('loading')
     setErrorMessage('')
@@ -49,126 +112,117 @@ function App(): React.JSX.Element {
     setImportProgress(null)
   }
 
-  /** Called when the import succeeds */
   const handleImportSuccess = (result: { build: RawBuildData; savedId: string }): void => {
     setBuildData(result.build)
     setStatus('success')
     setImportProgress(null)
-    setRefreshCounter((c) => c + 1) // Trigger library refresh
   }
 
-  /** Called when the import fails */
   const handleImportError = (error: string): void => {
-    setErrorMessage(error)
     setStatus('error')
+    setErrorMessage(error)
     setImportProgress(null)
   }
 
-  /** Load a build from the library */
-  const handleLoadBuild = (data: RawBuildData): void => {
-    setBuildData(data)
+  const handleLoadBuild = (data: RawBuildData | { data: RawBuildData }): void => {
+    const rawData = 'data' in data ? data.data : data
+    setBuildData(rawData)
     setStatus('success')
   }
 
-  /** Launch the overlay window via IPC */
-  const handleLaunchOverlay = (): void => {
-    window.api.launchOverlay()
+  const renderCurrentTab = (): React.JSX.Element => {
+    switch (activeTab) {
+      case 'builds':
+        return (
+          <div className="tab-pane">
+            <ImportForm onStart={handleImportStart} onSuccess={handleImportSuccess} onError={handleImportError} />
+            <StatusIndicator status={status} errorMessage={errorMessage} progress={importProgress} />
+            {buildData && status === 'success' && (
+              <BuildSummaryCard build={buildData} onLaunchOverlay={() => {}} />
+            )}
+            <BuildLibrary onLoadBuild={handleLoadBuild} />
+          </div>
+        )
+      case 'gear':
+        return <GearTab buildData={buildData} equippedGear={equippedGear} />
+      case 'skills':
+        return (
+          <div className="tab-pane">
+            {buildData ? (
+              <SkillsPanel skills={buildData.skills} />
+            ) : (
+              <p className="empty-state">No build loaded.</p>
+            )}
+          </div>
+        )
+      case 'paragon':
+        return (
+          <div className="tab-pane" style={{ height: '100%' }}>
+            {buildData ? (
+              <ParagonPanel boards={buildData.paragonBoards} />
+            ) : (
+              <p className="empty-state">No build loaded.</p>
+            )}
+          </div>
+        )
+      case 'scans':
+        return (
+          <ScansTab
+            scanHistory={scanHistory}
+            buildData={buildData}
+            latestScanResult={latestScanResult}
+            onClearHistory={async () => {
+              await window.api.clearScanHistory()
+              setScanHistory([])
+              setLatestScanResult(null)
+            }}
+          />
+        )
+      case 'settings':
+        return <SettingsTab />
+      default:
+        return <div className="tab-pane">Unknown tab</div>
+    }
   }
 
-  /** Clear paragon board cache */
-  const handleClearCache = useCallback(async (): Promise<void> => {
-    await window.api.clearParagonCache()
-    setCacheCleared(true)
-    setTimeout(() => setCacheCleared(false), 3000)
-  }, [])
-
-  /** Clear board calibration so next F10 re-opens the snipping tool */
-  const handleClearCalibration = useCallback(async (): Promise<void> => {
-    await window.api.clearBoardCalibration()
-    setCalibrationCleared(true)
-    setTimeout(() => setCalibrationCleared(false), 3000)
-  }, [])
-
   return (
-    <div className="config-window">
+    <div className="app-shell">
       <UpdateBanner />
-      <header className="config-header">
-        <h1 className="config-header__title">Diablo IV Companion</h1>
-        <p className="config-header__subtitle">Build Importer</p>
-        <hr className="config-header__divider" />
+      
+      <header className="app-header">
+        <div className="app-header__title-group">
+          <h1 className="app-header__title">🩸 Diablo IV Companion</h1>
+          {buildData && <span className="app-header__build-name">{buildData.name}</span>}
+        </div>
+        
+        <nav className="app-tabs">
+          {TAB_LABELS.map((tab) => (
+            <button
+              key={tab.id}
+              className={`app-tabs__tab ${activeTab === tab.id ? 'app-tabs__tab--active' : ''}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              {tab.icon} {tab.label}
+            </button>
+          ))}
+        </nav>
       </header>
 
-      {/* ── Main Tab Bar ── */}
-      <nav className="main-tabs" id="main-tab-bar">
-        <button
-          className={`main-tabs__tab ${activeTab === 'builds' ? 'main-tabs__tab--active' : ''}`}
-          onClick={() => setActiveTab('builds')}
-        >
-          📦 Builds
-        </button>
-        <button
-          className={`main-tabs__tab ${activeTab === 'equipped' ? 'main-tabs__tab--active' : ''}`}
-          onClick={() => setActiveTab('equipped')}
-        >
-          🛡️ Equipped
-        </button>
-        <button
-          className={`main-tabs__tab ${activeTab === 'scans' ? 'main-tabs__tab--active' : ''}`}
-          onClick={() => setActiveTab('scans')}
-        >
-          🔍 Scans
-        </button>
-      </nav>
-
-      <main className="config-main">
-        {/* ── Builds Tab (original flow) ── */}
-        {activeTab === 'builds' && (
-          <>
-            <ImportForm
-              onImportStart={handleImportStart}
-              onImportSuccess={handleImportSuccess}
-              onImportError={handleImportError}
-              isLoading={status === 'loading'}
-            />
-
-            <StatusIndicator
-              status={status}
-              errorMessage={errorMessage}
-              progress={importProgress}
-            />
-
-            {status === 'success' && buildData && (
-              <BuildSummaryCard build={buildData} onLaunchOverlay={handleLaunchOverlay} />
-            )}
-
-            <BuildLibrary onLoadBuild={handleLoadBuild} refreshTrigger={refreshCounter} />
-          </>
-        )}
-
-        {/* ── Equipped Gear Tab ── */}
-        {activeTab === 'equipped' && <EquippedGearTab buildData={buildData} />}
-
-        {/* ── Scan History Tab ── */}
-        {activeTab === 'scans' && <ScanHistoryTab />}
+      <main className="app-main">
+        {renderCurrentTab()}
       </main>
 
-      <HotkeySettings />
-
-      <footer className="config-footer">
-        <button
-          className="config-footer__clear-cache"
-          onClick={handleClearCache}
-          title="Clear cached board data (use after a game update)"
-        >
-          {cacheCleared ? '✓ Cache Cleared' : '🔄 Clear Board Cache'}
-        </button>
-        <button
-          className="config-footer__clear-cache"
-          onClick={handleClearCalibration}
-          title="Reset board calibration — next F10 will re-open the snipping tool"
-        >
-          {calibrationCleared ? '✓ Calibration Reset' : '📐 Reset Calibration'}
-        </button>
+      <footer className="status-bar">
+        <div className="status-bar__item">
+          <span className="status-dot status-dot--ok" />
+          <span>Services Online</span>
+        </div>
+        <div className="status-bar__item">
+          <span>Build: {buildData?.name || 'None'}</span>
+        </div>
+        <div className="status-bar__item">
+          <span>{scanHistory.length} Scans in History</span>
+        </div>
       </footer>
     </div>
   )

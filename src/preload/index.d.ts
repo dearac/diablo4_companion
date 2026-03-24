@@ -1,84 +1,59 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
-import type {
+import {
   RawBuildData,
   SavedBuild,
-  IParagonBoard,
   ScanMode,
-  ScanVerdict,
-  ScannedGearPiece,
-  ScanHistoryEntry
-} from '../shared/types'
+  ScanResult,
+  ScanHistoryEntry,
+  ScannedGearPiece
+} from './shared/types'
 
 declare global {
   interface Window {
     electron: ElectronAPI
     api: {
-      setIgnoreMouseEvents: (ignore: boolean, options?: { forward: boolean }) => void
+      toggleAlwaysOnTop: () => void
+      onAlwaysOnTopChanged: (callback: (isOnTop: boolean) => void) => () => void
       getHotkeys: () => Promise<Record<string, string>>
       setHotkey: (action: string, key: string) => Promise<Record<string, string>>
       getHotkeyStatus: () => Promise<Record<string, boolean>>
-      onHotkeyStatus: (callback: (status: Record<string, boolean>) => void) => void
+      onHotkeyStatus: (callback: (status: Record<string, boolean>) => void) => () => void
       resetHotkeys: () => Promise<Record<string, string>>
-      onTriggerScan: (callback: () => void) => void
-      onTriggerReport: (callback: () => void) => void
+      onScanStarted: (callback: () => void) => () => void
+      onTriggerReport: (callback: () => void) => () => void
       quit: () => void
       importBuild: (url: string) => Promise<{ build: RawBuildData; savedId: string }>
+      getCurrentBuild: () => Promise<RawBuildData | null>
       onImportProgress: (
         callback: (progress: { step: number; totalSteps: number; label: string }) => void
-      ) => void
-      launchOverlay: () => void
-      overlayReady: () => void
-      onBuildData: (callback: (data: RawBuildData) => void) => void
-      closeOverlay: () => void
-      openConfig: () => void
+      ) => () => void
       listBuilds: () => Promise<SavedBuild[]>
       loadBuild: (id: string) => Promise<SavedBuild>
       deleteBuild: (id: string) => Promise<boolean>
-      clearParagonCache: () => Promise<{ success: boolean }>
+      getUpdateStatus: () => Promise<any>
       onUpdateProgress: (
         callback: (progress: { percent: number; downloadedMB: number; totalMB: number }) => void
-      ) => void
-      onUpdateStarted: (callback: () => void) => void
+      ) => () => void
+      onUpdateStarted: (callback: () => void) => () => void
       // Scan pipeline
       performScan: () => Promise<{
         mode: ScanMode
-        verdict: ScanVerdict | null
-        equippedItem: ScannedGearPiece | null
+        verdict: any
+        equippedItem: any
         error: string | null
       }>
-      toggleScanMode: () => Promise<ScanMode>
-      getScanMode: () => Promise<ScanMode>
-      getEquippedGear: () => Promise<Record<string, ScannedGearPiece>>
-      clearEquippedGear: () => Promise<{ success: boolean }>
+      onScanResult: (callback: (result: ScanResult) => void) => () => void
       getScanHistory: () => Promise<ScanHistoryEntry[]>
-      clearScanHistory: () => Promise<{ success: boolean }>
-      onScanResult: (
-        callback: (result: {
-          mode: ScanMode
-          verdict: ScanVerdict | null
-          equippedItem: ScannedGearPiece | null
-          error: string | null
-        }) => void
-      ) => void
-      // Paragon Detach
-      detachParagonBoard: (boardIndex: number) => void
-      onDetachBoardData: (
-        callback: (data: {
-          board: IParagonBoard
-          opacity: number
-          inset: number
-          boardNumber: number
-          boardTotal: number
-        }) => void
-      ) => void
-      detachSetIgnoreMouse: (ignore: boolean, options?: { forward: boolean }) => void
-      detachSaveOpacity: (opacity: number) => void
-      detachSaveInset: (inset: number) => void
-      detachSavePosition: () => void
-      detachClose: () => void
-      detachMoveWindow: (dx: number, dy: number) => void
-      // Board Calibration
+      clearScanHistory: () => Promise<void>
+      getEquippedGear: () => Promise<Record<string, ScannedGearPiece>>
+      setEquippedGear: (gear: Record<string, ScannedGearPiece>) => Promise<void>
+      getScanMode: () => Promise<ScanMode>
+      setScanMode: (mode: ScanMode) => Promise<void>
+      onLaunchOverlay: (callback: () => void) => () => void
+      // Maintenance
+      clearParagonCache: () => Promise<{ success: boolean }>
       clearBoardCalibration: () => Promise<{ success: boolean }>
+      clearEquippedGear: () => Promise<{ success: boolean }>
     }
   }
 }

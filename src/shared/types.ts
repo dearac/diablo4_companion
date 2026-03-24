@@ -248,3 +248,6 @@ export interface ScanHistoryEntry {
   verdict: ScanVerdict
   scannedAt: number // Date.now() timestamp
 }
+
+/** The category of an affix on a piece of gear. */
+export type AffixType = 'regular' | 'tempered' | 'greater' | 'implicit'

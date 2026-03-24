@@ -8,15 +8,13 @@ export default defineConfig({
   renderer: {
     resolve: {
       alias: {
-        '@renderer': resolve('src/renderer/src'),
-        '@overlay': resolve('src/overlay/src')
+        '@renderer': resolve('src/renderer/src')
       }
     },
     server: {
       fs: {
         allow: [
           resolve('src/renderer'),
-          resolve('src/overlay'),
           resolve('src/shared'),
           resolve('node_modules')
         ]
@@ -27,7 +25,6 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/renderer/index.html'),
-          overlay: resolve(__dirname, 'src/renderer/overlay.html'),
           detach: resolve(__dirname, 'src/renderer/detach.html')
         }
       }

@@ -15,11 +15,7 @@ function StatusIndicator({
   progress
 }: StatusIndicatorProps): React.JSX.Element | null {
   if (status === 'idle') {
-    return (
-      <div className="status-indicator status-indicator--idle">
-        <p>Paste a build URL from Maxroll, D4Builds, or Icy Veins</p>
-      </div>
-    )
+    return null
   }
 
   if (status === 'loading') {

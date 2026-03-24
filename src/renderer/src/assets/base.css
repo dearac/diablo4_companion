@@ -1,44 +1,51 @@
 /* ============================================================
    DIABLO IV COMPANION — Design Tokens
    ============================================================
-   Dark, gothic theme inspired by Diablo IV's visual language.
-   Stone textures, hellfire accents, parchment text.
+   Maxroll-inspired dark theme.
+   Clean charcoal base, blue accent, game-accurate rarity colors.
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
   /* Backgrounds */
-  --d4-bg-dark: #0a0a0f;
-  --d4-bg-surface: #141420;
-  --d4-bg-elevated: #1e1e2e;
-  --d4-bg-input: #0e0e18;
+  --bg-dark: #0A0A0A;
+  --bg-surface: #121212;
+  --bg-elevated: #1A1A1A;
+  --bg-input: #0E0E0E;
 
-  /* Borders */
-  --d4-border: #2a2a3a;
-  --d4-border-ornate: #4a3a2a;
-  --d4-border-focus: #c41e3a;
+  /* Primary accent */
+  --accent-blue: #057AF0;
+  --accent-blue-dim: rgba(5, 122, 240, 0.15);
+  --accent-blue-hover: #0A8FFF;
 
   /* Text */
-  --d4-text-primary: #e8dcc8;
-  --d4-text-muted: #7a7068;
-  --d4-text-dim: #4a4440;
+  --text-primary: #E8E8E8;
+  --text-heading: #FFFFFF;
+  --text-muted: #95989B;
+  --text-dim: #4A4A4A;
 
-  /* Accents */
-  --d4-accent-red: #c41e3a;
-  --d4-accent-orange: #e87a2a;
-  --d4-accent-gold: #d4a94a;
-  --d4-error: #ff4444;
-  --d4-success: #4aaf5a;
+  /* Borders */
+  --border: #2A2A2A;
+  --border-hover: #3A3A3A;
+  --border-focus: #057AF0;
 
-  /* Item rarity */
-  --d4-item-unique: #d4a94a;
-  --d4-item-legendary: #e87a2a;
-  --d4-item-rare: #f5e35b;
-  --d4-item-greater: #a855f7;
+  /* Item rarity (Maxroll-accurate) */
+  --item-unique: #DCA779;
+  --item-legendary: #BF642F;
+  --item-rare: #FFFF00;
+  --item-magic: #6699FF;
+  --item-greater: #AF67F2;
+  --item-tempered: #00C8C8;
+  --item-mythic: #A855F7;
+
+  /* Feedback */
+  --success: #4ADE80;
+  --error: #EF4444;
+  --warning: #FBBF24;
 
   /* Typography */
-  --font-display: 'Cinzel', serif;
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   /* Transitions */
@@ -56,8 +63,8 @@
 
 body {
   font-family: var(--font-body);
-  color: var(--d4-text-primary);
-  background: var(--d4-bg-dark);
+  color: var(--text-primary);
+  background: var(--bg-dark);
   line-height: 1.6;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;

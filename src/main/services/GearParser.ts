@@ -215,7 +215,7 @@ export function parseTooltip(lines: string[]): ScannedGearPiece {
       if (
         candidate.length === 0 ||
         candidate.length >= 35 ||
-        candidate.length <= 3 || // Very short garbage ("cted", "3,", "8)")
+        candidate.length <= 4 || // Short garbage: "rial"(4), "iipc"(4), "CHAR"(4), "apcj"(4)
         /^[+×x]\s*[\d.]/.test(candidate) || // Affix line
         /^\d{3,4}\s/.test(candidate) || // Item power
         /Item Power/i.test(candidate) ||
@@ -227,7 +227,13 @@ export function parseTooltip(lines: string[]): ScannedGearPiece {
         /^Ed\s*Slot/i.test(candidate) || // Partial "Ed Slot" from crop
         /^ON$/i.test(candidate) || // "ON" from Transmog toggle
         /^\d+$/.test(candidate) || // Pure numbers like "163>"
-        /^[^a-zA-Z]*$/.test(candidate) // Lines with no letters (pure garbage)
+        /^[^a-zA-Z]*$/.test(candidate) || // Lines with no letters (pure garbage)
+        /[&]/.test(candidate) || // UI text like "& Materials"
+        /[[\]]/.test(candidate) || // Crop artifacts like "CHARACTE]"
+        (/^[a-z]+$/i.test(candidate) && !/[A-Z]/.test(candidate)) || // Pure lowercase ("iipc", "apcj")
+        /Selected/i.test(candidate) || // "tle Selected", "Ile Selected"
+        /^(?:ACTER|EARAC|iARAC|DEARAC|BRAWLER)/i.test(candidate) || // Known panel fragments
+        /^EHE/i.test(candidate) // "EHEmENT" (garbled "ELEMENT")
       ) {
         continue // Skip this line, keep going up
       }

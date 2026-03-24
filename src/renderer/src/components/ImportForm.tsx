@@ -61,15 +61,15 @@ function ImportForm({
           disabled={isLoading}
           autoFocus
         />
+        <button
+          id="import-button"
+          className="import-form__button"
+          onClick={handleImport}
+          disabled={!isValidUrl || isLoading}
+        >
+          {isLoading ? '⏳ Importing...' : '⚔ Import Build'}
+        </button>
       </div>
-      <button
-        id="import-button"
-        className="import-form__button"
-        onClick={handleImport}
-        disabled={!isValidUrl || isLoading}
-      >
-        {isLoading ? '⏳ Importing...' : '⚔ Import Build'}
-      </button>
     </div>
   )
 }

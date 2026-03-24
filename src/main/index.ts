@@ -73,12 +73,10 @@ let boardScanService: BoardScanService
 let boardPositionService: BoardPositionService
 
 /**
- * Two-window architecture:
- * - configWindow: Normal desktop window for importing builds (650×500)
- * - overlayWindow: Transparent, frameless, always-on-top overlay for in-game HUD
+ * Application Window:
+ * - mainWindow: Single always-on-top window for build import and in-game HUD
  */
-let configWindow: BrowserWindow | null = null
-let overlayWindow: BrowserWindow | null = null
+let mainWindow: BrowserWindow | null = null
 
 /** The detach window — shows a single paragon board for alignment */
 let detachWindow: BrowserWindow | null = null
@@ -132,18 +130,14 @@ function initServices(): void {
   }
 }
 
-// ============================================================
-// CONFIG WINDOW — Normal desktop window for build import
-// ============================================================
-
 /**
- * Creates the Config Window — a resizable desktop window
- * where the user pastes build URLs and launches the overlay.
+ * Creates the Main Window — a resizable desktop window
+ * that can be toggled to always-on-top overlay mode.
  * Defaults to 1280×800 with a minimum of 700×500.
  * The user can resize freely; all content scales responsively.
  */
-function createConfigWindow(): void {
-  configWindow = new BrowserWindow({
+function createMainWindow(): void {
+  mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 700,
@@ -158,81 +152,22 @@ function createConfigWindow(): void {
     }
   })
 
-  configWindow.on('ready-to-show', () => {
-    configWindow?.show()
+  mainWindow.on('ready-to-show', () => {
+    mainWindow?.show()
   })
 
-  configWindow.webContents.setWindowOpenHandler((details) => {
+  mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
   })
 
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    configWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    configWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
 
-// ============================================================
-// OVERLAY WINDOW — Transparent in-game HUD
-// ============================================================
-
-/**
- * Creates (or re-shows) the Overlay Window.
- *
- * This window is:
- * - Transparent: you can see the game/desktop through it
- * - Frameless: no title bar, no window controls
- * - Always on top: stays above the game at 'screen-saver' level
- * - Full screen: covers the entire primary monitor
- * - Click-through by default: mouse clicks pass through to the game
- */
-function createOverlayWindow(): void {
-  if (overlayWindow) {
-    overlayWindow.show()
-    return
-  }
-
-  const primaryDisplay = screen.getPrimaryDisplay()
-  const { width, height } = primaryDisplay.workAreaSize
-
-  overlayWindow = new BrowserWindow({
-    width,
-    height,
-    x: 0,
-    y: 0,
-    transparent: true,
-    frame: false,
-    alwaysOnTop: true,
-    skipTaskbar: true,
-    resizable: false,
-    show: false,
-    autoHideMenuBar: true,
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      sandbox: false
-    }
-  })
-
-  overlayWindow.on('ready-to-show', () => {
-    overlayWindow?.show()
-    overlayWindow?.setAlwaysOnTop(true, 'screen-saver')
-    overlayWindow?.setIgnoreMouseEvents(true, { forward: true })
-  })
-
-  overlayWindow.on('closed', () => {
-    overlayWindow = null
-  })
-
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    // electron-vite dev serves overlay at /overlay.html
-    const devUrl = process.env['ELECTRON_RENDERER_URL']
-    overlayWindow.loadURL(`${devUrl}/overlay.html`)
-  } else {
-    overlayWindow.loadFile(join(__dirname, '../renderer/overlay.html'))
-  }
-}
 
 // ============================================================
 // DETACH WINDOW — Single paragon board overlay
@@ -511,13 +446,6 @@ function openCalibrationWindow(): void {
  * - Config window re-show
  */
 function setupIpcHandlers(): void {
-  // Toggle mouse click-through on the overlay window
-  ipcMain.on(
-    'set-ignore-mouse-events',
-    (_event, ignore: boolean, options?: { forward: boolean }) => {
-      overlayWindow?.setIgnoreMouseEvents(ignore, options)
-    }
-  )
 
   // Let the renderer request the current hotkey settings
   ipcMain.handle('get-hotkeys', () => {
@@ -552,7 +480,7 @@ function setupIpcHandlers(): void {
     try {
       // Send progress updates to the config window as each import phase completes
       const onProgress = (progress: ImportProgress): void => {
-        configWindow?.webContents.send('import-progress', progress)
+        mainWindow?.webContents.send('import-progress', progress)
       }
       const result = await buildService.importFromUrl(url, onProgress)
       currentBuildData = result
@@ -579,6 +507,11 @@ function setupIpcHandlers(): void {
     return await buildRepo.listAll()
   })
 
+  /** Get the currently active build data */
+  ipcMain.handle('get-current-build', () => {
+    return currentBuildData
+  })
+
   /** Load a specific saved build by ID (async) */
   ipcMain.handle('load-build', async (_event, id: string) => {
     const build = await buildRepo.load(id)
@@ -596,33 +529,6 @@ function setupIpcHandlers(): void {
     return await buildRepo.delete(id)
   })
 
-  // Launch the overlay window
-  ipcMain.on('launch-overlay', () => {
-    createOverlayWindow()
-  })
-
-  // Overlay signals it finished loading — send build data
-  ipcMain.on('overlay-ready', () => {
-    if (overlayWindow && currentBuildData) {
-      overlayWindow.webContents.send('send-build-to-overlay', currentBuildData)
-    }
-  })
-
-  // Close overlay
-  ipcMain.on('close-overlay', () => {
-    if (overlayWindow) {
-      overlayWindow.close()
-      overlayWindow = null
-    }
-  })
-
-  // Re-show config window from overlay
-  ipcMain.on('open-config', () => {
-    if (configWindow) {
-      configWindow.show()
-      configWindow.focus()
-    }
-  })
 
   // Quit the app
   ipcMain.on('quit-app', () => {
@@ -789,33 +695,39 @@ function registerGlobalHotkeys(): void {
   const status: Record<string, boolean> = {}
 
   try {
-    // Toggle overlay visibility
+    // Toggle show/hide — hides the entire window so the game is visible,
+    // then brings it back as always-on-top when pressed again.
     if (hotkeys.toggle) {
       const ok = globalShortcut.register(hotkeys.toggle, () => {
-        if (!overlayWindow) return
-        if (overlayWindow.isVisible()) {
-          overlayWindow.hide()
+        if (!mainWindow) return
+        if (mainWindow.isVisible()) {
+          mainWindow.hide()
+          console.log('[Hotkeys] Window hidden')
         } else {
-          overlayWindow.show()
-          overlayWindow.setAlwaysOnTop(true, 'screen-saver')
+          mainWindow.show()
+          mainWindow.setAlwaysOnTop(true, 'screen-saver')
+          mainWindow.webContents.send('always-on-top-changed', true)
+          console.log('[Hotkeys] Window shown (always-on-top)')
         }
       })
       status.toggle = ok
       console.log(
-        `[Hotkeys] ${hotkeys.toggle} (toggle): ${ok ? '✓ registered' : '✗ FAILED — key may be claimed by another app'}`
+        `[Hotkeys] ${hotkeys.toggle} (toggle): ${ok ? '✓ registered' : '✗ FAILED'}`
       )
     }
 
-    // Scan a gear tooltip — runs the full pipeline and sends result to overlay
+    // Scan a gear tooltip — runs the full pipeline and sends result to main window
     if (hotkeys.scan) {
       const ok = globalShortcut.register(hotkeys.scan, async () => {
-        if (!overlayWindow) return
+        if (!mainWindow) return
         try {
+          // Play shutter sound by notifying renderer we started
+          mainWindow.webContents.send('scan-started')
           const result = await scanService.scan(currentBuildData)
-          overlayWindow.webContents.send('scan-result', result)
+          mainWindow.webContents.send('scan-result', result)
         } catch (err) {
           console.error('[Scan] Hotkey scan failed:', err)
-          overlayWindow.webContents.send('scan-result', {
+          mainWindow.webContents.send('scan-result', {
             mode: scanService.getScanMode(),
             verdict: null,
             equippedItem: null,
@@ -825,18 +737,25 @@ function registerGlobalHotkeys(): void {
       })
       status.scan = ok
       console.log(
-        `[Hotkeys] ${hotkeys.scan} (scan): ${ok ? '✓ registered' : '✗ FAILED — key may be claimed by another app'}`
+        `[Hotkeys] ${hotkeys.scan} (scan): ${ok ? '✓ registered' : '✗ FAILED'}`
       )
     }
 
-    // Open/close the gear report panel
+    // Report hotkey — same show/hide behavior as toggle
     if (hotkeys.report) {
       const ok = globalShortcut.register(hotkeys.report, () => {
-        overlayWindow?.webContents.send('trigger-report')
+        if (!mainWindow) return
+        if (mainWindow.isVisible()) {
+          mainWindow.hide()
+        } else {
+          mainWindow.show()
+          mainWindow.setAlwaysOnTop(true, 'screen-saver')
+          mainWindow.webContents.send('always-on-top-changed', true)
+        }
       })
       status.report = ok
       console.log(
-        `[Hotkeys] ${hotkeys.report} (report): ${ok ? '✓ registered' : '✗ FAILED — key may be claimed by another app'}`
+        `[Hotkeys] ${hotkeys.report} (report): ${ok ? '✓ registered' : '✗ FAILED'}`
       )
     }
 
@@ -899,7 +818,7 @@ function registerGlobalHotkeys(): void {
             const boardRegion = boardPositionService.getBoardRegion()
             createDetachWindow(match.boardIndex, boardRegion)
 
-            overlayWindow?.webContents.send('board-scan-result', {
+            mainWindow?.webContents.send('board-scan-result', {
               success: true,
               ...match
             })
@@ -910,14 +829,14 @@ function registerGlobalHotkeys(): void {
               console.log(`[BoardScan]   [${i}] "${line.text}"`)
             })
 
-            overlayWindow?.webContents.send('board-scan-result', {
+            mainWindow?.webContents.send('board-scan-result', {
               success: false,
               error: 'No matching paragon board found. Try hovering over a Legendary or Rare node.'
             })
           }
         } catch (err) {
           console.error('[BoardScan] Pipeline error:', err)
-          overlayWindow?.webContents.send('board-scan-result', {
+          mainWindow?.webContents.send('board-scan-result', {
             success: false,
             error: err instanceof Error ? err.message : String(err)
           })
@@ -944,9 +863,8 @@ function registerGlobalHotkeys(): void {
 
   hotkeyStatus = status
 
-  // Push status to both windows so the UI can show success/failure
-  configWindow?.webContents.send('hotkey-status', status)
-  overlayWindow?.webContents.send('hotkey-status', status)
+  // Push status to mainWindow so the UI can show success/failure
+  mainWindow?.webContents.send('hotkey-status', status)
 }
 
 // ============================================================
@@ -962,9 +880,9 @@ app.whenReady().then(async () => {
     optimizer.watchWindowShortcuts(window)
   })
 
-  // Show the config window immediately — its HTML/React loads in parallel
+  // Show the main window immediately — its HTML/React loads in parallel
   // with service initialization so the user sees the UI right away
-  createConfigWindow()
+  createMainWindow()
 
   // Initialize persistent storage and services
   await initStore()
@@ -982,7 +900,7 @@ app.whenReady().then(async () => {
   registerGlobalHotkeys()
 
   // ---- Auto-Update Check ----
-  // Runs after the config window is visible so the user isn't
+  // Runs after the main window is visible so the user isn't
   // staring at a blank screen. Uses the public releases repo.
   // Defer update check — let the window finish rendering first
   setTimeout(() => {
@@ -991,11 +909,11 @@ app.whenReady().then(async () => {
     updater
       .checkForUpdate(app.getVersion())
       .then(async (updateInfo) => {
-        if (!updateInfo || !configWindow) return
+        if (!updateInfo || !mainWindow) return
 
         // Show native dialog with release notes
         const { dialog } = await import('electron')
-        const { response } = await dialog.showMessageBox(configWindow, {
+        const { response } = await dialog.showMessageBox(mainWindow, {
           type: 'info',
           title: 'Update Available',
           message: `A new version (v${updateInfo.version}) is available.\nYou are running v${app.getVersion()}.`,
@@ -1008,12 +926,12 @@ app.whenReady().then(async () => {
         if (response !== 0) return // User clicked Skip
 
         // Notify renderer that download is starting
-        configWindow.webContents.send('update-started')
+        mainWindow.webContents.send('update-started')
 
         try {
           // Download the new exe
           await updater.downloadUpdate(updateInfo.downloadUrl, appDir, (progress) => {
-            configWindow?.webContents.send('update-download-progress', progress)
+            mainWindow?.webContents.send('update-download-progress', progress)
           })
 
           // Generate and launch the swap script
