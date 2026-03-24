@@ -109,4 +109,77 @@ describe('GearParser', () => {
     const result = parseTooltip(lines)
     expect(result.slot).toBe('Unknown')
   })
+
+  // ---- Bug fix tests (from live integration test session) ----
+
+  it('should extract aspect from "Imprinted:" lines', () => {
+    const lines = [
+      'VIRTUOUS EXCEPTIONAL GLOVES',
+      'Bloodied Legendary Gloves',
+      '750 Item Power',
+      '+244 Maximum Life [244 - 272]',
+      '+9.5% Attack speed [8.3 - 10.01%',
+      'Imprinted: Using a Valor skill increases your damage by [40.0 - 60.01% for 7 seconds.',
+      'Requires Level 60'
+    ]
+    const result = parseTooltip(lines)
+    expect(result.aspect).not.toBeNull()
+    expect(result.aspect!.name).toContain('Using a Valor skill')
+  })
+
+  it('should keep aspect null when no "Imprinted:" line is present', () => {
+    const lines = [
+      'Test Helm',
+      'Legendary Helm',
+      '925 Item Power',
+      '+100 Maximum Life'
+    ]
+    const result = parseTooltip(lines)
+    expect(result.aspect).toBeNull()
+  })
+
+  it('should parse no-space OCR affixes like "+3FaithOnKi11"', () => {
+    const lines = [
+      'Test Ring',
+      'Legendary Ring',
+      '800 Item Power',
+      '+165 Life On Hit [146-159]',
+      '+3FaithOnKi11',
+      '+6.4% Critical Strike Chance [5.2 -'
+    ]
+    const result = parseTooltip(lines)
+    // The no-space affix should be captured (not silently dropped)
+    expect(result.affixes.some((a) => a.includes('Faith'))).toBe(true)
+  })
+
+  it('should find item power even when far from slot line', () => {
+    // Simulates garbled OCR where IP line is distant from the type+slot line
+    const lines = [
+      'ACTER',
+      'Ile',
+      'Igh',
+      'ner',
+      'DREAD mACE OF',
+      'EXORCIsm *',
+      'Ancestral Bloodied',
+      'Legendary Two-Handed Mace',
+      '800 Item Power',
+      '+130.0% Overpower Damage'
+    ]
+    const result = parseTooltip(lines)
+    expect(result.itemPower).toBe(800)
+  })
+
+  it('should accumulate sockets from individual "Empty Socket" lines', () => {
+    const lines = [
+      'Test Armor',
+      'Legendary Chest Armor',
+      '800 Item Power',
+      '+118 Strength +[107-121]',
+      'Empty Socket',
+      'Empty Socket'
+    ]
+    const result = parseTooltip(lines)
+    expect(result.sockets).toBe(2)
+  })
 })

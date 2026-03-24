@@ -67,6 +67,13 @@ const MULTIPLICATIVE_AFFIX_REGEX = /^[×x]\s*[\d.]+%?\s+.+/i
 const BARE_AFFIX_REGEX = /^\d+[.]?\d*%\s+[A-Z].+/
 
 /**
+ * Regex for OCR-garbled affixes where the number runs directly into the stat name
+ * with no space, e.g., "+3FaithOnKi11" or "+4FaithOnKi11".
+ * Pattern: optional +, digits, then immediately an uppercase letter.
+ */
+const MERGED_AFFIX_REGEX = /^[+]?\d+[A-Z][a-zA-Z]/
+
+/**
  * Greater affix marker — star emoji, asterisk (OCR reads ✦ as *), or "Greater" prefix.
  * The D4 tooltip uses ✦ for greater affixes, but OCR often reads it as *.
  */
@@ -78,6 +85,9 @@ const GREATER_AFFIX_MARKERS = ['⭐', '★', '☆', '*', 'Greater']
  * These must be stripped before affix regex matching.
  */
 const BULLET_REGEX = /^[·•◆ÇÇóo᪥◈⬥⬦]\s*/
+
+/** Regex to detect "Imprinted:" aspect lines in tooltips */
+const IMPRINTED_REGEX = /^Imprinted:\s*(.+)/i
 
 /**
  * Parses an array of OCR text lines from a tooltip into a ScannedGearPiece.
@@ -246,13 +256,24 @@ export function parseTooltip(lines: string[]): ScannedGearPiece {
   }
 
   // ---- Item Power: search near the type+slot line ----
-  const ipSearchStart = Math.max(0, typeSlotLineIndex - 1)
-  const ipSearchEnd = Math.min(lines.length, typeSlotLineIndex + 5)
+  const ipSearchStart = Math.max(0, typeSlotLineIndex - 3)
+  const ipSearchEnd = Math.min(lines.length, typeSlotLineIndex + 8)
   for (let i = ipSearchStart; i < ipSearchEnd; i++) {
     const ipMatch = lines[i].match(ITEM_POWER_REGEX)
     if (ipMatch) {
       result.itemPower = parseInt(ipMatch[1], 10)
       break
+    }
+  }
+
+  // Fallback: scan all lines if the window search missed it
+  if (result.itemPower === 0) {
+    for (let i = 0; i < lines.length; i++) {
+      const ipMatch = lines[i].match(ITEM_POWER_REGEX)
+      if (ipMatch) {
+        result.itemPower = parseInt(ipMatch[1], 10)
+        break
+      }
     }
   }
 
@@ -285,7 +306,13 @@ export function parseTooltip(lines: string[]): ScannedGearPiece {
     const socketMatch = cleanLine.match(SOCKET_REGEX)
     if (socketMatch) {
       const count = socketMatch[1] || socketMatch[2]
-      result.sockets = count ? parseInt(count, 10) : 1
+      if (count) {
+        // Explicit count like "Sockets (2)" — use it directly
+        result.sockets = parseInt(count, 10)
+      } else {
+        // Individual socket line like "Empty Socket" — increment
+        result.sockets += 1
+      }
 
       // Check for socket contents like "Empty Socket" or gem names
       if (cleanLine.toLowerCase().includes('empty')) {
@@ -295,10 +322,18 @@ export function parseTooltip(lines: string[]): ScannedGearPiece {
     }
 
     // Affix detection — additive (+), multiplicative (×), or bare number (10.8% ...)
+    // Aspect detection — "Imprinted:" lines contain the item's aspect
+    const imprintMatch = cleanLine.match(IMPRINTED_REGEX)
+    if (imprintMatch) {
+      result.aspect = { name: imprintMatch[1].trim(), description: cleanLine }
+      continue
+    }
+
     if (
       ADDITIVE_AFFIX_REGEX.test(cleanLine) ||
       MULTIPLICATIVE_AFFIX_REGEX.test(cleanLine) ||
-      BARE_AFFIX_REGEX.test(cleanLine)
+      BARE_AFFIX_REGEX.test(cleanLine) ||
+      MERGED_AFFIX_REGEX.test(cleanLine)
     ) {
       // Normalize: ensure the affix string starts with + for consistency
       const normalizedAffix = /^[+×x]/.test(cleanLine) ? cleanLine : `+${cleanLine}`
