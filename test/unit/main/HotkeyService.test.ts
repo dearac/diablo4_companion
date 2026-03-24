@@ -31,7 +31,8 @@ describe('HotkeyService', () => {
       scan: 'F7',
       report: 'F8',
       toggle: 'F6',
-      detach: 'F9'
+      detach: 'F9',
+      boardScan: 'F10'
     })
   })
 
@@ -77,7 +78,8 @@ describe('HotkeyService', () => {
       scan: 'F7',
       report: 'F8',
       toggle: 'F6',
-      detach: 'F9'
+      detach: 'F9',
+      boardScan: 'F10'
     })
     // Store should have been set to empty overrides
     expect(saved['hotkeys']).toEqual({})
@@ -88,7 +90,8 @@ describe('HotkeyService', () => {
       scan: 'F7',
       report: 'F8',
       toggle: 'F6',
-      detach: 'F9'
+      detach: 'F9',
+      boardScan: 'F10'
     })
   })
 })
