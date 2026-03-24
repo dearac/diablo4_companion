@@ -74,6 +74,7 @@ const api = {
   setEquippedGear: (gear: any) => ipcRenderer.invoke('set-equipped-gear', gear),
   getScanMode: () => ipcRenderer.invoke('get-scan-mode'),
   setScanMode: (mode: any) => ipcRenderer.invoke('set-scan-mode', mode),
+  toggleScanMode: () => ipcRenderer.invoke('toggle-scan-mode'),
   onLaunchOverlay: (callback: () => void): (() => void) => {
     const subscription = (_event: any) => callback()
     ipcRenderer.on('launch-overlay', subscription)

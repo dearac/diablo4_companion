@@ -10,6 +10,7 @@ import ParagonPanel from './components/ParagonPanel'
 import GearTab from './components/GearTab'
 import ScansTab from './components/ScansTab'
 import SettingsTab from './components/SettingsTab'
+import ScanControls from './components/ScanControls'
 import { playShutterSound, playSuccessSound, playErrorSound } from './utils/audio'
 
 /**
@@ -81,7 +82,16 @@ function App(): React.JSX.Element {
 
       setLatestScanResult(result)
 
-      // Only add to scan history if we got an actual verdict (not an error)
+      // Equip mode: update equipped gear state with the newly scanned item
+      if (result.mode === 'equip' && result.equippedItem) {
+        setEquippedGear((prev) => ({
+          ...prev,
+          [result.equippedItem!.slot]: result.equippedItem!
+        }))
+        setActiveTab('gear')
+      }
+
+      // Compare mode: add verdict to scan history
       if (result.verdict) {
         setScanHistory((prev) => [
           {
@@ -92,7 +102,7 @@ function App(): React.JSX.Element {
         ])
       }
 
-      // Auto-switch to Scans tab on result (unless in equip mode)
+      // Auto-switch to Scans tab on compare result
       if (result.mode === 'compare') {
         setActiveTab('scans')
       }
@@ -135,12 +145,12 @@ function App(): React.JSX.Element {
       case 'builds':
         return (
           <div className="tab-pane">
-            <ImportForm onStart={handleImportStart} onSuccess={handleImportSuccess} onError={handleImportError} />
+            <ImportForm onImportStart={handleImportStart} onImportSuccess={handleImportSuccess} onImportError={handleImportError} isLoading={status === 'loading'} />
             <StatusIndicator status={status} errorMessage={errorMessage} progress={importProgress} />
             {buildData && status === 'success' && (
               <BuildSummaryCard build={buildData} onLaunchOverlay={() => {}} />
             )}
-            <BuildLibrary onLoadBuild={handleLoadBuild} />
+            <BuildLibrary onLoadBuild={handleLoadBuild} refreshTrigger={0} />
           </div>
         )
       case 'gear':
@@ -223,6 +233,7 @@ function App(): React.JSX.Element {
         <div className="status-bar__item">
           <span>{scanHistory.length} Scans in History</span>
         </div>
+        <ScanControls />
       </footer>
     </div>
   )

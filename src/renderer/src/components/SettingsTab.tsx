@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 const HOTKEY_META: Record<string, { icon: string; label: string; desc: string }> = {
   scan: { icon: '📸', label: 'Scan Item', desc: 'Capture and analyze a gear tooltip' },

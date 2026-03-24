@@ -12,7 +12,7 @@
 .app-shell {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
   background: var(--bg-dark);
   color: var(--text-primary);
   overflow: hidden;
@@ -90,6 +90,7 @@
 
 .app-main {
   flex: 1;
+  min-height: 0;
   padding: 24px;
   overflow-y: auto;
   position: relative;
@@ -383,6 +384,14 @@
   color: var(--text-muted);
 }
 
+/* ---- Paragon Panel ---- */
+
+.paragon-panel {
+  height: 100%;
+  min-height: 400px;
+  position: relative;
+}
+
 /* ---- Paragon Canvas ---- */
 
 .paragon-canvas {
@@ -611,6 +620,89 @@
 
 .status-dot--ok { background: var(--success); }
 .status-dot--error { background: var(--error); }
+
+/* ---- Scan Controls (Mode Toggle) ---- */
+
+.scan-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.scan-controls__mode {
+  display: flex;
+  align-items: center;
+}
+
+.scan-controls__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.scan-controls__toggle:hover {
+  border-color: var(--border-hover);
+}
+
+.scan-controls__toggle--compare {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.scan-controls__toggle--compare:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.scan-controls__toggle--equip {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.scan-controls__toggle--equip:hover {
+  background: rgba(74, 222, 128, 0.1);
+}
+
+.scan-controls__toggle-icon {
+  font-size: 12px;
+}
+
+.scan-controls__toggle-label {
+  font-size: 11px;
+}
+
+.scan-controls__hotkey {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.scan-controls__hotkey-label {
+  color: var(--text-muted);
+}
+
+.scan-controls__hotkey-key {
+  padding: 1px 6px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-size: 10px;
+  font-family: 'Inter', monospace;
+  color: var(--text-primary);
+}
 
 /* ---- Gear Grid Column ---- */
 

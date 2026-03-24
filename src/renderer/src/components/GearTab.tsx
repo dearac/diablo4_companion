@@ -99,7 +99,7 @@ function GearTab({ buildData, equippedGear }: GearTabProps): React.JSX.Element {
                   <h3 className="gear-card__item-name">{gear.itemName}</h3>
                   <div className="gear-card__meta">
                     <span>{gear.itemPower} iP</span>
-                    <span>{gear.rarity}</span>
+                    <span>{gear.itemType}</span>
                   </div>
                 </>
               ) : (

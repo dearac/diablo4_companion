@@ -5,7 +5,8 @@ import {
   ScanMode,
   ScanResult,
   ScanHistoryEntry,
-  ScannedGearPiece
+  ScannedGearPiece,
+  IParagonBoard
 } from './shared/types'
 
 declare global {
@@ -30,7 +31,7 @@ declare global {
       listBuilds: () => Promise<SavedBuild[]>
       loadBuild: (id: string) => Promise<SavedBuild>
       deleteBuild: (id: string) => Promise<boolean>
-      getUpdateStatus: () => Promise<any>
+      getUpdateStatus: () => Promise<Record<string, unknown>>
       onUpdateProgress: (
         callback: (progress: { percent: number; downloadedMB: number; totalMB: number }) => void
       ) => () => void
@@ -38,8 +39,8 @@ declare global {
       // Scan pipeline
       performScan: () => Promise<{
         mode: ScanMode
-        verdict: any
-        equippedItem: any
+        verdict: ScanResult['verdict']
+        equippedItem: ScanResult['equippedItem']
         error: string | null
       }>
       onScanResult: (callback: (result: ScanResult) => void) => () => void
@@ -49,7 +50,31 @@ declare global {
       setEquippedGear: (gear: Record<string, ScannedGearPiece>) => Promise<void>
       getScanMode: () => Promise<ScanMode>
       setScanMode: (mode: ScanMode) => Promise<void>
+      toggleScanMode: () => Promise<ScanMode>
       onLaunchOverlay: (callback: () => void) => () => void
+      // Overlay IPC
+      onBuildData: (callback: (data: RawBuildData) => void) => () => void
+      overlayReady: () => void
+      setIgnoreMouseEvents: (ignore: boolean, opts?: { forward: boolean }) => void
+      closeOverlay: () => void
+      openConfig: () => void
+      detachParagonBoard: (boardIndex: number) => void
+      // Detach window IPC
+      onDetachBoardData: (
+        callback: (data: {
+          board: IParagonBoard
+          opacity: number
+          boardNumber: number
+          boardTotal: number
+          inset?: number
+        }) => void
+      ) => () => void
+      detachSaveOpacity: (opacity: number) => void
+      detachSaveInset: (inset: number) => void
+      detachMoveWindow: (dx: number, dy: number) => void
+      detachSetIgnoreMouse: (ignore: boolean, opts?: { forward: boolean }) => void
+      detachSavePosition: () => void
+      detachClose: () => void
       // Maintenance
       clearParagonCache: () => Promise<{ success: boolean }>
       clearBoardCalibration: () => Promise<{ success: boolean }>
