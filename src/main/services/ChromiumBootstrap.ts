@@ -1,4 +1,4 @@
-import { join } from 'path'
+import { join, dirname } from 'path'
 import { existsSync, mkdirSync, readdirSync } from 'fs'
 import { execFile } from 'child_process'
 import { is } from '@electron-toolkit/utils'
@@ -154,7 +154,8 @@ export class ChromiumBootstrap {
 
       const env = {
         ...process.env,
-        PLAYWRIGHT_BROWSERS_PATH: this.chromiumDir
+        PLAYWRIGHT_BROWSERS_PATH: this.chromiumDir,
+        ELECTRON_RUN_AS_NODE: '1'
       }
 
       const child = execFile(
@@ -189,12 +190,14 @@ export class ChromiumBootstrap {
    */
   private resolvePlaywrightCli(): string {
     try {
-      // Resolve from the app's node_modules
-      return require.resolve('playwright/cli')
+      // Resolve using package.json since the cli subpath isn't exported in newer Playwright versions
+      const pkgPath = require.resolve('playwright/package.json')
+      return join(dirname(pkgPath), 'cli.js')
     } catch {
       // Fallback: try playwright-core
       try {
-        return require.resolve('playwright-core/cli')
+        const corePkgPath = require.resolve('playwright-core/package.json')
+        return join(dirname(corePkgPath), 'cli.js')
       } catch {
         throw new Error('Playwright CLI not found. Ensure playwright is installed as a dependency.')
       }
