@@ -71,7 +71,17 @@ export class D4BuildsScraper extends BuildScraper {
 
   async scrape(url: string, onProgress?: ImportProgressCallback): Promise<RawBuildData> {
     const TOTAL_STEPS = 6
-    const browser = await chromium.launch({ headless: true, executablePath: getBrowserPath() })
+
+    // Ensure Chromium is available (downloads on first use)
+    const browserPath = await getBrowserPath((progress) => {
+      onProgress?.({
+        step: 0,
+        totalSteps: TOTAL_STEPS,
+        label: progress.message
+      })
+    })
+
+    const browser = await chromium.launch({ headless: true, executablePath: browserPath })
     ProcessManager.getInstance().register(browser)
     const context = await browser.newContext({
       viewport: { width: 1920, height: 1080 }

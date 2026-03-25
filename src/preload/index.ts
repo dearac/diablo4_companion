@@ -48,12 +48,24 @@ const api = {
 
   // Updates
   getUpdateStatus: () => ipcRenderer.invoke('get-update-status'),
+  downloadUpdate: () => ipcRenderer.invoke('download-update'),
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+  onUpdateAvailable: (callback: (info: { version: string }) => void): (() => void) => {
+    const subscription = (_event: any, info: any) => callback(info)
+    ipcRenderer.on('update-available', subscription)
+    return () => ipcRenderer.removeListener('update-available', subscription)
+  },
   onUpdateProgress: (
     callback: (progress: { percent: number; downloadedMB: number; totalMB: number }) => void
   ): (() => void) => {
     const subscription = (_event: any, progress: any) => callback(progress)
-    ipcRenderer.on('update-progress', subscription)
-    return () => ipcRenderer.removeListener('update-progress', subscription)
+    ipcRenderer.on('update-download-progress', subscription)
+    return () => ipcRenderer.removeListener('update-download-progress', subscription)
+  },
+  onUpdateDownloaded: (callback: () => void): (() => void) => {
+    const subscription = (_event: any) => callback()
+    ipcRenderer.on('update-downloaded', subscription)
+    return () => ipcRenderer.removeListener('update-downloaded', subscription)
   },
   onUpdateStarted: (callback: () => void): (() => void) => {
     const subscription = (_event: any) => callback()

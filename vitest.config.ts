@@ -20,13 +20,17 @@ export default defineConfig({
     alias: {
       '@': resolve(__dirname, 'src'),
       electron: resolve(__dirname, '__mocks__/electron.js'),
-      '@electron-toolkit/utils': resolve(__dirname, '__mocks__/@electron-toolkit/utils.js')
+      '@electron-toolkit/utils': resolve(__dirname, '__mocks__/@electron-toolkit/utils.js'),
+      'electron-updater': resolve(__dirname, '__mocks__/electron-updater.js')
     }
   },
 
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src')
+      '@': resolve(__dirname, 'src'),
+      electron: resolve(__dirname, '__mocks__/electron.js'),
+      '@electron-toolkit/utils': resolve(__dirname, '__mocks__/@electron-toolkit/utils.js'),
+      'electron-updater': resolve(__dirname, '__mocks__/electron-updater.js')
     }
   }
 })

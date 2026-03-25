@@ -1,126 +1,143 @@
-import { existsSync, readFileSync, unlinkSync, mkdtempSync } from 'fs'
-import { join } from 'path'
-import { tmpdir } from 'os'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { AutoUpdateService } from '../../../src/main/services/AutoUpdateService'
-import https from 'https'
-import { EventEmitter } from 'events'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-// Mock https module
-vi.mock('https', () => ({
-  default: { get: vi.fn() },
-  get: vi.fn()
+// Use vi.hoisted() so the mock is available when vi.mock's factory is hoisted
+const mockAutoUpdater = vi.hoisted(() => ({
+  autoDownload: true,
+  autoInstallOnAppQuit: false,
+  on: vi.fn(),
+  checkForUpdates: vi.fn(),
+  downloadUpdate: vi.fn(),
+  quitAndInstall: vi.fn()
 }))
 
-/** Creates a fake https.get response with the given status code and body */
-function mockHttpsGet(
-  statusCode: number,
-  body: string,
-  headers: Record<string, string> = {}
-): void {
-  const mockResponse = new EventEmitter() as any
-  mockResponse.statusCode = statusCode
-  mockResponse.headers = headers
-  vi.mocked(https.get).mockImplementation((_url: any, _opts: any, cb: any) => {
-    // Handle both (url, cb) and (url, opts, cb) signatures
-    const callback = typeof _opts === 'function' ? _opts : cb
-    process.nextTick(() => {
-      callback(mockResponse)
-      process.nextTick(() => {
-        mockResponse.emit('data', Buffer.from(body))
-        mockResponse.emit('end')
-      })
-    })
-    const req = new EventEmitter() as any
-    req.end = vi.fn()
-    return req
-  })
-}
+vi.mock('electron-updater', () => ({
+  autoUpdater: mockAutoUpdater
+}))
 
-/** Creates a redirect response */
-function mockHttpsRedirect(location: string): void {
-  mockHttpsGet(302, '', { location })
-}
+// Mock electron
+vi.mock('electron', () => ({
+  BrowserWindow: vi.fn(),
+  app: { getVersion: vi.fn(() => '1.0.0') }
+}))
+
+import { AutoUpdateService } from '../../../src/main/services/AutoUpdateService'
 
 describe('AutoUpdateService', () => {
   let service: AutoUpdateService
+  let mockWindow: any
 
   beforeEach(() => {
     vi.restoreAllMocks()
-    service = new AutoUpdateService('dearac/diablo4-companion-releases')
-  })
 
-  describe('checkForUpdate()', () => {
-    it('should detect a newer version', async () => {
-      const release = {
-        tag_name: 'v1.0.0',
-        body: 'Bug fixes and improvements',
-        assets: [
-          { name: 'diablo4_companion.exe', browser_download_url: 'https://example.com/dl.exe' }
-        ]
+    // Reset autoUpdater mock state
+    mockAutoUpdater.autoDownload = true
+    mockAutoUpdater.autoInstallOnAppQuit = false
+    mockAutoUpdater.on = vi.fn()
+    mockAutoUpdater.checkForUpdates = vi.fn().mockResolvedValue(undefined)
+    mockAutoUpdater.downloadUpdate = vi.fn().mockResolvedValue(undefined)
+    mockAutoUpdater.quitAndInstall = vi.fn()
+
+    mockWindow = {
+      webContents: {
+        send: vi.fn()
       }
-      mockHttpsGet(200, JSON.stringify(release))
+    }
 
-      const result = await service.checkForUpdate('0.2.0-beta.1')
-      expect(result).not.toBeNull()
-      expect(result!.version).toBe('1.0.0')
-      expect(result!.releaseNotes).toBe('Bug fixes and improvements')
-      expect(result!.downloadUrl).toBe('https://example.com/dl.exe')
-    })
+    service = new AutoUpdateService(mockWindow)
+  })
 
-    it('should return null when already on latest', async () => {
-      const release = { tag_name: 'v0.2.0-beta.1', body: '', assets: [] }
-      mockHttpsGet(200, JSON.stringify(release))
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
 
-      const result = await service.checkForUpdate('0.2.0-beta.1')
-      expect(result).toBeNull()
-    })
+  it('should configure autoUpdater on construction', () => {
+    expect(mockAutoUpdater.autoDownload).toBe(false)
+    expect(mockAutoUpdater.autoInstallOnAppQuit).toBe(true)
+  })
 
-    it('should return null when on a newer version', async () => {
-      const release = { tag_name: 'v0.1.0', body: '', assets: [] }
-      mockHttpsGet(200, JSON.stringify(release))
+  it('should register event listeners on construction', () => {
+    const events = mockAutoUpdater.on.mock.calls.map((call: any[]) => call[0])
+    expect(events).toContain('checking-for-update')
+    expect(events).toContain('update-available')
+    expect(events).toContain('update-not-available')
+    expect(events).toContain('download-progress')
+    expect(events).toContain('update-downloaded')
+    expect(events).toContain('error')
+  })
 
-      const result = await service.checkForUpdate('0.2.0')
-      expect(result).toBeNull()
-    })
+  it('should call checkForUpdates on autoUpdater', async () => {
+    await service.checkForUpdates()
+    expect(mockAutoUpdater.checkForUpdates).toHaveBeenCalled()
+  })
 
-    it('should return null on network error (silent fail)', async () => {
-      vi.mocked(https.get).mockImplementation((_url: any, _opts: any, _cb: any) => {
-        const req = new EventEmitter() as any
-        req.end = vi.fn()
-        process.nextTick(() => req.emit('error', new Error('ENOTFOUND')))
-        return req
-      })
+  it('should not throw when checkForUpdates fails', async () => {
+    mockAutoUpdater.checkForUpdates.mockRejectedValue(new Error('Network error'))
+    await expect(service.checkForUpdates()).resolves.not.toThrow()
+  })
 
-      const result = await service.checkForUpdate('0.2.0')
-      expect(result).toBeNull()
-    })
+  it('should call downloadUpdate on autoUpdater', async () => {
+    await service.downloadUpdate()
+    expect(mockAutoUpdater.downloadUpdate).toHaveBeenCalled()
+  })
 
-    it('should return null on non-200 response (no releases)', async () => {
-      mockHttpsGet(404, 'Not Found')
+  it('should rethrow when downloadUpdate fails', async () => {
+    mockAutoUpdater.downloadUpdate.mockRejectedValue(new Error('Download failed'))
+    await expect(service.downloadUpdate()).rejects.toThrow('Download failed')
+  })
 
-      const result = await service.checkForUpdate('0.2.0')
-      expect(result).toBeNull()
+  it('should call quitAndInstall on installUpdate', () => {
+    service.installUpdate()
+    expect(mockAutoUpdater.quitAndInstall).toHaveBeenCalled()
+  })
+
+  it('should send update-available to renderer when update is found', () => {
+    // Find the update-available handler registered during construction
+    const updateAvailableCall = mockAutoUpdater.on.mock.calls.find(
+      (call: any[]) => call[0] === 'update-available'
+    )
+    expect(updateAvailableCall).toBeDefined()
+
+    // Simulate the event
+    const handler = updateAvailableCall![1]
+    handler({ version: '2.0.0', releaseNotes: 'New features!' })
+
+    expect(mockWindow.webContents.send).toHaveBeenCalledWith('update-available', {
+      version: '2.0.0',
+      releaseNotes: 'New features!'
     })
   })
 
-  describe('generateUpdateScript()', () => {
-    let tempDir: string
+  it('should send update-downloaded to renderer when download completes', () => {
+    const updateDownloadedCall = mockAutoUpdater.on.mock.calls.find(
+      (call: any[]) => call[0] === 'update-downloaded'
+    )
+    expect(updateDownloadedCall).toBeDefined()
 
-    beforeEach(() => {
-      tempDir = mkdtempSync(join(tmpdir(), 'updater-test-'))
+    const handler = updateDownloadedCall![1]
+    handler({ version: '2.0.0' })
+
+    expect(mockWindow.webContents.send).toHaveBeenCalledWith('update-downloaded', {
+      version: '2.0.0'
+    })
+  })
+
+  it('should send download progress to renderer', () => {
+    const progressCall = mockAutoUpdater.on.mock.calls.find(
+      (call: any[]) => call[0] === 'download-progress'
+    )
+    expect(progressCall).toBeDefined()
+
+    const handler = progressCall![1]
+    handler({
+      percent: 50.5,
+      transferred: 50 * 1024 * 1024,
+      total: 100 * 1024 * 1024
     })
 
-    it('should generate a valid batch script', () => {
-      const scriptPath = service.generateUpdateScript(tempDir, 12345)
-
-      expect(existsSync(scriptPath)).toBe(true)
-      const content = readFileSync(scriptPath, 'utf-8')
-      expect(content).toContain('12345')
-      expect(content).toContain('diablo4_companion.exe')
-      expect(content).toContain('diablo4_companion.exe.update')
-
-      unlinkSync(scriptPath)
+    expect(mockWindow.webContents.send).toHaveBeenCalledWith('update-download-progress', {
+      percent: 51,
+      downloadedMB: 50,
+      totalMB: 100
     })
   })
 })

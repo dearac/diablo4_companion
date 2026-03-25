@@ -16,6 +16,7 @@ import { EquippedGearStore } from './services/EquippedGearStore'
 import { ScanHistoryStore } from './services/ScanHistoryStore'
 import { BoardScanService } from './services/BoardScanService'
 import { BoardPositionService } from './services/BoardPositionService'
+import { initBrowserPath } from './services/BrowserPath'
 import { runOcr } from './services/OcrService'
 import type { RawBuildData } from '../shared/types'
 import type { ImportProgress } from './scrapers/BuildScraper'
@@ -886,6 +887,7 @@ app.whenReady().then(async () => {
 
   // Initialize persistent storage and services
   await initStore()
+  initBrowserPath(dataPaths.userData)
   initServices()
 
   // Initialize process manager and clean up any orphaned processes from previous runs
@@ -899,62 +901,25 @@ app.whenReady().then(async () => {
   // Register keyboard shortcuts
   registerGlobalHotkeys()
 
-  // ---- Auto-Update Check ----
-  // Runs after the main window is visible so the user isn't
-  // staring at a blank screen. Uses the public releases repo.
-  // Defer update check — let the window finish rendering first
+  // ---- Auto-Update (electron-updater) ----
+  // Checks GitHub Releases for new NSIS installers.
+  // Does NOT auto-download — sends 'update-available' to the renderer,
+  // which prompts the user before downloading.
+  // Defer check so the window finishes rendering first.
   setTimeout(() => {
-    const updater = new AutoUpdateService('dearac/diablo4_companion')
+    const updater = new AutoUpdateService(mainWindow!)
 
-    updater
-      .checkForUpdate(app.getVersion())
-      .then(async (updateInfo) => {
-        if (!updateInfo || !mainWindow) return
+    // IPC: renderer requests download after user approves
+    ipcMain.handle('download-update', async () => {
+      await updater.downloadUpdate()
+    })
 
-        // Show native dialog with release notes
-        const { dialog } = await import('electron')
-        const { response } = await dialog.showMessageBox(mainWindow, {
-          type: 'info',
-          title: 'Update Available',
-          message: `A new version (v${updateInfo.version}) is available.\nYou are running v${app.getVersion()}.`,
-          detail: updateInfo.releaseNotes || 'Bug fixes and improvements.',
-          buttons: ['Update Now', 'Skip'],
-          defaultId: 0,
-          cancelId: 1
-        })
+    // IPC: renderer requests install (quit + install)
+    ipcMain.on('install-update', () => {
+      updater.installUpdate()
+    })
 
-        if (response !== 0) return // User clicked Skip
-
-        // Notify renderer that download is starting
-        mainWindow.webContents.send('update-started')
-
-        try {
-          // Download the new exe
-          await updater.downloadUpdate(updateInfo.downloadUrl, appDir, (progress) => {
-            mainWindow?.webContents.send('update-download-progress', progress)
-          })
-
-          // Generate and launch the swap script
-          const scriptPath = updater.generateUpdateScript(appDir, process.pid)
-
-          const { exec } = await import('child_process')
-          exec(`start /min "" "${scriptPath}"`, { windowsHide: true })
-
-          // Quit so the batch script can replace us
-          app.quit()
-        } catch (err) {
-          console.error('[AutoUpdate] Download failed:', err)
-          const { dialog: dlg } = await import('electron')
-          dlg.showErrorBox(
-            'Update Failed',
-            'The update download failed. The app will continue normally.'
-          )
-        }
-      })
-      .catch((err) => {
-        console.error('[AutoUpdate] Check failed:', err)
-        // Silent fail — app continues normally
-      })
+    updater.checkForUpdates()
   }, 3000)
 })
 

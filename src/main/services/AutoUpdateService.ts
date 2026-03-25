@@ -1,265 +1,119 @@
-import https from 'https'
-import { IncomingMessage } from 'http'
-import { createWriteStream, writeFileSync } from 'fs'
-import { join } from 'path'
+import { autoUpdater, type UpdateInfo } from 'electron-updater'
+import { BrowserWindow, app } from 'electron'
+
+// ============================================================
+// AutoUpdateService — NSIS auto-updates via electron-updater
+// ============================================================
+// Uses electron-updater to check GitHub Releases for new NSIS
+// installers. Downloads in the background and installs on quit.
+//
+// The publish config in electron-builder.yml (provider: github)
+// tells electron-updater where to look for updates.
+//
+// Usage:
+//   const updater = new AutoUpdateService(mainWindow)
+//   updater.checkForUpdates()
+// ============================================================
 
 /**
- * Describes an available update found on GitHub Releases.
- */
-export interface UpdateInfo {
-  /** The new version string (without leading 'v') */
-  version: string
-  /** Release notes / changelog body from the GitHub release */
-  releaseNotes: string
-  /** Direct download URL for the exe asset */
-  downloadUrl: string
-}
-
-/**
- * Handles checking for, downloading, and applying updates from a public
- * GitHub Releases repository. Designed for portable exe deployments where
- * electron-updater can't be used.
- *
- * Usage:
- *   const updater = new AutoUpdateService('dearac/diablo4-companion-releases')
- *   const update = await updater.checkForUpdate(app.getVersion())
+ * Manages automatic updates using electron-updater.
+ * Checks GitHub Releases for new NSIS installers, downloads
+ * them in the background, and installs on app quit.
  */
 export class AutoUpdateService {
-  private readonly apiUrl: string
+  private mainWindow: BrowserWindow
 
-  constructor(repo: string) {
-    this.apiUrl = `https://api.github.com/repos/${repo}/releases/latest`
+  constructor(mainWindow: BrowserWindow) {
+    this.mainWindow = mainWindow
+    this.configure()
   }
 
   /**
-   * Checks GitHub for a newer release than the current version.
-   * Returns UpdateInfo if available, null otherwise.
-   * Never throws — all errors result in null (silent fail).
+   * Configures electron-updater behavior and event listeners.
    */
-  async checkForUpdate(currentVersion: string): Promise<UpdateInfo | null> {
-    try {
-      console.log(`[AutoUpdate] Checking for updates... current version: ${currentVersion}`)
-      console.log(`[AutoUpdate] API URL: ${this.apiUrl}`)
-      const releaseJson = await this.fetchJson(this.apiUrl)
-      if (!releaseJson) {
-        console.log('[AutoUpdate] No release data returned from GitHub')
-        return null
-      }
+  private configure(): void {
+    // Don't auto-download — let the user decide
+    autoUpdater.autoDownload = false
+    autoUpdater.autoInstallOnAppQuit = true
 
-      const tagVersion = releaseJson.tag_name?.replace(/^v/, '') || ''
-      console.log(`[AutoUpdate] Latest release: ${tagVersion}`)
+    // ---- Event Handlers ----
 
-      if (!this.isNewer(tagVersion, currentVersion)) {
-        console.log(`[AutoUpdate] ${tagVersion} is not newer than ${currentVersion}, skipping`)
-        return null
-      }
+    autoUpdater.on('checking-for-update', () => {
+      console.log('[AutoUpdate] Checking for updates...')
+    })
 
-      // Find the exe asset
-      const asset = releaseJson.assets?.find(
-        (a: { name: string }) => a.name === 'diablo4_companion.exe'
+    autoUpdater.on('update-available', (info: UpdateInfo) => {
+      console.log(`[AutoUpdate] Update available: v${info.version}`)
+      this.mainWindow.webContents.send('update-available', {
+        version: info.version,
+        releaseNotes: info.releaseNotes || 'Bug fixes and improvements.'
+      })
+    })
+
+    autoUpdater.on('update-not-available', (info: UpdateInfo) => {
+      console.log(`[AutoUpdate] Already up to date: v${info.version}`)
+    })
+
+    autoUpdater.on('download-progress', (progress) => {
+      console.log(
+        `[AutoUpdate] Download: ${progress.percent.toFixed(1)}% ` +
+          `(${(progress.transferred / 1024 / 1024).toFixed(1)} / ` +
+          `${(progress.total / 1024 / 1024).toFixed(1)} MB)`
       )
+      this.mainWindow.webContents.send('update-download-progress', {
+        percent: Math.round(progress.percent),
+        downloadedMB: Math.round((progress.transferred / (1024 * 1024)) * 10) / 10,
+        totalMB: Math.round((progress.total / (1024 * 1024)) * 10) / 10
+      })
+    })
 
-      if (!asset) {
-        console.log('[AutoUpdate] No diablo4_companion.exe asset found in release')
-        return null
-      }
+    autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
+      console.log(`[AutoUpdate] Update downloaded: v${info.version}`)
+      this.mainWindow.webContents.send('update-downloaded', {
+        version: info.version
+      })
+    })
 
-      console.log(`[AutoUpdate] Update available! ${currentVersion} -> ${tagVersion}`)
-      console.log(`[AutoUpdate] Download URL: ${asset.browser_download_url}`)
+    autoUpdater.on('error', (err) => {
+      console.error('[AutoUpdate] Error:', err.message)
+      // Silent fail — don't bother the user with update errors
+    })
+  }
 
-      return {
-        version: tagVersion,
-        releaseNotes: releaseJson.body || '',
-        downloadUrl: asset.browser_download_url || ''
-      }
+  /**
+   * Checks for available updates on GitHub Releases.
+   * If an update is found, sends 'update-available' to the renderer.
+   * The renderer should call downloadUpdate() if the user agrees.
+   */
+  async checkForUpdates(): Promise<void> {
+    try {
+      console.log(`[AutoUpdate] Current version: v${app.getVersion()}`)
+      await autoUpdater.checkForUpdates()
     } catch (err) {
-      console.error('[AutoUpdate] Check failed with error:', err)
-      return null
+      console.error('[AutoUpdate] Check failed:', err)
+      // Silent fail — app continues normally
     }
   }
 
   /**
-   * Simple semver comparison: returns true if remote > current.
-   * Handles pre-release tags (e.g. 0.2.0-beta.1 < 0.2.0).
+   * Downloads the available update.
+   * Progress is reported via 'update-download-progress' events.
+   * When complete, 'update-downloaded' is sent to the renderer.
    */
-  private isNewer(remote: string, current: string): boolean {
-    const parseVersion = (v: string): { parts: number[]; pre: string } => {
-      const [main, pre = ''] = v.split('-')
-      const parts = main.split('.').map(Number)
-      return { parts, pre }
+  async downloadUpdate(): Promise<void> {
+    try {
+      await autoUpdater.downloadUpdate()
+    } catch (err) {
+      console.error('[AutoUpdate] Download failed:', err)
+      throw err
     }
-
-    const r = parseVersion(remote)
-    const c = parseVersion(current)
-
-    // Compare major.minor.patch
-    for (let i = 0; i < Math.max(r.parts.length, c.parts.length); i++) {
-      const rv = r.parts[i] || 0
-      const cv = c.parts[i] || 0
-      if (rv > cv) return true
-      if (rv < cv) return false
-    }
-
-    // Same version numbers — pre-release < release
-    if (c.pre && !r.pre) return true // current is pre-release, remote is release
-    if (!c.pre && r.pre) return false // current is release, remote is pre-release
-
-    return false // Same version
   }
 
   /**
-   * Fetches JSON from a URL. Follows one redirect.
-   * Returns null on any error.
+   * Quits the app and installs the downloaded update.
+   * The NSIS installer runs silently and relaunches the app.
    */
-  private fetchJson(url: string): Promise<any | null> {
-    return new Promise((resolve) => {
-      const options = {
-        headers: { 'User-Agent': 'Diablo4Companion-Updater' }
-      }
-
-      https
-        .get(url, options, (res: IncomingMessage) => {
-          // Follow one redirect
-          if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
-            this.fetchJson(res.headers.location).then(resolve)
-            return
-          }
-
-          if (res.statusCode !== 200) {
-            resolve(null)
-            return
-          }
-
-          const chunks: Buffer[] = []
-          res.on('data', (chunk: Buffer) => chunks.push(chunk))
-          res.on('end', () => {
-            try {
-              resolve(JSON.parse(Buffer.concat(chunks).toString()))
-            } catch {
-              resolve(null)
-            }
-          })
-        })
-        .on('error', () => resolve(null))
-    })
-  }
-
-  /**
-   * Downloads the update exe to <appDir>/diablo4_companion.exe.update.
-   * Calls onProgress with { percent, downloadedMB, totalMB } during download.
-   */
-  async downloadUpdate(
-    downloadUrl: string,
-    appDir: string,
-    onProgress?: (progress: { percent: number; downloadedMB: number; totalMB: number }) => void
-  ): Promise<string> {
-    const destPath = join(appDir, 'diablo4_companion.exe.update')
-    return this.downloadFile(downloadUrl, destPath, onProgress)
-  }
-
-  /**
-   * Generates the update.bat script that swaps the exe after the current
-   * process exits. Returns the path to the batch file.
-   */
-  generateUpdateScript(appDir: string, currentPid: number): string {
-    const scriptPath = join(appDir, 'update.bat')
-    const exePath = join(appDir, 'diablo4_companion.exe').replace(/\//g, '\\')
-    const updatePath = join(appDir, 'diablo4_companion.exe.update').replace(/\//g, '\\')
-
-    // The batch script:
-    // 1. Waits for the current process to exit (up to 30s)
-    // 2. Pauses 2s for Windows to release the file handle
-    // 3. Retries deleting the old exe up to 10 times (1s apart)
-    // 4. Moves the new exe into place
-    // 5. Launches the new exe
-    // 6. Deletes itself
-    //
-    // All paths are double-quoted to handle spaces in directory names
-    // (e.g., "C:\Users\Chris Lawrence\OneDrive\Desktop\d4 companion\")
-    const script = `@echo off
-set RETRIES=0
-:wait
-tasklist /FI "PID eq ${currentPid}" 2>nul | find "${currentPid}" >nul
-if not errorlevel 1 (
-    set /a RETRIES+=1
-    if %RETRIES% GEQ 30 exit /b 1
-    timeout /t 1 /nobreak >nul
-    goto wait
-)
-timeout /t 2 /nobreak >nul
-set DEL_RETRIES=0
-:trydelete
-del /f /q "${exePath}" 2>nul
-if exist "${exePath}" (
-    set /a DEL_RETRIES+=1
-    if %DEL_RETRIES% GEQ 10 exit /b 1
-    timeout /t 1 /nobreak >nul
-    goto trydelete
-)
-move /y "${updatePath}" "${exePath}"
-start "" "${exePath}"
-del "%~f0"
-`
-    writeFileSync(scriptPath, script, 'utf-8')
-    return scriptPath
-  }
-
-  /**
-   * Downloads a file from a URL, following redirects.
-   * Reports progress via callback.
-   */
-  private downloadFile(
-    url: string,
-    destPath: string,
-    onProgress?: (progress: { percent: number; downloadedMB: number; totalMB: number }) => void
-  ): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const options = {
-        headers: { 'User-Agent': 'Diablo4Companion-Updater' }
-      }
-
-      https
-        .get(url, options, (res: IncomingMessage) => {
-          // Follow redirects (GitHub serves assets via redirect)
-          if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location) {
-            this.downloadFile(res.headers.location, destPath, onProgress)
-              .then(resolve)
-              .catch(reject)
-            return
-          }
-
-          if (res.statusCode !== 200) {
-            reject(new Error(`Download failed with status ${res.statusCode}`))
-            return
-          }
-
-          const totalBytes = parseInt(res.headers['content-length'] || '0', 10)
-          let downloadedBytes = 0
-
-          const file = createWriteStream(destPath)
-          res.on('data', (chunk: Buffer) => {
-            downloadedBytes += chunk.length
-            file.write(chunk)
-            if (onProgress && totalBytes > 0) {
-              onProgress({
-                percent: Math.round((downloadedBytes / totalBytes) * 100),
-                downloadedMB: Math.round((downloadedBytes / (1024 * 1024)) * 10) / 10,
-                totalMB: Math.round((totalBytes / (1024 * 1024)) * 10) / 10
-              })
-            }
-          })
-
-          res.on('end', () => {
-            file.end()
-            resolve(destPath)
-          })
-
-          res.on('error', (err) => {
-            file.end()
-            reject(err)
-          })
-        })
-        .on('error', reject)
-    })
+  installUpdate(): void {
+    autoUpdater.quitAndInstall()
   }
 }

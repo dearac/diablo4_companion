@@ -12,26 +12,24 @@ files:
 asarUnpack:
   - resources/**
 extraResources:
-  - from: build/chromium
-    to: chromium
-    filter:
-      - '**/*'
   - from: sidecar/bin
     to: sidecar/bin
     filter:
       - 'WinOcr.exe'
 win:
   executableName: diablo4-companion
+  requestedExecutionLevel: requireAdministrator
   target:
-    - target: portable
+    - target: nsis
       arch: [x64]
-portable:
-  artifactName: diablo4_companion.${ext}
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
+  oneClick: false
+  perMachine: true
+  allowToChangeInstallationDirectory: true
 mac:
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
