@@ -602,6 +602,18 @@ function setupIpcHandlers(): void {
     return { success: true }
   })
 
+  /** Bulk-set all equipped gear (used for testing / external data import) */
+  ipcMain.handle('set-equipped-gear', (_event, gear: Record<string, unknown>) => {
+    scanService.setEquippedGear(gear as Record<string, import('../shared/types').ScannedGearPiece>)
+    return { success: true }
+  })
+
+  /** Explicitly set the scan mode */
+  ipcMain.handle('set-scan-mode', (_event, mode: import('../shared/types').ScanMode) => {
+    scanService.setScanMode(mode)
+    return scanService.getScanMode()
+  })
+
   /** Get scan history (compare-mode verdicts) */
   ipcMain.handle('get-scan-history', () => {
     return scanService.getScanHistory()

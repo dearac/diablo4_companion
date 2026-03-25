@@ -60,6 +60,11 @@ export class ScanService {
     this.equippedStore.clearAll()
   }
 
+  /** Bulk-replace all equipped gear — used for test mock injection. */
+  setEquippedGear(gear: Record<string, ScannedGearPiece>): void {
+    this.equippedStore.setAll(gear)
+  }
+
   /** Returns all scan history entries (pass-through to ScanHistoryStore). */
   getScanHistory(): ScanHistoryEntry[] {
     return this.scanHistory.getAll()

@@ -72,6 +72,15 @@ export class EquippedGearStore {
     this.save()
   }
 
+  /**
+   * Bulk-replace all equipped gear from an external map.
+   * Useful for test mock injection and data import.
+   */
+  setAll(gear: Record<string, ScannedGearPiece>): void {
+    this.gear = { ...gear }
+    this.save()
+  }
+
   /** Persist current state to disk (no-op in test/in-memory mode). */
   private save(): void {
     if (this.filePath) {
