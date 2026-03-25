@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react'
 import type { ScannedGearPiece, RawBuildData, IGearSlot } from '../../../shared/types'
 import { affixMatches } from '../../../shared/AffixMatcher'
 
+import { computeBuildAnalysis } from '../../../shared/BuildAnalyzer'
+import AffixEditor from './AffixEditor'
+import BuildAnalysisPanel from './BuildAnalysisPanel'
+
 interface EquippedGearTabProps {
   buildData: RawBuildData | null
 }
@@ -34,6 +38,7 @@ function getStatus(pct: number): { label: string; icon: string; cls: string } {
 function EquippedGearTab({ buildData }: EquippedGearTabProps): React.JSX.Element {
   const [equippedGear, setEquippedGear] = useState<Record<string, ScannedGearPiece>>({})
   const [isLoading, setIsLoading] = useState(true)
+  const [editingSlot, setEditingSlot] = useState<string | null>(null)
 
   useEffect(() => {
     window.api
@@ -79,6 +84,12 @@ function EquippedGearTab({ buildData }: EquippedGearTabProps): React.JSX.Element
           🗑️ Clear All
         </button>
       </div>
+
+      {buildData && Object.keys(equippedGear).length > 0 && (
+        <BuildAnalysisPanel
+          analysis={computeBuildAnalysis(equippedGear, buildData.gearSlots)}
+        />
+      )}
 
       <div className="equipped-grid">
         {slotNames.map((slotName) => {
@@ -243,6 +254,28 @@ function EquippedGearTab({ buildData }: EquippedGearTabProps): React.JSX.Element
                   </>
                 )}
               </div>
+
+              <button
+                className="btn btn--outline btn--sm"
+                onClick={() =>
+                  setEditingSlot(editingSlot === slotName ? null : slotName)
+                }
+                style={{ marginTop: '6px', alignSelf: 'flex-start' }}
+              >
+                {editingSlot === slotName ? 'Close' : '✏️ Edit'}
+              </button>
+
+              {editingSlot === slotName && (
+                <AffixEditor
+                  item={equipped}
+                  buildSlot={buildSlot ?? null}
+                  onSave={(updated) => {
+                    setEquippedGear((prev) => ({ ...prev, [slotName]: updated }))
+                    setEditingSlot(null)
+                  }}
+                  onCancel={() => setEditingSlot(null)}
+                />
+              )}
             </div>
           )
         })}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import type { ScanHistoryEntry, RawBuildData, ScanVerdict, ScannedGearPiece } from '../../../shared/types'
+import type { ScanHistoryEntry, RawBuildData, ScanVerdict, ScannedGearPiece, IGearSlot } from '../../../shared/types'
+import AffixEditor from './AffixEditor'
 
 interface ScansTabProps {
   scanHistory: ScanHistoryEntry[]
@@ -28,8 +29,9 @@ const VERDICT_COLORS: Record<string, string> = {
   DOWNGRADE: 'var(--error)'
 }
 
-function ScansTab({ scanHistory, latestScanResult, onClearHistory }: ScansTabProps): React.JSX.Element {
+function ScansTab({ scanHistory, buildData, latestScanResult, onClearHistory }: ScansTabProps): React.JSX.Element {
   const [selectedEntry, setSelectedEntry] = useState<ScanHistoryEntry | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
 
   // Auto-select latest scan result when it arrives
   useEffect(() => {
@@ -92,6 +94,34 @@ function ScansTab({ scanHistory, latestScanResult, onClearHistory }: ScansTabPro
               <span className="badge" style={{ backgroundColor: color }}>{v.verdict}</span>
               {v.greaterAffixCount > 0 && <span className="badge badge--ga">⭐ {v.greaterAffixCount} GA</span>}
             </div>
+
+            <button
+              className="btn btn--outline btn--sm"
+              onClick={() => setIsEditing(!isEditing)}
+              style={{ alignSelf: 'flex-start', marginTop: '8px' }}
+            >
+              {isEditing ? 'Close' : '✏️ Edit'}
+            </button>
+
+            {isEditing && (() => {
+              const buildSlot: IGearSlot | undefined = buildData?.gearSlots.find(gs => gs.slot === item.slot)
+              return (
+                <AffixEditor
+                  item={item}
+                  buildSlot={buildSlot ?? null}
+                  onSave={(_updated, newVerdict) => {
+                    if (selectedEntry && newVerdict) {
+                      setSelectedEntry({
+                        ...selectedEntry,
+                        verdict: newVerdict
+                      })
+                    }
+                    setIsEditing(false)
+                  }}
+                  onCancel={() => setIsEditing(false)}
+                />
+              )
+            })()}
           </div>
           <p className="scan-detail__item-slot">{item.slot} · {item.itemPower} Item Power · {item.itemType}</p>
         </header>

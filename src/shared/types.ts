@@ -6,6 +6,7 @@
 // that crosses the IPC bridge uses these types.
 // ============================================================
 
+
 /**
  * All seven classes in Diablo 4.
  * We use this to identify which class a build belongs to.
