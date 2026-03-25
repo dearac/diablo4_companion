@@ -4,8 +4,8 @@ import type {
   IAffix,
   ScanVerdict,
   CraftingRecommendation
-} from '../../shared/types'
-import { affixMatches } from '../../shared/AffixMatcher'
+} from './types'
+import { affixMatches } from './AffixMatcher'
 
 /**
  * GearComparer is the scoring engine for the scan pipeline.
@@ -117,7 +117,8 @@ function generateEnchantRecommendations(
       removeAffix: expendable[0],
       addAffix: missingAffixes[0],
       vendor: 'Occultist',
-      resultScore: `${missingAffixes.length - 1} remaining missing`
+      resultScore: `${missingAffixes.length - 1} remaining missing`,
+      priority: 100
     }
   ]
 }
@@ -153,7 +154,8 @@ function generateTemperRecommendations(
         removeAffix: null,
         addAffix: temperName,
         vendor: 'Blacksmith',
-        resultScore: 'Temper via manual'
+        resultScore: 'Temper via manual',
+        priority: 80
       })
     }
   }
@@ -177,7 +179,8 @@ function generateSocketRecommendations(socketDelta: number): CraftingRecommendat
       removeAffix: null,
       addAffix: `${needed} socket${needed > 1 ? 's' : ''}`,
       vendor: 'Jeweler',
-      resultScore: `Add ${needed} socket${needed > 1 ? 's' : ''}`
+      resultScore: `Add ${needed} socket${needed > 1 ? 's' : ''}`,
+      priority: 30
     }
   ]
 }
@@ -255,9 +258,13 @@ export function compareGear(
       removeAffix: null,
       addAffix: aspectComparison.expectedAspect,
       vendor: 'Occultist',
-      resultScore: 'Imprint required aspect'
+      resultScore: 'Imprint required aspect',
+      priority: 90
     })
   }
+
+  // Sort recommendations by priority (highest first)
+  recommendations.sort((a, b) => b.priority - a.priority)
 
   // ---- Equipped comparison ----
   let equippedComparison: ScanVerdict['equippedComparison'] = null

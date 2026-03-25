@@ -1,7 +1,7 @@
 import { ScreenCaptureService } from './ScreenCaptureService'
 import { runOcr } from './OcrService'
 import { parseTooltip } from './GearParser'
-import { compareGear } from './GearComparer'
+import { compareGear } from '../../shared/GearComparer'
 import { EquippedGearStore } from './EquippedGearStore'
 import { ScanHistoryStore } from './ScanHistoryStore'
 import { normalizeSlot } from '../../shared/SlotNormalizer'

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { compareGear } from '../../../src/main/services/GearComparer'
+import { compareGear } from '../../../src/shared/GearComparer'
 import type { ScannedGearPiece, IGearSlot } from '../../../src/shared/types'
 
 const makeScanned = (overrides: Partial<ScannedGearPiece> = {}): ScannedGearPiece => ({

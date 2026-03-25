@@ -218,6 +218,7 @@ export interface CraftingRecommendation {
   addAffix: string
   vendor: string
   resultScore: string
+  priority: number
 }
 
 /** The result of comparing a scanned item to the build + equipped gear. */
