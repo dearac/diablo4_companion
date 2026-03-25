@@ -1,13 +1,14 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
+import type { ScannedGearPiece, ScanMode } from '../shared/types'
 
 /**
  * Custom API for Renderer process
  */
 const api = {
-  toggleAlwaysOnTop: () => ipcRenderer.send('toggle-always-on-top'),
+  toggleAlwaysOnTop: (): void => ipcRenderer.send('toggle-always-on-top'),
   onAlwaysOnTopChanged: (callback: (isOnTop: boolean) => void): (() => void) => {
-    const subscription = (_event: any, isOnTop: boolean) => callback(isOnTop)
+    const subscription = (_event: IpcRendererEvent, isOnTop: boolean): void => callback(isOnTop)
     ipcRenderer.on('always-on-top-changed', subscription)
     return () => ipcRenderer.removeListener('always-on-top-changed', subscription)
   },
@@ -15,22 +16,23 @@ const api = {
   setHotkey: (action: string, key: string) => ipcRenderer.invoke('set-hotkey', action, key),
   getHotkeyStatus: () => ipcRenderer.invoke('get-hotkey-status'),
   onHotkeyStatus: (callback: (status: Record<string, boolean>) => void): (() => void) => {
-    const subscription = (_event: any, status: Record<string, boolean>) => callback(status)
+    const subscription = (_event: IpcRendererEvent, status: Record<string, boolean>): void =>
+      callback(status)
     ipcRenderer.on('hotkey-status', subscription)
     return () => ipcRenderer.removeListener('hotkey-status', subscription)
   },
   resetHotkeys: () => ipcRenderer.invoke('reset-hotkeys'),
   onScanStarted: (callback: () => void): (() => void) => {
-    const subscription = (_event: any) => callback()
+    const subscription = (_event: IpcRendererEvent): void => callback() // eslint-disable-line @typescript-eslint/no-unused-vars
     ipcRenderer.on('scan-started', subscription)
     return () => ipcRenderer.removeListener('scan-started', subscription)
   },
   onTriggerReport: (callback: () => void): (() => void) => {
-    const subscription = (_event: any) => callback()
+    const subscription = (_event: IpcRendererEvent): void => callback() // eslint-disable-line @typescript-eslint/no-unused-vars
     ipcRenderer.on('trigger-report', subscription)
     return () => ipcRenderer.removeListener('trigger-report', subscription)
   },
-  quit: () => ipcRenderer.send('quit-app'),
+  quit: (): void => ipcRenderer.send('quit-app'),
 
   // Builds and persistence
   importBuild: (url: string) => ipcRenderer.invoke('import-build', url),
@@ -38,7 +40,10 @@ const api = {
   onImportProgress: (
     callback: (progress: { step: number; totalSteps: number; label: string }) => void
   ): (() => void) => {
-    const subscription = (_event: any, progress: any) => callback(progress)
+    const subscription = (
+      _event: IpcRendererEvent,
+      progress: { step: number; totalSteps: number; label: string }
+    ): void => callback(progress)
     ipcRenderer.on('import-progress', subscription)
     return () => ipcRenderer.removeListener('import-progress', subscription)
   },
@@ -51,44 +56,49 @@ const api = {
   downloadUpdate: () => ipcRenderer.invoke('download-update'),
   installUpdate: () => ipcRenderer.invoke('install-update'),
   onUpdateAvailable: (callback: (info: { version: string }) => void): (() => void) => {
-    const subscription = (_event: any, info: any) => callback(info)
+    const subscription = (_event: IpcRendererEvent, info: { version: string }): void =>
+      callback(info)
     ipcRenderer.on('update-available', subscription)
     return () => ipcRenderer.removeListener('update-available', subscription)
   },
   onUpdateProgress: (
     callback: (progress: { percent: number; downloadedMB: number; totalMB: number }) => void
   ): (() => void) => {
-    const subscription = (_event: any, progress: any) => callback(progress)
+    const subscription = (
+      _event: IpcRendererEvent,
+      progress: { percent: number; downloadedMB: number; totalMB: number }
+    ): void => callback(progress)
     ipcRenderer.on('update-download-progress', subscription)
     return () => ipcRenderer.removeListener('update-download-progress', subscription)
   },
   onUpdateDownloaded: (callback: () => void): (() => void) => {
-    const subscription = (_event: any) => callback()
+    const subscription = (_event: IpcRendererEvent): void => callback() // eslint-disable-line @typescript-eslint/no-unused-vars
     ipcRenderer.on('update-downloaded', subscription)
     return () => ipcRenderer.removeListener('update-downloaded', subscription)
   },
   onUpdateStarted: (callback: () => void): (() => void) => {
-    const subscription = (_event: any) => callback()
+    const subscription = (_event: IpcRendererEvent): void => callback() // eslint-disable-line @typescript-eslint/no-unused-vars
     ipcRenderer.on('update-started', subscription)
     return () => ipcRenderer.removeListener('update-started', subscription)
   },
 
   // Scan pipeline and results
   performScan: () => ipcRenderer.invoke('perform-scan'),
-  onScanResult: (callback: (result: any) => void): (() => void) => {
-    const subscription = (_event: any, result: any) => callback(result)
+  onScanResult: (callback: (result: unknown) => void): (() => void) => {
+    const subscription = (_event: IpcRendererEvent, result: unknown): void => callback(result)
     ipcRenderer.on('scan-result', subscription)
     return () => ipcRenderer.removeListener('scan-result', subscription)
   },
   getScanHistory: () => ipcRenderer.invoke('get-scan-history'),
   clearScanHistory: () => ipcRenderer.invoke('clear-scan-history'),
   getEquippedGear: () => ipcRenderer.invoke('get-equipped-gear'),
-  setEquippedGear: (gear: any) => ipcRenderer.invoke('set-equipped-gear', gear),
+  setEquippedGear: (gear: Record<string, ScannedGearPiece>) =>
+    ipcRenderer.invoke('set-equipped-gear', gear),
   getScanMode: () => ipcRenderer.invoke('get-scan-mode'),
-  setScanMode: (mode: any) => ipcRenderer.invoke('set-scan-mode', mode),
+  setScanMode: (mode: ScanMode) => ipcRenderer.invoke('set-scan-mode', mode),
   toggleScanMode: () => ipcRenderer.invoke('toggle-scan-mode'),
   onLaunchOverlay: (callback: () => void): (() => void) => {
-    const subscription = (_event: any) => callback()
+    const subscription = (_event: IpcRendererEvent): void => callback() // eslint-disable-line @typescript-eslint/no-unused-vars
     ipcRenderer.on('launch-overlay', subscription)
     return () => ipcRenderer.removeListener('launch-overlay', subscription)
   },

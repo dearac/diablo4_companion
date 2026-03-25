@@ -21,7 +21,7 @@ function UpdateBanner(): React.JSX.Element | null {
       setVersion(info.version || 'New Version')
       setStatus('available')
     })
-    
+
     const removeStarted = window.api.onUpdateStarted(() => {
       setStatus('downloading')
     })
@@ -67,13 +67,14 @@ function UpdateBanner(): React.JSX.Element | null {
       {status === 'downloading' && (
         <>
           <div className="update-banner__progress-track">
-            <div 
-              className="update-banner__progress-fill" 
-              style={{ width: `${progress.percent}%` }} 
+            <div
+              className="update-banner__progress-fill"
+              style={{ width: `${progress.percent}%` }}
             />
           </div>
           <span className="update-banner__text">
-            Downloading update… {progress.percent.toFixed(1)}% ({progress.downloadedMB.toFixed(1)}/{progress.totalMB.toFixed(1)} MB)
+            Downloading update… {progress.percent.toFixed(1)}% ({progress.downloadedMB.toFixed(1)}/
+            {progress.totalMB.toFixed(1)} MB)
           </span>
         </>
       )}
