@@ -32,9 +32,13 @@ declare global {
       loadBuild: (id: string) => Promise<SavedBuild>
       deleteBuild: (id: string) => Promise<boolean>
       getUpdateStatus: () => Promise<Record<string, unknown>>
+      downloadUpdate: () => Promise<void>
+      installUpdate: () => Promise<void>
+      onUpdateAvailable: (callback: (info: { version: string }) => void) => () => void
       onUpdateProgress: (
         callback: (progress: { percent: number; downloadedMB: number; totalMB: number }) => void
       ) => () => void
+      onUpdateDownloaded: (callback: () => void) => () => void
       onUpdateStarted: (callback: () => void) => () => void
       // Scan pipeline
       performScan: () => Promise<{

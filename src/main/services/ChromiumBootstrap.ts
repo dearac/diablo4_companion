@@ -1,4 +1,4 @@
-import { join } from 'path'
+import { join, dirname } from 'path'
 import { existsSync, mkdirSync, readdirSync } from 'fs'
 import { execFile } from 'child_process'
 import { is } from '@electron-toolkit/utils'
@@ -119,9 +119,12 @@ export class ChromiumBootstrap {
       for (const entry of entries) {
         if (!entry.startsWith('chromium-')) continue
 
-        // Playwright structure: chromium-<rev>/chrome-win/chrome.exe
-        const chromeWin = join(this.chromiumDir, entry, 'chrome-win', 'chrome.exe')
-        if (existsSync(chromeWin)) return chromeWin
+        // Playwright structure: chromium-<rev>/chrome-win64/chrome.exe (or chrome-win)
+        const possibleSubdirs = ['chrome-win64', 'chrome-win', 'chrome-win32']
+        for (const subdir of possibleSubdirs) {
+          const chromeWin = join(this.chromiumDir, entry, subdir, 'chrome.exe')
+          if (existsSync(chromeWin)) return chromeWin
+        }
 
         // Alternative: chromium-<rev>/chrome.exe
         const directInVersion = join(this.chromiumDir, entry, 'chrome.exe')
@@ -154,7 +157,8 @@ export class ChromiumBootstrap {
 
       const env = {
         ...process.env,
-        PLAYWRIGHT_BROWSERS_PATH: this.chromiumDir
+        PLAYWRIGHT_BROWSERS_PATH: this.chromiumDir,
+        ELECTRON_RUN_AS_NODE: '1'
       }
 
       const child = execFile(
@@ -189,12 +193,14 @@ export class ChromiumBootstrap {
    */
   private resolvePlaywrightCli(): string {
     try {
-      // Resolve from the app's node_modules
-      return require.resolve('playwright/cli')
+      // Resolve using package.json since the cli subpath isn't exported in newer Playwright versions
+      const pkgPath = require.resolve('playwright/package.json')
+      return join(dirname(pkgPath), 'cli.js')
     } catch {
       // Fallback: try playwright-core
       try {
-        return require.resolve('playwright-core/cli')
+        const corePkgPath = require.resolve('playwright-core/package.json')
+        return join(dirname(corePkgPath), 'cli.js')
       } catch {
         throw new Error('Playwright CLI not found. Ensure playwright is installed as a dependency.')
       }
