@@ -91,6 +91,8 @@ const api = {
   },
   getScanHistory: () => ipcRenderer.invoke('get-scan-history'),
   clearScanHistory: () => ipcRenderer.invoke('clear-scan-history'),
+  updateScanHistoryEntry: (scannedAt: number, updatedItem: ScannedGearPiece) =>
+    ipcRenderer.invoke('scan:update-entry', scannedAt, updatedItem),
   getEquippedGear: () => ipcRenderer.invoke('get-equipped-gear'),
   setEquippedGear: (gear: Record<string, ScannedGearPiece>) =>
     ipcRenderer.invoke('set-equipped-gear', gear),

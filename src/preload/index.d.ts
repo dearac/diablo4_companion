@@ -50,6 +50,10 @@ declare global {
       onScanResult: (callback: (result: ScanResult) => void) => () => void
       getScanHistory: () => Promise<ScanHistoryEntry[]>
       clearScanHistory: () => Promise<void>
+      updateScanHistoryEntry: (
+        scannedAt: number,
+        updatedItem: ScannedGearPiece
+      ) => Promise<{ success: boolean }>
       getEquippedGear: () => Promise<Record<string, ScannedGearPiece>>
       setEquippedGear: (gear: Record<string, ScannedGearPiece>) => Promise<void>
       getScanMode: () => Promise<ScanMode>

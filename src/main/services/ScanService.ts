@@ -76,6 +76,17 @@ export class ScanService {
   }
 
   /**
+   * Updates a scan history entry's scannedItem in-place (pass-through to ScanHistoryStore).
+   * Enables the inline affix tag editor to re-classify affixes without re-scanning.
+   */
+  updateScanHistoryEntry(
+    scannedAt: number,
+    updatedItem: import('../../shared/types').ScannedGearPiece
+  ): boolean {
+    return this.scanHistory.updateEntry(scannedAt, updatedItem)
+  }
+
+  /**
    * Executes the full scan pipeline.
    *
    * @param buildData - The currently loaded build (needed for compare mode)

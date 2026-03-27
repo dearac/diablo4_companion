@@ -626,6 +626,23 @@ function setupIpcHandlers(): void {
     return { success: true }
   })
 
+  /**
+   * Update a scan history entry's scannedItem in-place.
+   * Called when the user reclassifies an affix via the AffixTagPopover
+   * so changes persist across tab switches without re-scanning.
+   */
+  ipcMain.handle(
+    'scan:update-entry',
+    (
+      _event,
+      scannedAt: number,
+      updatedItem: import('../shared/types').ScannedGearPiece
+    ) => {
+      const updated = scanService.updateScanHistoryEntry(scannedAt, updatedItem)
+      return { success: updated }
+    }
+  )
+
   // ---- Paragon Detach IPC ----
 
   /** Open a detach window showing a single paragon board */

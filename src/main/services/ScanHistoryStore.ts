@@ -51,6 +51,28 @@ export class ScanHistoryStore {
     this.save()
   }
 
+  /**
+   * Update an existing entry's scannedItem in-place.
+   *
+   * Used by the Scan Tab's inline affix tag editor so the user can
+   * reclassify affixes and re-run the perfectibility pipeline without
+   * re-scanning the item.
+   *
+   * @param scannedAt - The Date.now() timestamp key that uniquely identifies the entry
+   * @param updatedItem - The updated ScannedGearPiece to replace the original
+   * @returns true if an entry was found and updated, false otherwise
+   */
+  updateEntry(
+    scannedAt: number,
+    updatedItem: import('../../shared/types').ScannedGearPiece
+  ): boolean {
+    const entry = this.entries.find((e) => e.scannedAt === scannedAt)
+    if (!entry) return false
+    entry.verdict.scannedItem = updatedItem
+    this.save()
+    return true
+  }
+
   /** Get count of non-expired entries. */
   count(): number {
     return this.getAll().length
