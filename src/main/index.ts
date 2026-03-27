@@ -901,25 +901,25 @@ app.whenReady().then(async () => {
   // Does NOT auto-download — sends 'update-available' to the renderer,
   // which prompts the user before downloading.
   // Defer check so the window finishes rendering first.
+  const updater = new AutoUpdateService(mainWindow!)
+
+  // IPC: renderer requests update status (on mount)
+  ipcMain.handle('get-update-status', () => {
+    updater.checkForUpdates()
+    return { version: app.getVersion() }
+  })
+
+  // IPC: renderer requests download after user approves
+  ipcMain.handle('download-update', async () => {
+    await updater.downloadUpdate()
+  })
+
+  // IPC: renderer requests install (quit + install)
+  ipcMain.on('install-update', () => {
+    updater.installUpdate()
+  })
+
   setTimeout(() => {
-    const updater = new AutoUpdateService(mainWindow!)
-
-    // IPC: renderer requests update status (on mount)
-    ipcMain.handle('get-update-status', () => {
-      updater.checkForUpdates()
-      return { version: app.getVersion() }
-    })
-
-    // IPC: renderer requests download after user approves
-    ipcMain.handle('download-update', async () => {
-      await updater.downloadUpdate()
-    })
-
-    // IPC: renderer requests install (quit + install)
-    ipcMain.on('install-update', () => {
-      updater.installUpdate()
-    })
-
     updater.checkForUpdates()
   }, 3000)
 })
