@@ -2361,4 +2361,278 @@
 .build-analysis__action-vendor {
   color: var(--text-dim);
   font-style: italic;
-}
+}
+
+/* ============================================================
+   AFFIX TAG POPOVER — Inline affix reclassification
+   ============================================================ */
+
+.affix-tag-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  cursor: default;
+  transition: var(--transition-fast);
+  position: relative;
+}
+
+.affix-tag-row:hover {
+  border-color: var(--border-hover);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.affix-tag-row__match-icon {
+  font-size: 12px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.affix-tag-row__text {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.affix-tag-pill {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 1px solid;
+  background: transparent;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.affix-tag-pill:hover {
+  opacity: 0.8;
+  transform: scale(1.05);
+}
+
+.affix-tag-popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 100;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hover);
+  border-radius: 6px;
+  padding: 8px;
+  min-width: 160px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  animation: fadeIn 0.1s ease;
+}
+
+.affix-tag-popover__label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  padding: 4px 6px 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+
+.affix-tag-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: var(--transition-fast);
+  text-align: left;
+  width: 100%;
+}
+
+.affix-tag-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--tag-color, var(--border));
+  color: var(--tag-color, var(--text-primary));
+}
+
+.affix-tag-btn--active {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--tag-color, var(--border));
+  color: var(--tag-color, var(--text-primary));
+}
+
+.affix-tag-btn__icon {
+  width: 20px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.affix-tag-btn__label {
+  flex: 1;
+  font-weight: 600;
+}
+
+/* ============================================================
+   PERFECTIBILITY BANNER — Full-width verdict display
+   ============================================================ */
+
+.perfectibility-banner {
+  border-radius: 6px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  border: 1px solid transparent;
+  animation: fadeIn 0.2s ease;
+}
+
+.perfectibility-banner--perfectible {
+  background: rgba(74, 222, 128, 0.08);
+  border-color: rgba(74, 222, 128, 0.4);
+}
+
+.perfectibility-banner--risky {
+  background: rgba(251, 191, 36, 0.08);
+  border-color: rgba(251, 191, 36, 0.4);
+}
+
+.perfectibility-banner--not-perfectible {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.perfectibility-banner__icon {
+  font-size: 24px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.perfectibility-banner__body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.perfectibility-banner__verdict {
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.perfectibility-banner--perfectible .perfectibility-banner__verdict { color: var(--success); }
+.perfectibility-banner--risky .perfectibility-banner__verdict { color: var(--warning); }
+.perfectibility-banner--not-perfectible .perfectibility-banner__verdict { color: var(--error); }
+
+.perfectibility-banner__reason {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ============================================================
+   ROAD TO PERFECT — Step-by-step checklist
+   ============================================================ */
+
+.road-to-perfect {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.road-to-perfect__title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.road-to-perfect__step {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  transition: var(--transition-fast);
+}
+
+.road-to-perfect__step:last-child {
+  border-bottom: none;
+}
+
+.road-to-perfect__step-status {
+  font-size: 14px;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.road-to-perfect__step-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.road-to-perfect__step-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-heading);
+}
+
+.road-to-perfect__step-action {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.road-to-perfect__step--skipped .road-to-perfect__step-name {
+  color: var(--text-dim);
+}
+
+/* ============================================================
+   SCAN AFFIX GRID — Clickable affix cards section
+   ============================================================ */
+
+.scan-affix-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.scan-affix-grid__title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
