@@ -253,3 +253,36 @@ export interface ScanHistoryEntry {
 
 /** The category of an affix on a piece of gear. */
 export type AffixType = 'regular' | 'tempered' | 'greater' | 'implicit'
+
+// ============================================================
+// PERFECTIBILITY — S12 gear evaluation pipeline results
+// ============================================================
+
+/** Perfectibility verdict for a scanned gear piece. */
+export type PerfectibilityVerdict = 'PERFECTIBLE' | 'RISKY' | 'NOT_PERFECTIBLE'
+
+/** Result of one evaluation step in the perfectibility pipeline. */
+export interface PerfectibilityStep {
+  name: string
+  passed: boolean
+  skipped: boolean
+  reason: string
+  action: string | null
+}
+
+/** Full result from the 4-step perfectibility pipeline. */
+export interface PerfectibilityResult {
+  overallVerdict: PerfectibilityVerdict
+  overallReason: string
+  steps: {
+    bloodied: PerfectibilityStep
+    baseAffixes: PerfectibilityStep & {
+      matchCount: number
+      totalBase: number
+      rerollTarget: string | null
+      rerollReplacement: string | null
+    }
+    greaterAffixes: PerfectibilityStep & { missingGA: string[] }
+    tempering: PerfectibilityStep & { missingTempers: string[] }
+  }
+}
