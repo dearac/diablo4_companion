@@ -904,6 +904,12 @@ app.whenReady().then(async () => {
   setTimeout(() => {
     const updater = new AutoUpdateService(mainWindow!)
 
+    // IPC: renderer requests update status (on mount)
+    ipcMain.handle('get-update-status', () => {
+      updater.checkForUpdates()
+      return { version: app.getVersion() }
+    })
+
     // IPC: renderer requests download after user approves
     ipcMain.handle('download-update', async () => {
       await updater.downloadUpdate()
