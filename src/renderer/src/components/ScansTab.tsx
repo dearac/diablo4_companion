@@ -1,6 +1,14 @@
-import { useState, useEffect } from 'react'
-import type { ScanHistoryEntry, RawBuildData, ScanVerdict, ScannedGearPiece, IGearSlot } from '../../../shared/types'
-import AffixEditor from './AffixEditor'
+import { useState, useEffect, useCallback } from 'react'
+import type {
+  ScanHistoryEntry,
+  RawBuildData,
+  ScanVerdict,
+  ScannedGearPiece,
+  AffixType,
+  PerfectibilityResult
+} from '../../../shared/types'
+import { evaluatePerfectibility } from '../../../shared/PerfectibilityEngine'
+import AffixTagPopover from './AffixTagPopover'
 
 interface ScansTabProps {
   scanHistory: ScanHistoryEntry[]
@@ -29,15 +37,89 @@ const VERDICT_COLORS: Record<string, string> = {
   DOWNGRADE: 'var(--error)'
 }
 
+const PERFECTIBILITY_ICONS: Record<string, string> = {
+  PERFECTIBLE: '✨',
+  RISKY: '⚠️',
+  NOT_PERFECTIBLE: '🚫'
+}
+
+const PERFECTIBILITY_LABELS: Record<string, string> = {
+  PERFECTIBLE: 'Can Be Perfected',
+  RISKY: 'Risky — Needs Work',
+  NOT_PERFECTIBLE: 'Not Perfectible'
+}
+
+/** Determine match status of an affix against a verdict's matched list. */
+function getMatchStatus(affixText: string, matchedAffixes: string[]): 'match' | 'miss' {
+  return matchedAffixes.some(
+    (m) => m.toLowerCase() === affixText.toLowerCase() || affixText.toLowerCase().includes(m.toLowerCase())
+  )
+    ? 'match'
+    : 'miss'
+}
+
+/** Determine AffixType from which sub-array the affix came from. */
+function getAffixType(
+  affixText: string,
+  item: ScannedGearPiece
+): AffixType {
+  if (item.greaterAffixes.includes(affixText)) return 'greater'
+  if (item.temperedAffixes.includes(affixText)) return 'tempered'
+  if (item.implicitAffixes.includes(affixText)) return 'implicit'
+  return 'regular'
+}
+
+/**
+ * Mutate a ScannedGearPiece to move an affix from its current pool to the new type's pool.
+ * Returns a new ScannedGearPiece without mutating the original.
+ */
+function reclassifyAffix(
+  item: ScannedGearPiece,
+  affixText: string,
+  newType: AffixType
+): ScannedGearPiece {
+  // Remove from all pools
+  const filtered = {
+    affixes: item.affixes.filter((a) => a !== affixText),
+    temperedAffixes: item.temperedAffixes.filter((a) => a !== affixText),
+    greaterAffixes: item.greaterAffixes.filter((a) => a !== affixText),
+    implicitAffixes: item.implicitAffixes.filter((a) => a !== affixText)
+  }
+
+  // Add to new pool
+  const updated: ScannedGearPiece = {
+    ...item,
+    ...filtered
+  }
+
+  switch (newType) {
+    case 'greater':
+      updated.greaterAffixes = [...filtered.greaterAffixes, affixText]
+      break
+    case 'tempered':
+      updated.temperedAffixes = [...filtered.temperedAffixes, affixText]
+      break
+    case 'implicit':
+      updated.implicitAffixes = [...filtered.implicitAffixes, affixText]
+      break
+    case 'regular':
+    default:
+      updated.affixes = [...filtered.affixes, affixText]
+  }
+
+  return updated
+}
+
 function ScansTab({ scanHistory, buildData, latestScanResult, onClearHistory }: ScansTabProps): React.JSX.Element {
   const [selectedEntry, setSelectedEntry] = useState<ScanHistoryEntry | null>(null)
-  const [isEditing, setIsEditing] = useState(false)
+  // Local item state for inline tag editing (doesn't require re-scan)
+  const [localItem, setLocalItem] = useState<ScannedGearPiece | null>(null)
+  const [perfResult, setPerfResult] = useState<PerfectibilityResult | null>(null)
 
   // Auto-select latest scan result when it arrives
   useEffect(() => {
     if (latestScanResult?.verdict) {
-      // Find the entry in history (it should be at the top)
-      const entry = scanHistory.find(e => e.scannedAt === scanHistory[0]?.scannedAt)
+      const entry = scanHistory.find((e) => e.scannedAt === scanHistory[0]?.scannedAt)
       if (entry) setSelectedEntry(entry)
     }
   }, [latestScanResult, scanHistory])
@@ -49,6 +131,46 @@ function ScansTab({ scanHistory, buildData, latestScanResult, onClearHistory }: 
     }
   }, [scanHistory, selectedEntry])
 
+  // Sync localItem whenever selectedEntry changes
+  useEffect(() => {
+    if (selectedEntry) {
+      setLocalItem({ ...selectedEntry.verdict.scannedItem })
+    } else {
+      setLocalItem(null)
+    }
+  }, [selectedEntry])
+
+  // Recompute perfectibility whenever localItem or buildData changes
+  useEffect(() => {
+    if (!localItem || !buildData) {
+      setPerfResult(null)
+      return
+    }
+    const buildSlot = buildData.gearSlots.find(
+      (gs) => gs.slot.toLowerCase() === localItem.slot.toLowerCase()
+    )
+    if (!buildSlot) {
+      setPerfResult(null)
+      return
+    }
+    setPerfResult(evaluatePerfectibility(localItem, buildSlot))
+  }, [localItem, buildData])
+
+  const handleTagChange = useCallback(
+    async (affixText: string, newType: AffixType) => {
+      if (!localItem || !selectedEntry) return
+      const updated = reclassifyAffix(localItem, affixText, newType)
+      setLocalItem(updated)
+      // Persist to disk (fire-and-forget — UI is already updated optimistically)
+      try {
+        await window.api.updateScanHistoryEntry(selectedEntry.scannedAt, updated)
+      } catch (err) {
+        console.error('[ScansTab] Failed to persist tag change:', err)
+      }
+    },
+    [localItem, selectedEntry]
+  )
+
   const renderInboxItem = (entry: ScanHistoryEntry): React.JSX.Element => {
     const v = entry.verdict
     const item = v.scannedItem
@@ -56,7 +178,7 @@ function ScansTab({ scanHistory, buildData, latestScanResult, onClearHistory }: 
     const color = VERDICT_COLORS[v.verdict] || 'var(--text-dim)'
 
     return (
-      <div 
+      <div
         key={entry.scannedAt}
         className={`scan-inbox__item ${isSelected ? 'scan-inbox__item--active' : ''}`}
         onClick={() => setSelectedEntry(entry)}
@@ -77,126 +199,145 @@ function ScansTab({ scanHistory, buildData, latestScanResult, onClearHistory }: 
     )
   }
 
-  const renderComparison = (): React.JSX.Element => {
-    if (!selectedEntry) return <div className="scan-detail--empty">Select a scan to view details</div>
+  const renderDetail = (): React.JSX.Element => {
+    if (!selectedEntry || !localItem) {
+      return <div className="scan-detail--empty">Select a scan to view details</div>
+    }
 
     const v = selectedEntry.verdict
-    const item = v.scannedItem
-    const equipped = v.equippedComparison
     const color = VERDICT_COLORS[v.verdict] || 'var(--text-dim)'
+
+    // All affixes for the tag grid (excluding implicits which aren't really user-taggable)
+    const allAffixes = [
+      ...localItem.affixes,
+      ...localItem.temperedAffixes,
+      ...localItem.greaterAffixes
+    ]
+
+    // Perfectibility banner class
+    const bannerClass = perfResult
+      ? `perfectibility-banner--${perfResult.overallVerdict.toLowerCase().replace('_', '-')}`
+      : ''
 
     return (
       <div className="scan-detail">
+        {/* ── Header ── */}
         <header className="scan-detail__header">
           <div className="scan-detail__title-group">
-            <h2 className="scan-detail__item-name" style={{ color }}>{item.itemName}</h2>
+            <h2 className="scan-detail__item-name" style={{ color }}>{localItem.itemName}</h2>
             <div className="scan-detail__badge-group">
               <span className="badge" style={{ backgroundColor: color }}>{v.verdict}</span>
-              {v.greaterAffixCount > 0 && <span className="badge badge--ga">⭐ {v.greaterAffixCount} GA</span>}
+              {localItem.greaterAffixes.length > 0 && (
+                <span className="badge badge--ga">⭐ {localItem.greaterAffixes.length} GA</span>
+              )}
             </div>
-
-            <button
-              className="btn btn--outline btn--sm"
-              onClick={() => setIsEditing(!isEditing)}
-              style={{ alignSelf: 'flex-start', marginTop: '8px' }}
-            >
-              {isEditing ? 'Close' : '✏️ Edit'}
-            </button>
-
-            {isEditing && (() => {
-              const buildSlot: IGearSlot | undefined = buildData?.gearSlots.find(gs => gs.slot === item.slot)
-              return (
-                <AffixEditor
-                  item={item}
-                  buildSlot={buildSlot ?? null}
-                  onSave={(_updated, newVerdict) => {
-                    if (selectedEntry && newVerdict) {
-                      setSelectedEntry({
-                        ...selectedEntry,
-                        verdict: newVerdict
-                      })
-                    }
-                    setIsEditing(false)
-                  }}
-                  onCancel={() => setIsEditing(false)}
-                />
-              )
-            })()}
           </div>
-          <p className="scan-detail__item-slot">{item.slot} · {item.itemPower} Item Power · {item.itemType}</p>
+          <p className="scan-detail__item-slot">
+            {localItem.slot} · {localItem.itemPower} Item Power · {localItem.itemType}
+          </p>
         </header>
 
-        <div className="scan-detail__comparison">
-          {/* Scanned Item Column */}
-          <div className="scan-detail__column">
-            <h3 className="scan-detail__column-title">Scanned Item</h3>
-            <div className="scan-detail__affix-list">
-              {v.matchedAffixes.map(a => (
-                <div key={a} className="scan-detail__affix scan-detail__affix--match">
-                  <span className="scan-detail__affix-icon">✅</span> {a}
-                </div>
-              ))}
-              {v.missingAffixes.map(a => (
-                <div key={a} className="scan-detail__affix scan-detail__affix--miss">
-                  <span className="scan-detail__affix-icon">❌</span> {a}
-                </div>
-              ))}
+        {/* ── Section 1: Perfectibility Banner ── */}
+        {perfResult ? (
+          <div className={`perfectibility-banner ${bannerClass}`}>
+            <span className="perfectibility-banner__icon">
+              {PERFECTIBILITY_ICONS[perfResult.overallVerdict]}
+            </span>
+            <div className="perfectibility-banner__body">
+              <span className="perfectibility-banner__verdict">
+                {PERFECTIBILITY_LABELS[perfResult.overallVerdict]}
+              </span>
+              <span className="perfectibility-banner__reason">{perfResult.overallReason}</span>
             </div>
-            
-            {v.aspectComparison && (
-              <div className={`scan-detail__aspect ${v.aspectComparison.hasMatch ? 'scan-detail__aspect--match' : 'scan-detail__aspect--miss'}`}>
-                <span className="scan-detail__aspect-icon">{v.aspectComparison.hasMatch ? '✅' : '❌'}</span>
-                <span className="scan-detail__aspect-label">Aspect: {v.aspectComparison.expectedAspect}</span>
-              </div>
-            )}
           </div>
-
-          {/* Equipped Comparison Column */}
-          <div className="scan-detail__column scan-detail__column--equipped">
-            <h3 className="scan-detail__column-title">Equipped Comparison</h3>
-            {equipped ? (
-              <div className="scan-detail__equipped-info">
-                <div className={`scan-detail__upgrade-badge ${equipped.isUpgrade ? 'scan-detail__upgrade-badge--up' : 'scan-detail__upgrade-badge--down'}`}>
-                  {equipped.isUpgrade ? '⬆️ UPGRADE' : '⬇️ DOWNGRADE'}
-                </div>
-                <div className="scan-detail__equipped-stats">
-                  <div className="scan-detail__stat-row">
-                    <span>Equipped Score</span>
-                    <span>{equipped.equippedMatchCount}/{v.buildTotalExpected}</span>
-                  </div>
-                  <div className="scan-detail__stat-row">
-                    <span>Scanned Score</span>
-                    <span>{v.buildMatchCount}/{v.buildTotalExpected}</span>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <p className="scan-detail--empty">No equipped item data found for this slot.</p>
-            )}
-
-            {v.recommendations.length > 0 && (
-              <div className="scan-detail__recommendations">
-                <h4 className="scan-detail__recs-title">Recommendations</h4>
-                {v.recommendations.map((rec, i) => (
-                  <div key={i} className="scan-detail__rec">
-                    <span className="scan-detail__rec-icon">
-                      {rec.action === 'enchant' ? '🔧' : rec.action === 'temper' ? '⚒️' : rec.action === 'aspect' ? '🔮' : '💎'}
-                    </span>
-                    <div className="scan-detail__rec-content">
-                      <span className="scan-detail__rec-action">
-                        {rec.action === 'enchant' ? 'Reroll' : rec.action === 'temper' ? 'Add' : rec.action === 'aspect' ? 'Imprint' : 'Add Socket'}
-                      </span>
-                      <span className="scan-detail__rec-text">
-                        {rec.action === 'enchant' ? `"${rec.removeAffix}" → "${rec.addAffix}"` : rec.addAffix}
-                      </span>
-                      <span className="scan-detail__rec-vendor">{rec.vendor}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+        ) : (
+          <div className="perfectibility-banner perfectibility-banner--not-perfectible">
+            <span className="perfectibility-banner__icon">ℹ️</span>
+            <div className="perfectibility-banner__body">
+              <span className="perfectibility-banner__verdict">No Build Loaded</span>
+              <span className="perfectibility-banner__reason">
+                Load a build to see perfectibility analysis.
+              </span>
+            </div>
           </div>
+        )}
+
+        {/* ── Section 2: Clickable Affix Grid ── */}
+        <div className="scan-affix-grid">
+          <div className="scan-affix-grid__title">Affixes — Click to Reclassify</div>
+          {allAffixes.length === 0 && (
+            <p style={{ color: 'var(--text-dim)', fontSize: '12px' }}>No affixes detected.</p>
+          )}
+          {allAffixes.map((affixText, idx) => {
+            const currentType = getAffixType(affixText, localItem)
+            const matchStatus = getMatchStatus(affixText, v.matchedAffixes)
+            return (
+              <AffixTagPopover
+                key={`${affixText}-${idx}`}
+                affixText={affixText}
+                currentType={currentType}
+                matchStatus={matchStatus}
+                onTag={(newType) => handleTagChange(affixText, newType)}
+              />
+            )
+          })}
         </div>
+
+        {/* ── Section 3: Road to Perfect Checklist ── */}
+        {perfResult && (
+          <div className="road-to-perfect">
+            <div className="road-to-perfect__title">Road to Perfect</div>
+
+            {Object.entries(perfResult.steps).map(([key, step]) => {
+              const statusIcon = step.skipped ? '⏭️' : step.passed ? '✅' : '🔴'
+              return (
+                <div
+                  key={key}
+                  className={`road-to-perfect__step ${step.skipped ? 'road-to-perfect__step--skipped' : ''}`}
+                >
+                  <span className="road-to-perfect__step-status">{statusIcon}</span>
+                  <div className="road-to-perfect__step-body">
+                    <span className="road-to-perfect__step-name">{step.name}</span>
+                    {!step.skipped && step.action && (
+                      <span className="road-to-perfect__step-action">{step.action}</span>
+                    )}
+                    {step.skipped && (
+                      <span className="road-to-perfect__step-action">{step.reason}</span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* ── Equipped Comparison (preserved) ── */}
+        {v.equippedComparison && (
+          <div className="scan-card">
+            <div className="scan-card__title">Equipped Comparison</div>
+            <div className="scan-detail__equipped-info">
+              <div
+                className={`scan-detail__upgrade-badge ${
+                  v.equippedComparison.isUpgrade
+                    ? 'scan-detail__upgrade-badge--up'
+                    : 'scan-detail__upgrade-badge--down'
+                }`}
+              >
+                {v.equippedComparison.isUpgrade ? '⬆️ UPGRADE' : '⬇️ DOWNGRADE'}
+              </div>
+              <div className="scan-detail__equipped-stats">
+                <div className="scan-detail__stat-row">
+                  <span>Equipped Score</span>
+                  <span>{v.equippedComparison.equippedMatchCount}/{v.buildTotalExpected}</span>
+                </div>
+                <div className="scan-detail__stat-row">
+                  <span>Scanned Score</span>
+                  <span>{v.buildMatchCount}/{v.buildTotalExpected}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
@@ -214,7 +355,7 @@ function ScansTab({ scanHistory, buildData, latestScanResult, onClearHistory }: 
         </div>
       </div>
       <div className="scan-detail-view">
-        {renderComparison()}
+        {renderDetail()}
       </div>
     </div>
   )
