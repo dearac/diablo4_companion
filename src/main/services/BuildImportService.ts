@@ -1,99 +1,44 @@
 import type { BuildSourceSite } from '../../shared/types'
-import type { BuildScraper, RawBuildData, ImportProgressCallback } from '../scrapers/BuildScraper'
+import type { RawBuildData, ImportProgressCallback } from '../scrapers/BuildScraper'
+import { D4BuildsScraper } from '../scrapers/D4BuildsScraper'
 
-// ============================================================
-// BuildImportService — The orchestrator for build imports
-// ============================================================
-// When a user pastes a build URL, this service figures out which
-// website it's from (URL routing), hands it to the correct scraper,
-// and returns the normalized build data.
-//
-// Think of it like a mail sorter: it looks at the "address" (URL)
-// and sends the "letter" (scrape request) to the right "department"
-// (site scraper).
-// ============================================================
+/** The singleton scraper instance (lazy-initialized) */
+let scraper: D4BuildsScraper | null = null
+
+/** Initializes the scraper with a cache directory. Must be called at startup. */
+export function initBuildImport(cacheDir?: string): void {
+  scraper = new D4BuildsScraper(cacheDir)
+}
+
+/** Clears the paragon cache (call after game patches). */
+export function clearParagonCache(): void {
+  scraper?.clearCache()
+}
 
 /**
- * Manages the build import process.
- *
- * Holds a list of all available scrapers and routes incoming URLs
- * to the correct one.
+ * Detects which site a URL belongs to.
+ * @throws Error if URL isn't from a supported site
  */
-export class BuildImportService {
-  /** All registered site scrapers */
-  private scrapers: BuildScraper[] = []
+export function detectSite(url: string): BuildSourceSite {
+  const normalized = url.toLowerCase().trim()
+  if (normalized.includes('d4builds.gg')) return 'd4builds'
+  throw new Error(`Unsupported build URL: "${url}"\nSupported sites: d4builds.gg`)
+}
 
-  /**
-   * Registers a scraper for a specific site.
-   * Called during app initialization to set up all supported sites.
-   */
-  registerScraper(scraper: BuildScraper): void {
-    this.scrapers.push(scraper)
+/**
+ * Imports a build from a URL.
+ * @throws Error if URL isn't supported or scraping fails
+ */
+export async function importBuild(
+  url: string,
+  onProgress?: ImportProgressCallback
+): Promise<RawBuildData> {
+  if (!scraper) throw new Error('Build import not initialized — call initBuildImport() first')
+  
+  const normalized = url.toLowerCase().trim()
+  if (!normalized.includes('d4builds.gg')) {
+    throw new Error(`No scraper available for "${url}". Supported sites: d4builds.gg`)
   }
-
-  /**
-   * URL Routing: Figures out which build website the URL belongs to.
-   *
-   * Checks the URL against each registered scraper's canHandle() method.
-   * If none match, throws an error telling the user which sites are supported.
-   *
-   * @param url - The build URL the user pasted
-   * @returns The source site key ('maxroll', 'd4builds', or 'icy-veins')
-   * @throws Error if the URL doesn't match any supported site
-   */
-  detectSite(url: string): BuildSourceSite {
-    // Normalize to lowercase for consistent matching
-    const normalized = url.toLowerCase().trim()
-
-    // Check URL patterns directly (fast path)
-    if (normalized.includes('d4builds.gg')) return 'd4builds'
-
-    // If direct pattern didn't match, try each scraper's canHandle
-    for (const scraper of this.scrapers) {
-      if (scraper.canHandle(url)) return scraper.sourceKey
-    }
-
-    // No scraper found — tell the user what we support
-    throw new Error(`Unsupported build URL: "${url}"\n` + `Supported sites: d4builds.gg`)
-  }
-
-  /**
-   * Finds the scraper that can handle the given URL.
-   *
-   * @param url - The build URL
-   * @returns The matching scraper, or null if none found
-   */
-  private findScraper(url: string): BuildScraper | null {
-    for (const scraper of this.scrapers) {
-      if (scraper.canHandle(url)) return scraper
-    }
-    return null
-  }
-
-  /**
-   * Imports a build from a URL.
-   *
-   * This is the main entry point for the import flow:
-   * 1. Detect which site the URL is from
-   * 2. Find the right scraper
-   * 3. Scrape the build data
-   * 4. Return the raw data for normalization
-   *
-   * @param url - The build URL to import
-   * @returns The raw build data from the site
-   * @throws Error if the URL isn't from a supported site or scraping fails
-   */
-  async importFromUrl(url: string, onProgress?: ImportProgressCallback): Promise<RawBuildData> {
-    const scraper = this.findScraper(url)
-
-    if (!scraper) {
-      throw new Error(
-        `No scraper available for "${url}". ` + `Make sure the URL is from d4builds.gg.`
-      )
-    }
-
-    // Let the scraper do its thing — this launches Playwright,
-    // navigates to the URL, and extracts all the build data
-    return scraper.scrape(url, onProgress)
-  }
+  
+  return scraper.scrape(url, onProgress)
 }

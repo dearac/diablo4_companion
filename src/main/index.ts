@@ -5,15 +5,14 @@ import { existsSync, mkdirSync } from 'fs'
 import type Store from 'electron-store'
 import { HotkeyService } from './services/HotkeyService'
 import { getDataPaths } from './services/StorageService'
-import { BuildImportService } from './services/BuildImportService'
+import { initBuildImport, importBuild, detectSite, clearParagonCache } from './services/BuildImportService'
 import { BuildRepository } from './services/BuildRepository'
-import { D4BuildsScraper } from './scrapers/D4BuildsScraper'
 import { AutoUpdateService } from './services/AutoUpdateService'
 import { ScanService } from './services/ScanService'
 import { ScreenCaptureService } from './services/ScreenCaptureService'
 import { EquippedGearStore } from './services/EquippedGearStore'
 import { ScanHistoryStore } from './services/ScanHistoryStore'
-import { BoardScanService } from './services/BoardScanService'
+import { matchBoard } from './services/BoardScanService'
 import { BoardPositionService } from './services/BoardPositionService'
 import { runOcr } from './services/OcrService'
 import type { RawBuildData } from '../shared/types'
@@ -64,11 +63,8 @@ app.setPath('userData', dataPaths.userData)
 
 let store: Store
 let hotkeyService: HotkeyService
-let buildService: BuildImportService
 let buildRepo: BuildRepository
-let d4BuildsScraper: D4BuildsScraper
 let scanService: ScanService
-let boardScanService: BoardScanService
 let boardPositionService: BoardPositionService
 
 /**
@@ -100,12 +96,8 @@ async function initStore(): Promise<void> {
  * Initializes all business services and scrapers.
  */
 function initServices(): void {
-  buildService = new BuildImportService()
+  initBuildImport(dataPaths.classes)
   buildRepo = new BuildRepository(dataPaths.builds)
-
-  // Register supported scrapers (d4builds only)
-  d4BuildsScraper = new D4BuildsScraper(dataPaths.classes)
-  buildService.registerScraper(d4BuildsScraper)
 
   // Initialize scan pipeline services
   const captureService = new ScreenCaptureService(dataPaths.scans)
@@ -115,7 +107,6 @@ function initServices(): void {
     ? join(app.getAppPath(), 'sidecar', 'bin')
     : join(process.resourcesPath, 'sidecar', 'bin')
   scanService = new ScanService(captureService, equippedStore, scanHistoryStore, sidecarDir)
-  boardScanService = new BoardScanService()
   boardPositionService = new BoardPositionService()
 
   // Load saved board calibration if store is already initialized
@@ -481,14 +472,14 @@ function setupIpcHandlers(): void {
       const onProgress = (progress: ImportProgress): void => {
         mainWindow?.webContents.send('import-progress', progress)
       }
-      const result = await buildService.importFromUrl(url, onProgress)
+      const result = await importBuild(url, onProgress)
       currentBuildData = result
 
       // Reset detach cycling index for the new build
       detachBoardIndex = 0
 
       // Auto-save the imported build (async — doesn't block main process)
-      const site = buildService.detectSite(url)
+      const site = detectSite(url)
       const saved = await buildRepo.save(result, url, site)
 
       return { build: result, savedId: saved.id }
@@ -568,7 +559,7 @@ function setupIpcHandlers(): void {
 
   // Clear paragon board cache (call after game updates)
   ipcMain.handle('clear-paragon-cache', () => {
-    d4BuildsScraper.clearCache()
+    clearParagonCache()
     return { success: true }
   })
 
@@ -817,7 +808,7 @@ function registerGlobalHotkeys(): void {
           const ocrResult = await runOcr(imagePath, sidecarDir)
           console.log(`[BoardScan] OCR text (first 200): ${ocrResult.text.substring(0, 200)}`)
 
-          const match = boardScanService.matchBoard(ocrResult.text, currentBuildData.paragonBoards)
+          const match = matchBoard(ocrResult.text, currentBuildData.paragonBoards)
 
           if (match) {
             console.log(

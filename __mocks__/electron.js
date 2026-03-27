@@ -7,10 +7,11 @@
  */
 module.exports = {
   BrowserWindow: class BrowserWindow {
-    constructor() {}
+    constructor() {
+      this.webContents = { send() {} }
+    }
     loadURL() {}
     on() {}
-    webContents: { send() {} }
   },
   app: {
     getPath: () => '/tmp',
