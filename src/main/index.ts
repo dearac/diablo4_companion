@@ -156,6 +156,18 @@ function createMainWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  // Explicitly kill the app when the primary UI is closed
+  mainWindow.on('closed', () => {
+    mainWindow = null
+
+    // Forcefully close secondary windows if they are open to prevent lingering background processes
+    // This is necessary because app.quit() might wait if other windows are still open
+    if (detachWindow) detachWindow.close()
+    if (calibrateWindow) calibrateWindow.close()
+
+    app.quit()
+  })
 }
 
 
