@@ -1,6 +1,6 @@
 # Diablo IV Companion
 
-A desktop companion app for Diablo IV that imports builds from popular build sites and displays them as a transparent in-game overlay. Built with **Electron**, **React**, **TypeScript**, and **Playwright**.
+A desktop companion app for Diablo IV that imports builds from popular build sites and displays them as a transparent in-game overlay. Built with **Electron**, **React**, and **TypeScript**.
 
 ---
 
@@ -16,7 +16,7 @@ Import complete build data from any of the three major Diablo IV build sites:
 | [maxroll.gg](https://maxroll.gg)       | ✅     | ✅                       | ✅   |
 | [icy-veins.com](https://icy-veins.com) | ✅     | ✅                       | ✅   |
 
-Each scraper uses **Playwright** to launch a headless Chromium browser, navigate to the build page, and extract structured data — skills, paragon boards, gear slots, and all associated stats.
+Each scraper uses a hidden **Electron BrowserWindow** to navigate to the build page and execute JavaScript directly in the page context to extract structured data — skills, paragon boards, gear slots, and all associated stats. This completely eliminates heavy dependencies like Playwright, reducing the installation footprint and memory usage.
 
 ### 🗺️ Interactive Paragon Board Viewer
 
@@ -52,12 +52,21 @@ Each scraper uses **Playwright** to launch a headless Chromium browser, navigate
 - **Tabbed interface** — switch between Skills, Paragon, and Gear panels
 - **Global hotkeys** — toggle overlay and click-through without alt-tabbing
 
-### 🛡️ Process Safety
+### ⌨️ In-Game Usage & Hotkeys
 
-- **ProcessManager** singleton tracks all Playwright browser instances by PID
-- On app quit: gracefully closes all active browsers
-- On app launch: detects and kills orphaned Chromium processes from previous crashes
-- PID file tracking at `data/active-pids.json`
+Once the app is running, you can control the overlay directly while playing Diablo IV using these global hotkeys:
+
+- **`F6` (Toggle)**: Show or hide the entire overlay window (brings it back as always-on-top).
+- **`F7` (Scan)**: Trigger a gear tooltip scan to compare what you're hovering over against your imported build.
+- **`F8` (Report)**: Show or hide the scan report window.
+- **`F9` (Detach Paragon)**: Cycle through your imported paragon boards, detaching the next one into a dedicated, resizable transparent window for easy referencing while you assign points.
+- **`F10` (Board Scan)**: Scan the on-screen paragon board. The first press opens a calibration snipping tool to select the board area; subsequent presses scan that saved region.
+
+### 🛡️ Process Safety & Portability
+
+- **Clean Shutdowns**: Explicitly destroys all secondary windows and terminates cleanly when the main UI is closed, preventing any lingering orphaned background processes.
+- **Fully Portable Data**: All local data (builds, caches, user settings) is stored relative to the executable in a portable `data/` directory. Nothing is dumped into `%APPDATA%` or system folders.
+- **Playwright Tracking**: Uses a `ProcessManager` singleton to track all Playwright browser instances by PID. On app quit, gracefully closes all active browsers; on launch, detects and kills orphaned Chromium processes from previous crashes.
 
 ---
 
@@ -75,12 +84,12 @@ Each scraper uses **Playwright** to launch a headless Chromium browser, navigate
 │  ┌──────┴───────────────────────────────┐                   │
 │  │            Scrapers                  │                   │
 │  │  D4Builds · Maxroll · IcyVeins      │                   │
-│  │         (Playwright)                 │                   │
+│  │       (Hidden BrowserWindow)         │                   │
 │  └──────────────────────────────────────┘                   │
 │                                                             │
-│  ┌──────────────┐  ┌────────────────┐  ┌────────────────┐  │
-│  │ ProcessMgr   │  │ HotkeyService  │  │ StorageService │  │
-│  └──────────────┘  └────────────────┘  └────────────────┘  │
+│                    ┌────────────────┐  ┌────────────────┐  │
+│                    │ HotkeyService  │  │ StorageService │  │
+│                    └────────────────┘  └────────────────┘  │
 │                          │ IPC                              │
 ├──────────────────────────┼──────────────────────────────────┤
 │                          │                                  │
@@ -149,7 +158,7 @@ Produces an NSIS installer and portable executable in the `dist/` directory.
 # Unit tests (Vitest)
 npm run test:unit
 
-# E2E tests (Playwright)
+# E2E tests (Playwright is used strictly for tests, not production scraping)
 npx playwright test
 ```
 
@@ -175,7 +184,6 @@ diablo4-companion/
 │   │       ├── BuildImportService.ts
 │   │       ├── BuildRepository.ts
 │   │       ├── ParagonCacheService.ts
-│   │       ├── ProcessManager.ts
 │   │       ├── HotkeyService.ts
 │   │       └── StorageService.ts
 │   ├── renderer/                # Config Window (React)
@@ -226,7 +234,6 @@ diablo4-companion/
 | **React 19**                   | UI components             |
 | **TypeScript 5.9**             | Type safety               |
 | **Vite 7** (via electron-vite) | Build tooling & HMR       |
-| **Playwright**                 | Headless browser scraping |
 | **Vitest**                     | Unit testing              |
 | **electron-store**             | User settings persistence |
 | **electron-builder**           | Packaging & distribution  |
@@ -268,4 +275,4 @@ This is currently a personal project. If you're interested in contributing, open
 
 ## 📄 License
 
-Private — All rights reserved.
+MIT License
