@@ -16,7 +16,6 @@ import { EquippedGearStore } from './services/EquippedGearStore'
 import { ScanHistoryStore } from './services/ScanHistoryStore'
 import { BoardScanService } from './services/BoardScanService'
 import { BoardPositionService } from './services/BoardPositionService'
-import { initBrowserPath } from './services/BrowserPath'
 import { runOcr } from './services/OcrService'
 import type { RawBuildData } from '../shared/types'
 import type { ImportProgress } from './scrapers/BuildScraper'
@@ -899,7 +898,6 @@ app.whenReady().then(async () => {
 
   // Initialize persistent storage and services
   await initStore()
-  initBrowserPath(dataPaths.userData)
   initServices()
 
   // Initialize process manager and clean up any orphaned processes from previous runs
