@@ -7,7 +7,6 @@ import { HotkeyService } from './services/HotkeyService'
 import { getDataPaths } from './services/StorageService'
 import { BuildImportService } from './services/BuildImportService'
 import { BuildRepository } from './services/BuildRepository'
-import { ProcessManager } from './services/ProcessManager'
 import { D4BuildsScraper } from './scrapers/D4BuildsScraper'
 import { AutoUpdateService } from './services/AutoUpdateService'
 import { ScanService } from './services/ScanService'
@@ -900,11 +899,6 @@ app.whenReady().then(async () => {
   await initStore()
   initServices()
 
-  // Initialize process manager and clean up any orphaned processes from previous runs
-  const processManager = ProcessManager.getInstance()
-  processManager.setDataDir(dataPaths.userData)
-  processManager.cleanupStalePids()
-
   // Set up IPC communication between main and renderer
   setupIpcHandlers()
 
@@ -936,7 +930,6 @@ app.whenReady().then(async () => {
 // Clean up shortcuts and kill all tracked browser processes when the app closes
 app.on('will-quit', async () => {
   globalShortcut.unregisterAll()
-  await ProcessManager.getInstance().killAll()
 })
 
 // Quit when all windows are closed
