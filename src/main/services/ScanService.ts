@@ -133,11 +133,17 @@ export class ScanService {
       if (this.scanMode === 'equip') {
         // equippedStore.equip() handles normalization + ring disambiguation internally
         this.equippedStore.equip(scannedItem)
-        console.log(`[SCAN] ── EQUIP MODE ── Stored as equipped: ${canonicalSlot}`)
+        // Read back the ACTUAL stored slot key so Ring 1/Ring 2 disambiguation is
+        // reflected in the equippedItem returned to the renderer (App state key must match).
+        const storedItem = this.equippedStore.getEquipped(canonicalSlot)
+          ?? this.equippedStore.getEquipped('Ring 1')
+          ?? this.equippedStore.getEquipped('Ring 2')
+        const actualSlot = storedItem?.slot ?? canonicalSlot
+        console.log(`[SCAN] ── EQUIP MODE ── Stored as equipped: ${actualSlot}`)
         return {
           mode: 'equip',
           verdict: null,
-          equippedItem: { ...scannedItem, slot: canonicalSlot },
+          equippedItem: { ...scannedItem, slot: actualSlot },
           error: null
         }
       }

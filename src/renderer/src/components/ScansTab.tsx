@@ -8,6 +8,7 @@ import type {
   PerfectibilityResult
 } from '../../../shared/types'
 import { evaluatePerfectibility } from '../../../shared/PerfectibilityEngine'
+import { normalizeSlot } from '../../../shared/SlotNormalizer'
 import AffixTagPopover from './AffixTagPopover'
 
 interface ScansTabProps {
@@ -146,9 +147,17 @@ function ScansTab({ scanHistory, buildData, latestScanResult, onClearHistory }: 
       setPerfResult(null)
       return
     }
-    const buildSlot = buildData.gearSlots.find(
-      (gs) => gs.slot.toLowerCase() === localItem.slot.toLowerCase()
+    // Normalize OCR slot → canonical slot, then handle Ring 1 / Ring 2 fallback
+    const canonical = normalizeSlot(localItem.slot)
+    let buildSlot = buildData.gearSlots.find(
+      (gs) => gs.slot.toLowerCase() === canonical.toLowerCase()
     )
+    // "Ring" from OCR doesn't include the number — try both
+    if (!buildSlot && canonical === 'Ring') {
+      buildSlot =
+        buildData.gearSlots.find((gs) => gs.slot.toLowerCase() === 'ring 1') ??
+        buildData.gearSlots.find((gs) => gs.slot.toLowerCase() === 'ring 2')
+    }
     if (!buildSlot) {
       setPerfResult(null)
       return
