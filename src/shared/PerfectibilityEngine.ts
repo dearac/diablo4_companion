@@ -10,12 +10,14 @@
  */
 
 import { affixMatches } from './AffixMatcher'
+import { compareAffixes } from './AffixComparer'
 import type {
   ScannedGearPiece,
   IGearSlot,
   PerfectibilityResult,
   PerfectibilityStep,
-  PerfectibilityVerdict
+  PerfectibilityVerdict,
+  AffixMatchResult
 } from './types'
 
 // ─── Step helpers ────────────────────────────────────────────────────────────
@@ -75,13 +77,21 @@ function checkBloodied(
 function checkBaseAffixes(
   scannedAffixes: string[],
   buildAffixes: IGearSlot['affixes']
-): PerfectibilityResult['steps']['baseAffixes'] {
+): PerfectibilityResult['steps']['baseAffixes'] & { matchDetails: AffixMatchResult[] } {
   const totalBase = buildAffixes.length
 
-  // Find which build affixes already match a scanned affix
-  const matched = buildAffixes.filter((ba) =>
-    scannedAffixes.some((sa) => affixMatches(sa, ba.name))
-  )
+  // Run compareAffixes for each build affix against all scanned affixes
+  // Collect the best match result per build affix
+  const matchDetails: AffixMatchResult[] = []
+  const matched = buildAffixes.filter((ba) => {
+    const best = scannedAffixes
+      .map((sa) => compareAffixes(sa, ba.name))
+      .reduce((best, r) => (r.confidence > best.confidence ? r : best), {
+        matched: false, confidence: 0, reason: 'no scanned affixes', canonicalName: null, method: 'unresolved' as const
+      })
+    matchDetails.push(best)
+    return best.matched
+  })
 
   const unmatched = buildAffixes.filter(
     (ba) => !scannedAffixes.some((sa) => affixMatches(sa, ba.name))
@@ -91,16 +101,21 @@ function checkBaseAffixes(
   const threshold = Math.max(totalBase - 1, 1) // need at least N-1 matches
   const passed = matchCount >= threshold
 
-  // Identify enchant target: the one scanned affix that doesn't match any build affix
+  // Identify enchant target: prefer lowest-confidence matched scanned affix
+  // (the one we're least sure about is the best candidate to reroll away)
   let rerollTarget: string | null = null
   let rerollReplacement: string | null = null
 
   if (passed && matchCount < totalBase && unmatched.length > 0) {
-    // Find the weakest unmatched scanned affix to be enchanted away
+    // Find unmatched scanned affixes (candidates for enchanting away)
     const unmatchedScanned = scannedAffixes.filter(
       (sa) => !buildAffixes.some((ba) => affixMatches(sa, ba.name))
     )
-    rerollTarget = unmatchedScanned[0] ?? null
+    // Use lowest-confidence non-greater unmatched scanned affix as reroll target
+    const lowestConf = unmatchedScanned
+      .map((sa) => ({ sa, conf: Math.max(...buildAffixes.map((ba) => compareAffixes(sa, ba.name).confidence)) }))
+      .sort((a, b) => a.conf - b.conf)
+    rerollTarget = lowestConf[0]?.sa ?? unmatchedScanned[0] ?? null
     rerollReplacement = unmatched[0]?.name ?? null
   }
 
@@ -121,7 +136,8 @@ function checkBaseAffixes(
     matchCount,
     totalBase,
     rerollTarget,
-    rerollReplacement
+    rerollReplacement,
+    matchDetails
   }
 }
 
@@ -282,6 +298,17 @@ export function evaluatePerfectibility(
   } else {
     overallVerdict = 'PERFECTIBLE'
     overallReason = 'All checks pass — this item can be perfected for the build.'
+  }
+
+  // Confidence-based RISKY downgrade:
+  // If any matched affix had low confidence (< 0.7), flag as RISKY even if all checks pass
+  if (overallVerdict === 'PERFECTIBLE') {
+    const allMatchDetails = baseAffixes.matchDetails ?? []
+    const hasLowConfidence = allMatchDetails.some((d) => d.matched && d.confidence < 0.7)
+    if (hasLowConfidence) {
+      overallVerdict = 'RISKY'
+      overallReason = 'All checks pass but 1+ affix matched with low confidence. Verify manually.'
+    }
   }
 
   return {
