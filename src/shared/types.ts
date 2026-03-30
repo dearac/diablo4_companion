@@ -286,3 +286,82 @@ export interface PerfectibilityResult {
     tempering: PerfectibilityStep & { missingTempers: string[] }
   }
 }
+
+// ============================================================
+// AFFIX NORMALIZATION — Canonical matching system
+// ============================================================
+
+/** How a canonical name was resolved during normalization. */
+export type MatchMethod = 'exact' | 'alias' | 'fuzzy' | 'unresolved'
+
+/** A raw affix string normalized into structured data. */
+export interface NormalizedAffix {
+  /** The original string before normalization */
+  raw: string
+  /** The resolved canonical stat name, or null if unresolvable */
+  canonicalName: string | null
+  /** Extracted numeric value, null if unparseable */
+  value: number | null
+  /** Whether the value is a percentage */
+  isPercent: boolean
+  /** Min/max range if present (e.g., [88, 102]) */
+  range: [number, number] | null
+  /** Confidence: 1.0 = exact, 0.9 = alias, 0.5-0.8 = fuzzy */
+  confidence: number
+  /** Which strategy resolved the canonical name */
+  matchMethod: MatchMethod
+}
+
+/** The result of comparing two NormalizedAffix values. */
+export interface AffixMatchResult {
+  /** Whether this is considered a match */
+  matched: boolean
+  /** Confidence score: 1.0 = exact, lower = weaker */
+  confidence: number
+  /** Human-readable explanation */
+  reason: string
+  /** The canonical name both sides resolved to (if matched) */
+  canonicalName: string | null
+  /** How the match was determined */
+  method: MatchMethod
+}
+
+/** How a scanned affix's value compares to the possible roll range. */
+export type RollQuality = 'unknown' | 'low' | 'mid' | 'high' | 'max'
+
+/** Extended affix data with roll quality assessment. */
+export interface AffixAssessment {
+  normalized: NormalizedAffix
+  rollQuality: RollQuality
+  rollPercentile: number | null
+}
+
+/** Enhanced step result with match details. */
+export interface EnhancedPerfectibilityStep extends PerfectibilityStep {
+  matchDetails: AffixMatchResult[]
+}
+
+// ============================================================
+// SCAN RECORDINGS — Live scan capture for offline testing
+// ============================================================
+
+/** A complete snapshot of one scan for replay/testing. */
+export interface ScanRecording {
+  id: string
+  timestamp: string
+  screenshotPath: string
+  ocrLines: string[]
+  parsedItem: ScannedGearPiece
+  buildSlot: IGearSlot | null
+  buildName: string | null
+  verdict: ScanVerdict | null
+  perfectibility: PerfectibilityResult | null
+}
+
+/** Result of replaying a saved scan through the current pipeline. */
+export interface ReplayResult {
+  recording: ScanRecording
+  reparsedItem: ScannedGearPiece
+  newVerdict: ScanVerdict | null
+  diffs: string[]
+}
