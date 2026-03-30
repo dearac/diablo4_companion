@@ -1,71 +1,37 @@
 /**
- * AffixMatcher — Shared fuzzy matching logic for comparing OCR-scanned
- * affix strings against build-expected affix names.
+ * AffixMatcher — Backwards-compatible affix matching API.
  *
- * Handles mismatches between how d4builds stores affix names
- * (e.g., "[133-151] Strength", "13% Critical Strike Chance")
- * and how OCR reads them from tooltips
- * (e.g., "+121 Strength [88-102]", "+9.5% Attack Speed [8.3-").
+ * This module preserves the original `affixMatches()` function signature
+ * used by 6 consumers across the codebase. Internally, it now delegates
+ * to the canonical normalization + layered comparison pipeline.
+ *
+ * For rich match results (confidence, reason, canonical name),
+ * use `compareAffixes()` from AffixComparer directly.
  */
 
-/**
- * Strips leading value range brackets from a build affix name.
- * "[133-151] Strength" → "Strength"
- * "13% Critical Strike Chance" → "13% Critical Strike Chance" (no bracket, unchanged)
- */
-function stripBuildRange(name: string): string {
-  return name.replace(/^\[[\d.%-]+\]\s*/, '').trim()
-}
-
-/**
- * Strips numeric value prefixes from an affix string.
- * "+121 Strength" → "Strength"
- * "+9.5% Attack Speed" → "Attack Speed"
- * "13% Critical Strike Chance" → "Critical Strike Chance"
- */
-function stripNumericPrefix(affix: string): string {
-  return affix.replace(/^[+×x*●•-]?\s*[\d,.]+%?\s*/, '').trim()
-}
+import { compareAffixes } from './AffixComparer'
+import type { AffixMatchResult } from './types'
 
 /**
  * Checks if a scanned affix string matches a build-expected affix name.
  *
- * Uses multiple strategies:
- *   1. Direct case-insensitive substring match (either direction)
- *   2. Stripped-name comparison (remove numbers/ranges, compare stat names)
+ * Backwards-compatible boolean API. Internally uses canonical normalization.
  *
  * @param scannedAffix - The raw affix string from OCR
  * @param buildAffixName - The affix name from build data
  * @returns true if they refer to the same stat
  */
 export function affixMatches(scannedAffix: string, buildAffixName: string): boolean {
-  const scanLower = scannedAffix.toLowerCase()
-  const buildLower = buildAffixName.toLowerCase()
+  return compareAffixes(scannedAffix, buildAffixName).matched
+}
 
-  // Strategy 1: Direct substring match
-  if (scanLower.includes(buildLower) || buildLower.includes(scanLower)) {
-    return true
-  }
-
-  // Strategy 2: Compare just the stat name portion (strip all numbers/ranges)
-  const scanName = stripNumericPrefix(scannedAffix).toLowerCase()
-  const buildName = stripNumericPrefix(stripBuildRange(buildAffixName)).toLowerCase()
-
-  if (scanName && buildName) {
-    // Remove trailing range brackets from OCR like "[8.3 -" or "[244 - 272]"
-    const cleanScanName = scanName.replace(/\s*\[[\d.\s-]*\]?\s*$/, '').trim()
-    if (cleanScanName.includes(buildName) || buildName.includes(cleanScanName)) {
-      return true
-    }
-
-    // Strategy 3: Collapse all whitespace and compare
-    // Handles OCR-merged text: "AllStats" should match "All Stats"
-    const scanNoSpace = cleanScanName.replace(/\s+/g, '')
-    const buildNoSpace = buildName.replace(/\s+/g, '')
-    if (scanNoSpace.includes(buildNoSpace) || buildNoSpace.includes(scanNoSpace)) {
-      return true
-    }
-  }
-
-  return false
+/**
+ * Rich comparison — returns full match details with confidence and reason.
+ *
+ * @param scannedAffix - The raw affix string from OCR
+ * @param buildAffixName - The affix name from build data
+ * @returns AffixMatchResult with match status, confidence, reason, and canonical name
+ */
+export function affixMatchDetails(scannedAffix: string, buildAffixName: string): AffixMatchResult {
+  return compareAffixes(scannedAffix, buildAffixName)
 }
