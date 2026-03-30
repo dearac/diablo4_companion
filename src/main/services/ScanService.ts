@@ -4,6 +4,7 @@ import { parseTooltip } from './GearParser'
 import { compareGear } from '../../shared/GearComparer'
 import { EquippedGearStore } from './EquippedGearStore'
 import { ScanHistoryStore } from './ScanHistoryStore'
+import { ScanRecordingStore } from './ScanRecordingStore'
 import { normalizeSlot } from '../../shared/SlotNormalizer'
 import type { ScanHistoryEntry } from '../../shared/types'
 import type { ScanMode, ScanVerdict, ScannedGearPiece, RawBuildData } from '../../shared/types'
@@ -24,17 +25,35 @@ export class ScanService {
   private scanHistory: ScanHistoryStore
   private sidecarDir: string
   private scanMode: ScanMode = 'compare'
+  private recordingStore: ScanRecordingStore | null = null
+  private recordingEnabled = false
 
   constructor(
     captureService: ScreenCaptureService,
     equippedStore: EquippedGearStore,
     scanHistory: ScanHistoryStore,
-    sidecarDir: string
+    sidecarDir: string,
+    recordingStore?: ScanRecordingStore
   ) {
     this.captureService = captureService
     this.equippedStore = equippedStore
     this.scanHistory = scanHistory
     this.sidecarDir = sidecarDir
+    this.recordingStore = recordingStore ?? null
+  }
+
+  enableRecording(): void {
+    this.recordingEnabled = true
+    console.log('[SCAN] ── RECORDING ENABLED ──')
+  }
+
+  disableRecording(): void {
+    this.recordingEnabled = false
+    console.log('[SCAN] ── RECORDING DISABLED ──')
+  }
+
+  isRecordingEnabled(): boolean {
+    return this.recordingEnabled
   }
 
   getScanMode(): ScanMode {
@@ -208,6 +227,24 @@ export class ScanService {
 
       // Store compare-mode verdict in scan history
       this.scanHistory.addVerdict(verdict)
+
+      // Recording hook — save a snapshot of this scan for offline replay testing
+      if (this.recordingEnabled && this.recordingStore) {
+        try {
+          this.recordingStore.save({
+            screenshotPath: imagePath,
+            ocrLines: lineTexts,
+            parsedItem: scannedItem,
+            buildSlot: buildSlot ?? null,
+            buildName: buildData?.name ?? null,
+            verdict: verdict ?? null,
+            perfectibility: null  // Will be populated in Phase 3
+          }, imagePath)
+          console.log('[SCAN] ── RECORDING SAVED ──')
+        } catch (err) {
+          console.warn('[SCAN] ── RECORDING FAILED ──', err)
+        }
+      }
 
       return { mode: 'compare', verdict, equippedItem: null, error: null }
     } catch (err) {

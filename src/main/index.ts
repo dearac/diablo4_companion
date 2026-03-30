@@ -9,6 +9,7 @@ import { initBuildImport, importBuild, detectSite, clearParagonCache } from './s
 import { BuildRepository } from './services/BuildRepository'
 import { AutoUpdateService } from './services/AutoUpdateService'
 import { ScanService } from './services/ScanService'
+import { ScanRecordingStore } from './services/ScanRecordingStore'
 import { ScreenCaptureService } from './services/ScreenCaptureService'
 import { EquippedGearStore } from './services/EquippedGearStore'
 import { ScanHistoryStore } from './services/ScanHistoryStore'
@@ -106,7 +107,8 @@ function initServices(): void {
   const sidecarDir = is.dev
     ? join(app.getAppPath(), 'sidecar', 'bin')
     : join(process.resourcesPath, 'sidecar', 'bin')
-  scanService = new ScanService(captureService, equippedStore, scanHistoryStore, sidecarDir)
+  const recordingStore = new ScanRecordingStore(join(dataPaths.scans, 'recordings'))
+  scanService = new ScanService(captureService, equippedStore, scanHistoryStore, sidecarDir, recordingStore)
   boardPositionService = new BoardPositionService()
 
   // Load saved board calibration if store is already initialized
@@ -696,6 +698,22 @@ function setupIpcHandlers(): void {
       const [x, y] = detachWindow.getPosition()
       detachWindow.setPosition(x + dx, y + dy)
     }
+  })
+  /** Enable scan recording for live capture */
+  ipcMain.handle('scan:enableRecording', () => {
+    scanService.enableRecording()
+    return true
+  })
+
+  /** Disable scan recording */
+  ipcMain.handle('scan:disableRecording', () => {
+    scanService.disableRecording()
+    return true
+  })
+
+  /** Check if recording is currently enabled */
+  ipcMain.handle('scan:isRecordingEnabled', () => {
+    return scanService.isRecordingEnabled()
   })
 }
 
