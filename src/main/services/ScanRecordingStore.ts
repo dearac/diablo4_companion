@@ -46,10 +46,10 @@ export class ScanRecordingStore {
     }
 
     const recording: ScanRecording = {
+      ...data,
       id,
       timestamp,
-      screenshotPath: 'screenshot.png',  // relative to recording dir
-      ...data
+      screenshotPath: 'screenshot.png'  // relative to recording dir
     }
 
     // Write recording JSON
