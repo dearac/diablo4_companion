@@ -4,18 +4,17 @@ import { affixMatches } from '../../../shared/AffixMatcher'
 
 interface GearTabProps {
   buildData: RawBuildData | null
-  equippedGear: Record<string, ScannedGearPiece>
 }
 
 const LEFT_COLUMN = ['Helm', 'Chest Armor', 'Gloves', 'Pants', 'Boots']
 const RIGHT_COLUMN = ['Amulet', 'Ring 1', 'Ring 2', 'Weapon', 'Offhand']
 
-function GearTab({ buildData, equippedGear }: GearTabProps): React.JSX.Element {
+function GearTab({ buildData }: GearTabProps): React.JSX.Element {
   const [editingSlot, setEditingSlot] = useState<string | null>(null)
   const [localEdits, setLocalEdits] = useState<Record<string, ScannedGearPiece>>({})
 
   const getEffectiveGear = (slot: string): ScannedGearPiece | null => {
-    return localEdits[slot] || equippedGear[slot] || null
+    return localEdits[slot] || null
   }
 
   const handleEditAffix = (slot: string, index: number, newType: AffixType): void => {

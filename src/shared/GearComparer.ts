@@ -5,7 +5,7 @@ import type {
   ScanVerdict,
   CraftingRecommendation
 } from './types'
-import { affixMatches } from './AffixMatcher'
+import { affixMatches, aspectMatches } from './AffixMatcher'
 
 /**
  * GearComparer is the scoring engine for the scan pipeline.
@@ -186,20 +186,18 @@ function generateSocketRecommendations(socketDelta: number): CraftingRecommendat
 }
 
 /**
- * Compares a scanned gear piece against the build's expected gear slot
- * and the currently equipped item.
+/**
+ * Compares a scanned gear piece against the build's expected gear slot.
  *
  * This is the main entry point for the scoring engine.
  *
  * @param scannedItem - The gear piece just scanned via OCR
  * @param buildSlot - The build's expected gear for this slot
- * @param equippedItem - The currently equipped item in this slot (or null)
  * @returns A ScanVerdict with match scores, verdict, and recommendations
  */
 export function compareGear(
   scannedItem: ScannedGearPiece,
-  buildSlot: IGearSlot,
-  equippedItem: ScannedGearPiece | null
+  buildSlot: IGearSlot
 ): ScanVerdict {
   // ---- Unified affix pools ----
   // Combine all build affix categories into one required list for scoring.
@@ -237,7 +235,7 @@ export function compareGear(
     ? {
         expectedAspect: buildSlot.requiredAspect.name,
         hasMatch: scannedItem.aspect
-          ? affixMatches(scannedItem.aspect.name, buildSlot.requiredAspect.name)
+          ? aspectMatches(scannedItem.aspect.name, buildSlot.requiredAspect.name)
           : false
       }
     : null
@@ -266,21 +264,6 @@ export function compareGear(
   // Sort recommendations by priority (highest first)
   recommendations.sort((a, b) => b.priority - a.priority)
 
-  // ---- Equipped comparison ----
-  let equippedComparison: ScanVerdict['equippedComparison'] = null
-  if (equippedItem) {
-    const allEquippedAffixes: string[] = [
-      ...equippedItem.affixes,
-      ...equippedItem.temperedAffixes,
-      ...equippedItem.greaterAffixes
-    ]
-    const equippedMatch = matchAffixes(allEquippedAffixes, allBuildAffixes)
-    equippedComparison = {
-      equippedMatchCount: equippedMatch.matched.length,
-      isUpgrade: matched.length > equippedMatch.matched.length
-    }
-  }
-
   return {
     scannedItem,
     buildMatchCount: matched.length,
@@ -292,8 +275,8 @@ export function compareGear(
     socketDelta,
     greaterAffixCount: scannedItem.greaterAffixes.length,
     verdict,
-    equippedComparison,
     aspectComparison,
     recommendations
   }
 }
+

@@ -209,9 +209,6 @@ export interface ScannedGearPiece {
   rawText: string
 }
 
-/** The mode the scanner is operating in. */
-export type ScanMode = 'compare' | 'equip'
-
 /** A recommendation for how to improve an item. */
 export interface CraftingRecommendation {
   action: 'enchant' | 'temper' | 'socket' | 'aspect' | 'none'
@@ -222,7 +219,7 @@ export interface CraftingRecommendation {
   priority: number
 }
 
-/** The result of comparing a scanned item to the build + equipped gear. */
+/** The result of comparing a scanned item to the loaded build. */
 export interface ScanVerdict {
   scannedItem: ScannedGearPiece
   buildMatchCount: number
@@ -234,10 +231,6 @@ export interface ScanVerdict {
   socketDelta: number
   greaterAffixCount: number
   verdict: 'PERFECT' | 'UPGRADE' | 'SIDEGRADE' | 'DOWNGRADE'
-  equippedComparison: {
-    equippedMatchCount: number
-    isUpgrade: boolean
-  } | null
   aspectComparison: {
     expectedAspect: string
     hasMatch: boolean
@@ -298,6 +291,8 @@ export type MatchMethod = 'exact' | 'alias' | 'fuzzy' | 'unresolved'
 export interface NormalizedAffix {
   /** The original string before normalization */
   raw: string
+  /** The clean extracted stat name string before resolving */
+  parsedName: string
   /** The resolved canonical stat name, or null if unresolvable */
   canonicalName: string | null
   /** Extracted numeric value, null if unparseable */

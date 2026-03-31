@@ -78,10 +78,26 @@ export function compareAffixes(scannedAffix: string, buildAffix: string): AffixM
     }
   }
 
-  // Layer 4: Fuzzy fallback between canonical names (already handled by normalizer)
+  // Layer 4: Fallback exact text match for unregistered/unknown affixes
+  // If neither side resolved or only one resolved but the string payloads match perfectly
+  // (e.g. "Damage to Elites" vs "Damage to Elites" which isn't in the canonical registry)
+  const cleanScannedName = scanned.parsedName.replace(/[^a-z0-9]/gi, '').toLowerCase()
+  const cleanBuildName = build.parsedName.replace(/[^a-z0-9]/gi, '').toLowerCase()
+
+  if (cleanScannedName && cleanScannedName === cleanBuildName) {
+    return {
+      matched: true,
+      confidence: 0.9,
+      reason: `Fallback exact text match: "${scanned.parsedName}"`,
+      canonicalName: build.parsedName, // Use the build's casing as pseudo-canonical
+      method: 'exact'
+    }
+  }
+
+  // Layer 5: Fuzzy fallback between canonical names (already handled by normalizer)
   // If one side resolved via fuzzy to the same canonical name as the other, Layers 1-2 caught it.
   // This layer handles the case where neither resolved but the stat name portions are close.
-  // For safety, this is intentionally NOT implemented in v1 — Layers 1-3 cover the known cases.
+  // For safety, this is intentionally NOT implemented in v1 — Layers 1-4 cover the known cases.
 
   return noMatch(
     `No match: "${scanned.canonicalName ?? scannedAffix}" and "${build.canonicalName ?? buildAffix}" are different stats`

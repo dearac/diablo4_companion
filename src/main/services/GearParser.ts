@@ -74,10 +74,43 @@ const BARE_AFFIX_REGEX = /^\d+[.]?\d*%\s+[A-Z].+/
 const MERGED_AFFIX_REGEX = /^[+]?\d+[A-Z][a-zA-Z]/
 
 /**
- * Greater affix marker — star emoji, asterisk (OCR reads ✦ as *), or "Greater" prefix.
- * The D4 tooltip uses ✦ for greater affixes, but OCR often reads it as *.
+ * All known GA-like Unicode characters that OCR might produce.
+ * Includes: ✦ (diamond star), ✧ (open star), ★☆⭐ (stars),
+ * ♦◆◇ (diamonds), ✪✫✬✭✮✯ (star variants), ❖ (four diamond),
+ * * (asterisk — OCR fallback), ⬦◈ (diamond variants).
+ *
+ * The `*` is safe to strip: D4 multiplicative affixes use `×` (Unicode),
+ * never `*`. The only `*` in a tooltip is an OCR-hallucinated GA marker.
  */
-const GREATER_AFFIX_MARKERS = ['⭐', '★', '☆', '*', 'Greater']
+const GA_CHARS = /[✦✧★☆⭐♦◆◇✪✫✬✭✮✯❖*⬦◈]/g
+const GA_KEYWORD = /\bGreater\b/gi
+
+/**
+ * Scans a line for Greater Affix markers anywhere in the string
+ * and strips them, returning a clean line for affix parsing.
+ *
+ * Unlike the old startsWith approach, this catches markers in
+ * any position (leading, between +/× and the number, merged, etc.)
+ *
+ * @param line - A bullet-stripped tooltip line
+ * @returns The cleaned line and whether a GA marker was detected
+ */
+export function sanitizeGreaterAffix(line: string): { cleaned: string; isGreater: boolean } {
+  const hasGAChar = GA_CHARS.test(line)
+  GA_CHARS.lastIndex = 0 // Reset global regex lastIndex
+
+  const hasGAKeyword = GA_KEYWORD.test(line)
+  GA_KEYWORD.lastIndex = 0
+
+  const isGreater = hasGAChar || hasGAKeyword
+  const cleaned = line
+    .replace(GA_CHARS, '')
+    .replace(GA_KEYWORD, '')
+    .replace(/\s{2,}/g, ' ') // Collapse double-spaces from removed chars
+    .trim()
+
+  return { cleaned, isGreater }
+}
 
 /**
  * Leading bullet characters that D4 uses before affixes.
@@ -298,15 +331,9 @@ export function parseTooltip(lines: string[]): ScannedGearPiece {
     // Strip leading bullet characters (·, •, ◆, etc.) that D4 uses before affixes
     let cleanLine = line.replace(BULLET_REGEX, '')
 
-    // Check for greater affix markers
-    let isGreater = false
-    for (const marker of GREATER_AFFIX_MARKERS) {
-      if (cleanLine.startsWith(marker)) {
-        isGreater = true
-        cleanLine = cleanLine.slice(marker.length).trim()
-        break
-      }
-    }
+    // Greedy GA sanitizer — scans entire line for GA-like Unicode characters
+    const { cleaned: gaCleanedLine, isGreater } = sanitizeGreaterAffix(cleanLine)
+    cleanLine = gaCleanedLine
 
     // Socket detection
     const socketMatch = cleanLine.match(SOCKET_REGEX)

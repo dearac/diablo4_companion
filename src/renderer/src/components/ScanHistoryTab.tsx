@@ -141,16 +141,6 @@ function ScanHistoryTab(): React.JSX.Element {
                 </div>
               )}
 
-              {/* Equipped comparison */}
-              {v.equippedComparison && (
-                <div
-                  className={`history-card__equipped ${v.equippedComparison.isUpgrade ? 'history-card__equipped--up' : 'history-card__equipped--down'}`}
-                >
-                  {v.equippedComparison.isUpgrade ? '⬆️ UPGRADE' : '⬇️ DOWNGRADE'} vs equipped (
-                  {v.equippedComparison.equippedMatchCount}/{v.buildTotalExpected} →{' '}
-                  {v.buildMatchCount}/{v.buildTotalExpected})
-                </div>
-              )}
 
               {/* Greater affixes */}
               {v.greaterAffixCount > 0 && (

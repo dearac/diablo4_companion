@@ -1,22 +1,18 @@
 import { useEffect, useState } from 'react'
-import type { ScanVerdict, ScannedGearPiece, ScanMode } from '../../../shared/types'
+import type { ScanVerdict } from '../../../shared/types'
 
 /**
  * VerdictCard — Displays scan results as a slide-in card.
  *
- * In Compare mode: shows affix match results, verdict badge,
- * crafting recommendations, and equipped comparison.
- *
- * In Equip mode: shows a simple confirmation message.
+ * Shows affix match results, verdict badge,
+ * crafting recommendations against the loaded build.
  *
  * Auto-dismisses after 10 seconds.
  */
 
 interface VerdictCardProps {
   result: {
-    mode: ScanMode
     verdict: ScanVerdict | null
-    equippedItem: ScannedGearPiece | null
     error: string | null
   } | null
   onDismiss: () => void
@@ -73,27 +69,6 @@ function VerdictCard({ result, onDismiss }: VerdictCardProps): React.JSX.Element
         <div className="verdict-card__header">
           <span className="verdict-card__error-icon">⚠️</span>
           <span className="verdict-card__error-text">{result.error}</span>
-        </div>
-        <button className="verdict-card__dismiss" onClick={handleDismiss}>
-          ✕
-        </button>
-      </div>
-    )
-  }
-
-  // ---- Equip confirmation ----
-  if (result.mode === 'equip' && result.equippedItem) {
-    const item = result.equippedItem
-    return (
-      <div
-        className={`verdict-card verdict-card--equip ${isVisible ? 'verdict-card--visible' : ''}`}
-        id="verdict-card"
-      >
-        <div className="verdict-card__header">
-          <span className="verdict-card__equip-icon">✅</span>
-          <span className="verdict-card__equip-text">
-            {item.slot} equipped: <strong>{item.itemName}</strong> ({item.itemPower} iP)
-          </span>
         </div>
         <button className="verdict-card__dismiss" onClick={handleDismiss}>
           ✕
@@ -228,17 +203,6 @@ function VerdictCard({ result, onDismiss }: VerdictCardProps): React.JSX.Element
         </div>
       )}
 
-      {/* Equipped comparison */}
-      {verdict.equippedComparison && (
-        <div
-          className={`verdict-card__equipped ${verdict.equippedComparison.isUpgrade ? 'verdict-card__equipped--upgrade' : 'verdict-card__equipped--downgrade'}`}
-        >
-          {verdict.equippedComparison.isUpgrade ? '⬆️' : '⬇️'} vs. Equipped:
-          {verdict.equippedComparison.isUpgrade ? ' UPGRADE' : ' DOWNGRADE'} (
-          {verdict.equippedComparison.equippedMatchCount}/{verdict.buildTotalExpected} →{' '}
-          {verdict.buildMatchCount}/{verdict.buildTotalExpected})
-        </div>
-      )}
     </div>
   )
 }

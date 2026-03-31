@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import type {
   RawBuildData,
-  ScanMode,
   ScanVerdict,
-  ScannedGearPiece,
   ScanHistoryEntry
 } from '../../shared/types'
 import OverlayHeader from './components/OverlayHeader'
@@ -19,9 +17,7 @@ import ScansPanel from './components/ScansPanel'
 
 /** Shape of a scan result received from the main process */
 interface ScanResult {
-  mode: ScanMode
   verdict: ScanVerdict | null
-  equippedItem: ScannedGearPiece | null
   error: string | null
 }
 
@@ -45,7 +41,6 @@ function App(): React.JSX.Element {
   const [activeTab, setActiveTab] = useState<TabId>('skills')
   const [scanResult, setScanResult] = useState<ScanResult | null>(null)
   const [scanHistory, setScanHistory] = useState<ScanHistoryEntry[]>([])
-  const [equippedGear, setEquippedGear] = useState<Record<string, ScannedGearPiece>>({})
 
   // Panel position & size — stored as CSS pixel values
   const [panelX, setPanelX] = useState<number>(window.innerWidth - 400)
@@ -78,11 +73,8 @@ function App(): React.JSX.Element {
   useEffect(() => {
     window.api.onScanResult((result: ScanResult) => {
       setScanResult(result)
-      if (result.mode === 'compare' && result.verdict) {
+      if (result.verdict) {
         window.api.getScanHistory().then(setScanHistory)
-      }
-      if (result.mode === 'equip' && result.equippedItem) {
-        window.api.getEquippedGear().then(setEquippedGear)
       }
     })
   }, [])
@@ -90,19 +82,12 @@ function App(): React.JSX.Element {
   /** Load scan history and equipped gear on mount */
   useEffect(() => {
     window.api.getScanHistory().then(setScanHistory)
-    window.api.getEquippedGear().then(setEquippedGear)
   }, [])
 
   /** Clear all scan history */
   const handleClearScans = useCallback(async () => {
     await window.api.clearScanHistory()
     setScanHistory([])
-  }, [])
-
-  /** Clear all equipped gear */
-  const handleClearEquipped = useCallback(async () => {
-    await window.api.clearEquippedGear()
-    setEquippedGear({})
   }, [])
 
   /** Detach a single paragon board into its own overlay */
@@ -211,8 +196,6 @@ function App(): React.JSX.Element {
             <GearPanel
               gearSlots={buildData.gearSlots}
               activeRunes={buildData.activeRunes || []}
-              equippedGear={equippedGear}
-              onClearEquipped={handleClearEquipped}
             />
           )}
           {activeTab === 'scans' && <ScansPanel entries={scanHistory} onClear={handleClearScans} />}

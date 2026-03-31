@@ -30,7 +30,7 @@ import type {
  * name does not include "Bloodied", it fails immediately.
  */
 function checkBloodied(
-  itemName: string,
+  item: ScannedGearPiece,
   buildSlot: IGearSlot
 ): PerfectibilityStep {
   const needsKillstreak =
@@ -46,7 +46,7 @@ function checkBloodied(
     }
   }
 
-  const hasBloodied = itemName.toLowerCase().includes('bloodied')
+  const hasBloodied = item.itemName.toLowerCase().includes('bloodied')
   if (hasBloodied) {
     return {
       name: 'Bloodied',
@@ -236,25 +236,7 @@ export function evaluatePerfectibility(
   scannedItem: ScannedGearPiece,
   buildSlot: IGearSlot
 ): PerfectibilityResult {
-  const bloodied = checkBloodied(scannedItem.itemName, buildSlot)
-
-  // Gate: if Bloodied fails, the item is NOT_PERFECTIBLE immediately
-  if (!bloodied.passed) {
-    const baseAffixes = checkBaseAffixes(scannedItem.affixes, buildSlot.affixes)
-    const greaterAffixes = checkGreaterAffixes(
-      scannedItem.greaterAffixes,
-      buildSlot.greaterAffixes
-    )
-    const tempering = checkTempering(
-      [...scannedItem.affixes, ...scannedItem.temperedAffixes],
-      buildSlot.temperedAffixes
-    )
-    return {
-      overallVerdict: 'NOT_PERFECTIBLE',
-      overallReason: bloodied.reason,
-      steps: { bloodied, baseAffixes, greaterAffixes, tempering }
-    }
-  }
+  const bloodied = checkBloodied(scannedItem, buildSlot)
 
   const baseAffixes = checkBaseAffixes(scannedItem.affixes, buildSlot.affixes)
 
@@ -297,7 +279,9 @@ export function evaluatePerfectibility(
     overallReason = `Good base — but ${tempering.missingTempers.length} temper${tempering.missingTempers.length > 1 ? 's' : ''} still needed.`
   } else {
     overallVerdict = 'PERFECTIBLE'
-    overallReason = 'All checks pass — this item can be perfected for the build.'
+    overallReason = bloodied.passed || bloodied.skipped
+      ? 'All checks pass — this item can be perfected for the build.'
+      : 'Good base — can be perfected, but missing recommended Bloodied prefix.'
   }
 
   // Confidence-based RISKY downgrade:

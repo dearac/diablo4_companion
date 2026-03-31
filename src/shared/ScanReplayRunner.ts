@@ -22,7 +22,7 @@ export function replayScan(recording: ScanRecording): ReplayResult {
   // Re-run comparison if build slot was available
   let newVerdict: ScanVerdict | null = null
   if (recording.buildSlot) {
-    newVerdict = compareGear(reparsedItem, recording.buildSlot, null)
+    newVerdict = compareGear(reparsedItem, recording.buildSlot)
   }
 
   // Diff old vs new

@@ -2,8 +2,6 @@ import { ElectronAPI } from '@electron-toolkit/preload'
 import {
   RawBuildData,
   SavedBuild,
-  ScanMode,
-  ScanResult,
   ScanHistoryEntry,
   ScannedGearPiece,
   IParagonBoard
@@ -42,23 +40,16 @@ declare global {
       onUpdateStarted: (callback: () => void) => () => void
       // Scan pipeline
       performScan: () => Promise<{
-        mode: ScanMode
-        verdict: ScanResult['verdict']
-        equippedItem: ScanResult['equippedItem']
+        verdict: import('./shared/types').ScanVerdict | null
         error: string | null
       }>
-      onScanResult: (callback: (result: ScanResult) => void) => () => void
+      onScanResult: (callback: (result: { verdict: import('./shared/types').ScanVerdict | null; error: string | null }) => void) => () => void
       getScanHistory: () => Promise<ScanHistoryEntry[]>
       clearScanHistory: () => Promise<void>
       updateScanHistoryEntry: (
         scannedAt: number,
         updatedItem: ScannedGearPiece
       ) => Promise<{ success: boolean }>
-      getEquippedGear: () => Promise<Record<string, ScannedGearPiece>>
-      setEquippedGear: (gear: Record<string, ScannedGearPiece>) => Promise<void>
-      getScanMode: () => Promise<ScanMode>
-      setScanMode: (mode: ScanMode) => Promise<void>
-      toggleScanMode: () => Promise<ScanMode>
       onLaunchOverlay: (callback: () => void) => () => void
       // Overlay IPC
       onBuildData: (callback: (data: RawBuildData) => void) => () => void
@@ -86,7 +77,6 @@ declare global {
       // Maintenance
       clearParagonCache: () => Promise<{ success: boolean }>
       clearBoardCalibration: () => Promise<{ success: boolean }>
-      clearEquippedGear: () => Promise<{ success: boolean }>
     }
   }
 }

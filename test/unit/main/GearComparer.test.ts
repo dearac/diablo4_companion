@@ -41,7 +41,7 @@ const makeBuildSlot = (overrides: Partial<IGearSlot> = {}): IGearSlot => ({
 describe('GearComparer', () => {
   describe('build match scoring', () => {
     it('should calculate build match count correctly', () => {
-      const verdict = compareGear(makeScanned(), makeBuildSlot(), null)
+      const verdict = compareGear(makeScanned(), makeBuildSlot())
 
       expect(verdict.buildMatchCount).toBe(2)
       expect(verdict.buildTotalExpected).toBe(3)
@@ -55,7 +55,7 @@ describe('GearComparer', () => {
       const scanned = makeScanned({
         affixes: ['+10% Critical Strike Chance', '+100 Thorns', '+5 Strength']
       })
-      const verdict = compareGear(scanned, makeBuildSlot(), null)
+      const verdict = compareGear(scanned, makeBuildSlot())
 
       expect(verdict.extraAffixes).toContain('+100 Thorns')
       expect(verdict.extraAffixes).toContain('+5 Strength')
@@ -65,7 +65,7 @@ describe('GearComparer', () => {
       const scanned = makeScanned({
         affixes: ['+10% Critical Strike Chance', '+12% Vulnerable Damage', '+8% Cooldown Reduction']
       })
-      const verdict = compareGear(scanned, makeBuildSlot(), null)
+      const verdict = compareGear(scanned, makeBuildSlot())
 
       expect(verdict.buildMatchCount).toBe(3)
       expect(verdict.buildMatchPercent).toBe(100)
@@ -79,7 +79,7 @@ describe('GearComparer', () => {
       const buildSlot = makeBuildSlot({
         affixes: [{ name: 'Critical Strike Chance', isGreater: false }]
       })
-      const verdict = compareGear(scanned, buildSlot, null)
+      const verdict = compareGear(scanned, buildSlot)
 
       expect(verdict.buildMatchCount).toBe(1)
       expect(verdict.matchedAffixes).toContain('Critical Strike Chance')
@@ -96,27 +96,36 @@ describe('GearComparer', () => {
         ],
         sockets: 1
       })
-      const verdict = compareGear(scanned, makeBuildSlot(), null)
+      const verdict = compareGear(scanned, makeBuildSlot())
 
       expect(verdict.verdict).toBe('PERFECT')
     })
 
     it('should return UPGRADE at 90%+ match', () => {
       // 9 out of 10 affixes
-      const affixes = Array.from({ length: 10 }, (_, i) => ({
-        name: `Affix${i}`,
-        isGreater: false
-      }))
-      const scannedAffixes = affixes.slice(0, 9).map((a) => `+10% ${a.name}`)
+      const realStats = [
+        'Critical Strike Chance',
+        'Vulnerable Damage',
+        'Cooldown Reduction',
+        'Maximum Life',
+        'Strength',
+        'Dexterity',
+        'Intelligence',
+        'Willpower',
+        'Armor',
+        'Movement Speed'
+      ]
+      const affixes = realStats.map((name) => ({ name, isGreater: false }))
+      const scannedAffixes = realStats.slice(0, 9).map((name) => `+10% ${name}`)
       const scanned = makeScanned({ affixes: scannedAffixes })
       const buildSlot = makeBuildSlot({ affixes })
-      const verdict = compareGear(scanned, buildSlot, null)
+      const verdict = compareGear(scanned, buildSlot)
 
       expect(verdict.verdict).toBe('UPGRADE')
     })
 
     it('should return SIDEGRADE at 60-89% match', () => {
-      const verdict = compareGear(makeScanned(), makeBuildSlot(), null)
+      const verdict = compareGear(makeScanned(), makeBuildSlot())
       // 2/3 = 66.7%
       expect(verdict.verdict).toBe('SIDEGRADE')
     })
@@ -125,7 +134,7 @@ describe('GearComparer', () => {
       const scanned = makeScanned({
         affixes: ['+100 Thorns'] // 0 matches out of 3 expected
       })
-      const verdict = compareGear(scanned, makeBuildSlot(), null)
+      const verdict = compareGear(scanned, makeBuildSlot())
 
       expect(verdict.verdict).toBe('DOWNGRADE')
     })
@@ -135,7 +144,7 @@ describe('GearComparer', () => {
     it('should flag missing sockets', () => {
       const scanned = makeScanned({ sockets: 0 })
       const buildSlot = makeBuildSlot({ socketedGems: ['Royal Ruby'] })
-      const verdict = compareGear(scanned, buildSlot, null)
+      const verdict = compareGear(scanned, buildSlot)
 
       expect(verdict.socketDelta).toBe(-1)
       expect(verdict.recommendations.some((r) => r.action === 'socket')).toBe(true)
@@ -144,7 +153,7 @@ describe('GearComparer', () => {
     it('should not recommend sockets when count matches', () => {
       const scanned = makeScanned({ sockets: 1 })
       const buildSlot = makeBuildSlot({ socketedGems: ['Royal Ruby'] })
-      const verdict = compareGear(scanned, buildSlot, null)
+      const verdict = compareGear(scanned, buildSlot)
 
       expect(verdict.socketDelta).toBe(0)
       expect(verdict.recommendations.some((r) => r.action === 'socket')).toBe(false)
@@ -153,7 +162,7 @@ describe('GearComparer', () => {
     it('should handle builds with no socket requirements', () => {
       const scanned = makeScanned({ sockets: 0 })
       const buildSlot = makeBuildSlot({ socketedGems: [] })
-      const verdict = compareGear(scanned, buildSlot, null)
+      const verdict = compareGear(scanned, buildSlot)
 
       expect(verdict.socketDelta).toBe(0)
     })
@@ -164,7 +173,7 @@ describe('GearComparer', () => {
       const scanned = makeScanned({
         affixes: ['+10% Critical Strike Chance', '+100 Thorns']
       })
-      const verdict = compareGear(scanned, makeBuildSlot(), null)
+      const verdict = compareGear(scanned, makeBuildSlot())
 
       const enchantRec = verdict.recommendations.find((r) => r.action === 'enchant')
       expect(enchantRec).toBeDefined()
@@ -176,7 +185,7 @@ describe('GearComparer', () => {
         affixes: ['+10% Critical Strike Chance', '+100 Thorns'],
         greaterAffixes: ['Thorns']
       })
-      const verdict = compareGear(scanned, makeBuildSlot(), null)
+      const verdict = compareGear(scanned, makeBuildSlot())
 
       const enchantRecs = verdict.recommendations.filter((r) => r.action === 'enchant')
       for (const rec of enchantRecs) {
@@ -189,7 +198,7 @@ describe('GearComparer', () => {
       const scanned = makeScanned({
         affixes: ['+10% Critical Strike Chance', '+12% Vulnerable Damage', '+8% Cooldown Reduction']
       })
-      const verdict = compareGear(scanned, makeBuildSlot(), null)
+      const verdict = compareGear(scanned, makeBuildSlot())
 
       const enchantRecs = verdict.recommendations.filter((r) => r.action === 'enchant')
       expect(enchantRecs).toHaveLength(0)
@@ -200,7 +209,7 @@ describe('GearComparer', () => {
       const scanned = makeScanned({
         affixes: ['+10% Critical Strike Chance', '+100 Thorns']
       })
-      const verdict = compareGear(scanned, makeBuildSlot(), null)
+      const verdict = compareGear(scanned, makeBuildSlot())
 
       const enchantRec = verdict.recommendations.find((r) => r.action === 'enchant')
       expect(enchantRec).toBeDefined()
@@ -214,55 +223,9 @@ describe('GearComparer', () => {
       const scanned = makeScanned({
         greaterAffixes: ['Critical Strike Chance', 'Vulnerable Damage']
       })
-      const verdict = compareGear(scanned, makeBuildSlot(), null)
+      const verdict = compareGear(scanned, makeBuildSlot())
 
       expect(verdict.greaterAffixCount).toBe(2)
-    })
-  })
-
-  describe('equipped gear comparison', () => {
-    it('should return UPGRADE when scanned beats equipped', () => {
-      const scanned = makeScanned({
-        affixes: ['+10% Critical Strike Chance', '+12% Vulnerable Damage']
-      })
-      const equipped = makeScanned({
-        affixes: ['+5 Strength']
-      })
-      const verdict = compareGear(scanned, makeBuildSlot(), equipped)
-
-      expect(verdict.equippedComparison).not.toBeNull()
-      expect(verdict.equippedComparison!.isUpgrade).toBe(true)
-    })
-
-    it('should return downgrade when scanned is worse than equipped', () => {
-      const scanned = makeScanned({
-        affixes: ['+5 Strength'] // 0 matches
-      })
-      const equipped = makeScanned({
-        affixes: ['+10% Critical Strike Chance', '+12% Vulnerable Damage'] // 2 matches
-      })
-      const verdict = compareGear(scanned, makeBuildSlot(), equipped)
-
-      expect(verdict.equippedComparison).not.toBeNull()
-      expect(verdict.equippedComparison!.isUpgrade).toBe(false)
-    })
-
-    it('should return null equippedComparison when no equipped item', () => {
-      const verdict = compareGear(makeScanned(), makeBuildSlot(), null)
-
-      expect(verdict.equippedComparison).toBeNull()
-    })
-
-    it('should include equipped match count for comparison', () => {
-      const scanned = makeScanned({
-        affixes: ['+10% Critical Strike Chance', '+12% Vulnerable Damage']
-      })
-      const equipped = makeScanned({
-        affixes: ['+10% Critical Strike Chance']
-      })
-      const verdict = compareGear(scanned, makeBuildSlot(), equipped)
-
-      expect(verdict.equippedComparison!.equippedMatchCount).toBe(1)
     })
   })
 
@@ -272,24 +235,24 @@ describe('GearComparer', () => {
         temperedAffixes: [] // No tempered affixes yet
       })
       const buildSlot = makeBuildSlot({
-        temperedAffixes: [{ name: 'Core Skill Damage', isGreater: false }]
+        temperedAffixes: [{ name: 'Maximum Life', isGreater: false }]
       })
-      const verdict = compareGear(scanned, buildSlot, null)
+      const verdict = compareGear(scanned, buildSlot)
 
       const temperRec = verdict.recommendations.find((r) => r.action === 'temper')
       expect(temperRec).toBeDefined()
-      expect(temperRec!.addAffix).toBe('Core Skill Damage')
+      expect(temperRec!.addAffix).toBe('Maximum Life')
       expect(temperRec!.vendor).toBe('Blacksmith')
     })
 
     it('should not recommend tempering when all tempered slots are filled', () => {
       const scanned = makeScanned({
-        temperedAffixes: ['+25% Core Skill Damage']
+        temperedAffixes: ['+25% Vulnerable Damage']
       })
       const buildSlot = makeBuildSlot({
-        temperedAffixes: [{ name: 'Core Skill Damage', isGreater: false }]
+        temperedAffixes: [{ name: 'Vulnerable Damage', isGreater: false }]
       })
-      const verdict = compareGear(scanned, buildSlot, null)
+      const verdict = compareGear(scanned, buildSlot)
 
       const temperRecs = verdict.recommendations.filter((r) => r.action === 'temper')
       expect(temperRecs).toHaveLength(0)
@@ -299,14 +262,14 @@ describe('GearComparer', () => {
       // OCR cannot tell that "+25% Core Skill Damage" is a tempered affix —
       // it always ends up in affixes[]. This should suppress the temper recommendation.
       const scanned = makeScanned({
-        affixes: ['+25% Core Skill Damage', '+10% Crit Chance'],
+        affixes: ['+25% Vulnerable Damage', '+10% Crit Chance'],
         temperedAffixes: [] // Always empty from OCR
       })
       const buildSlot = makeBuildSlot({
         affixes: [],
-        temperedAffixes: [{ name: 'Core Skill Damage', isGreater: false }]
+        temperedAffixes: [{ name: 'Vulnerable Damage', isGreater: false }]
       })
-      const verdict = compareGear(scanned, buildSlot, null)
+      const verdict = compareGear(scanned, buildSlot)
 
       const temperRecs = verdict.recommendations.filter((r) => r.action === 'temper')
       expect(temperRecs).toHaveLength(0)
@@ -353,16 +316,16 @@ describe('GearComparer', () => {
     it('should match when scanned tempered affix satisfies build tempered affix requirement', () => {
       const scanned = makeScanned({
         affixes: [],
-        temperedAffixes: ['+25% Core Skill Damage']
+        temperedAffixes: ['+25% Vulnerable Damage']
       })
       const buildSlot = makeBuildSlot({
         affixes: [],
-        temperedAffixes: [{ name: 'Core Skill Damage', isGreater: false }]
+        temperedAffixes: [{ name: 'Vulnerable Damage', isGreater: false }]
       })
       const verdict = compareGear(scanned, buildSlot, null)
 
       expect(verdict.buildMatchCount).toBe(1)
-      expect(verdict.matchedAffixes).toContain('Core Skill Damage')
+      expect(verdict.matchedAffixes).toContain('Vulnerable Damage')
     })
   })
 
