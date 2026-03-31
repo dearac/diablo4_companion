@@ -152,18 +152,6 @@ function SettingsTab(): React.JSX.Element {
             </button>
           </div>
 
-          <div className="maintenance-item">
-            <div className="maintenance-item__info">
-              <div className="maintenance-item__label">Equipped Gear</div>
-              <div className="maintenance-item__desc">Wipe all currently tracked equipment</div>
-            </div>
-            <button 
-              className="btn btn--outline btn--sm"
-              onClick={() => triggerMaintenance('gear', window.api.clearEquippedGear)}
-            >
-              {maintenanceStatus.gear === 'success' ? '✓ Wiped' : '🗑️ Wipe Gear'}
-            </button>
-          </div>
 
           <div className="maintenance-item">
             <div className="maintenance-item__info">
