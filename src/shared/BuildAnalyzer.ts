@@ -73,7 +73,7 @@ export function computeBuildAnalysis(
       continue
     }
 
-    const verdict = compareGear(equipped, buildSlot, null)
+    const verdict = compareGear(equipped, buildSlot)
 
     const slotActions = verdict.recommendations
     slotBreakdown.push({

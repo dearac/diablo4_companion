@@ -22,8 +22,8 @@ const GREATER_MARKERS = /^[⭐★☆*]|^Greater\s+/i
 /** Leading value pattern: "+121", "+9.5%", "×12%", "13%", etc. */
 const VALUE_PATTERN = /^[+×x*●•-]?\s*([\d,.]+)(%?)\s*/i
 
-/** Leading build range: "[133-151]" */
-const LEADING_RANGE = /^\[([\d.]+)\s*-\s*([\d.]+)\]\s*/
+/** Leading build range: "[133-151]" or "[62-84]%" */
+const LEADING_RANGE = /^\[([\d.]+)\s*-\s*([\d.]+)\]%?\s*/
 
 /** Trailing OCR range: "[88-102]" or truncated "[8.3-" */
 const TRAILING_RANGE = /\s*\[([\d.]+)\s*-\s*([\d.]+)?\]?\s*$/
@@ -130,6 +130,7 @@ export function normalizeAffix(raw: string): NormalizedAffix {
 
   return {
     raw,
+    parsedName: statName,
     canonicalName,
     value,
     isPercent,

@@ -9,15 +9,14 @@ import type {
 } from '../../../shared/types'
 import { evaluatePerfectibility } from '../../../shared/PerfectibilityEngine'
 import { normalizeSlot } from '../../../shared/SlotNormalizer'
+import { affixMatches } from '../../../shared/AffixMatcher'
 import AffixTagPopover from './AffixTagPopover'
 
 interface ScansTabProps {
   scanHistory: ScanHistoryEntry[]
   buildData: RawBuildData | null
   latestScanResult: {
-    mode: string
     verdict: ScanVerdict | null
-    equippedItem: ScannedGearPiece | null
     error: string | null
   } | null
   onClearHistory: () => void
@@ -52,9 +51,7 @@ const PERFECTIBILITY_LABELS: Record<string, string> = {
 
 /** Determine match status of an affix against a verdict's matched list. */
 function getMatchStatus(affixText: string, matchedAffixes: string[]): 'match' | 'miss' {
-  return matchedAffixes.some(
-    (m) => m.toLowerCase() === affixText.toLowerCase() || affixText.toLowerCase().includes(m.toLowerCase())
-  )
+  return matchedAffixes.some((m) => affixMatches(affixText, m))
     ? 'match'
     : 'miss'
 }
@@ -320,33 +317,6 @@ function ScansTab({ scanHistory, buildData, latestScanResult, onClearHistory }: 
           </div>
         )}
 
-        {/* ── Equipped Comparison (preserved) ── */}
-        {v.equippedComparison && (
-          <div className="scan-card">
-            <div className="scan-card__title">Equipped Comparison</div>
-            <div className="scan-detail__equipped-info">
-              <div
-                className={`scan-detail__upgrade-badge ${
-                  v.equippedComparison.isUpgrade
-                    ? 'scan-detail__upgrade-badge--up'
-                    : 'scan-detail__upgrade-badge--down'
-                }`}
-              >
-                {v.equippedComparison.isUpgrade ? '⬆️ UPGRADE' : '⬇️ DOWNGRADE'}
-              </div>
-              <div className="scan-detail__equipped-stats">
-                <div className="scan-detail__stat-row">
-                  <span>Equipped Score</span>
-                  <span>{v.equippedComparison.equippedMatchCount}/{v.buildTotalExpected}</span>
-                </div>
-                <div className="scan-detail__stat-row">
-                  <span>Scanned Score</span>
-                  <span>{v.buildMatchCount}/{v.buildTotalExpected}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     )
   }

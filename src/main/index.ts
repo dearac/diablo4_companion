@@ -5,13 +5,17 @@ import { existsSync, mkdirSync } from 'fs'
 import type Store from 'electron-store'
 import { HotkeyService } from './services/HotkeyService'
 import { getDataPaths } from './services/StorageService'
-import { initBuildImport, importBuild, detectSite, clearParagonCache } from './services/BuildImportService'
+import {
+  initBuildImport,
+  importBuild,
+  detectSite,
+  clearParagonCache
+} from './services/BuildImportService'
 import { BuildRepository } from './services/BuildRepository'
 import { AutoUpdateService } from './services/AutoUpdateService'
 import { ScanService } from './services/ScanService'
 import { ScanRecordingStore } from './services/ScanRecordingStore'
 import { ScreenCaptureService } from './services/ScreenCaptureService'
-import { EquippedGearStore } from './services/EquippedGearStore'
 import { ScanHistoryStore } from './services/ScanHistoryStore'
 import { matchBoard } from './services/BoardScanService'
 import { BoardPositionService } from './services/BoardPositionService'
@@ -102,13 +106,22 @@ function initServices(): void {
 
   // Initialize scan pipeline services
   const captureService = new ScreenCaptureService(dataPaths.scans)
-  const equippedStore = new EquippedGearStore(join(dataPaths.userData, 'equipped-gear.json'))
   const scanHistoryStore = new ScanHistoryStore(join(dataPaths.userData, 'scan-history.json'))
+  // In development, app.getAppPath() might be 'out/main' if launched directly by script path
+  const devAppPath = app.getAppPath().endsWith('main')
+    ? join(app.getAppPath(), '..', '..')
+    : app.getAppPath()
+
   const sidecarDir = is.dev
-    ? join(app.getAppPath(), 'sidecar', 'bin')
+    ? join(devAppPath, 'sidecar', 'bin')
     : join(process.resourcesPath, 'sidecar', 'bin')
   const recordingStore = new ScanRecordingStore(join(dataPaths.scans, 'recordings'))
-  scanService = new ScanService(captureService, equippedStore, scanHistoryStore, sidecarDir, recordingStore)
+  scanService = new ScanService(
+    captureService,
+    scanHistoryStore,
+    sidecarDir,
+    recordingStore
+  )
   boardPositionService = new BoardPositionService()
 
   // Load saved board calibration if store is already initialized
@@ -171,7 +184,6 @@ function createMainWindow(): void {
     app.quit()
   })
 }
-
 
 // ============================================================
 // DETACH WINDOW — Single paragon board overlay
@@ -450,7 +462,6 @@ function openCalibrationWindow(): void {
  * - Config window re-show
  */
 function setupIpcHandlers(): void {
-
   // Let the renderer request the current hotkey settings
   ipcMain.handle('get-hotkeys', () => {
     return hotkeyService.getAllHotkeys()
@@ -533,7 +544,6 @@ function setupIpcHandlers(): void {
     return await buildRepo.delete(id)
   })
 
-
   // Quit the app
   ipcMain.on('quit-app', () => {
     app.quit()
@@ -584,39 +594,6 @@ function setupIpcHandlers(): void {
     return await scanService.scan(currentBuildData)
   })
 
-  /** Toggle between compare and equip scan modes */
-  ipcMain.handle('toggle-scan-mode', () => {
-    return scanService.toggleScanMode()
-  })
-
-  /** Get the current scan mode */
-  ipcMain.handle('get-scan-mode', () => {
-    return scanService.getScanMode()
-  })
-
-  /** Get all currently equipped gear */
-  ipcMain.handle('get-equipped-gear', () => {
-    return scanService.getEquippedGear()
-  })
-
-  /** Clear all equipped gear */
-  ipcMain.handle('clear-equipped-gear', () => {
-    scanService.clearEquippedGear()
-    return { success: true }
-  })
-
-  /** Bulk-set all equipped gear (used for testing / external data import) */
-  ipcMain.handle('set-equipped-gear', (_event, gear: Record<string, unknown>) => {
-    scanService.setEquippedGear(gear as Record<string, import('../shared/types').ScannedGearPiece>)
-    return { success: true }
-  })
-
-  /** Explicitly set the scan mode */
-  ipcMain.handle('set-scan-mode', (_event, mode: import('../shared/types').ScanMode) => {
-    scanService.setScanMode(mode)
-    return scanService.getScanMode()
-  })
-
   /** Get scan history (compare-mode verdicts) */
   ipcMain.handle('get-scan-history', () => {
     return scanService.getScanHistory()
@@ -635,11 +612,7 @@ function setupIpcHandlers(): void {
    */
   ipcMain.handle(
     'scan:update-entry',
-    (
-      _event,
-      scannedAt: number,
-      updatedItem: import('../shared/types').ScannedGearPiece
-    ) => {
+    (_event, scannedAt: number, updatedItem: import('../shared/types').ScannedGearPiece) => {
       const updated = scanService.updateScanHistoryEntry(scannedAt, updatedItem)
       return { success: updated }
     }
@@ -680,7 +653,9 @@ function setupIpcHandlers(): void {
     if (detachWindow) {
       const bounds = detachWindow.getBounds()
       store?.set('paragon-detach-position', bounds)
-      console.log(`[Detach] Position saved: (${bounds.x}, ${bounds.y}) ${bounds.width}x${bounds.height}`)
+      console.log(
+        `[Detach] Position saved: (${bounds.x}, ${bounds.y}) ${bounds.width}x${bounds.height}`
+      )
     }
   })
 
@@ -760,9 +735,7 @@ function registerGlobalHotkeys(): void {
         }
       })
       status.toggle = ok
-      console.log(
-        `[Hotkeys] ${hotkeys.toggle} (toggle): ${ok ? '✓ registered' : '✗ FAILED'}`
-      )
+      console.log(`[Hotkeys] ${hotkeys.toggle} (toggle): ${ok ? '✓ registered' : '✗ FAILED'}`)
     }
 
     // Scan a gear tooltip — runs the full pipeline and sends result to main window
@@ -777,17 +750,13 @@ function registerGlobalHotkeys(): void {
         } catch (err) {
           console.error('[Scan] Hotkey scan failed:', err)
           mainWindow.webContents.send('scan-result', {
-            mode: scanService.getScanMode(),
             verdict: null,
-            equippedItem: null,
             error: err instanceof Error ? err.message : String(err)
           })
         }
       })
       status.scan = ok
-      console.log(
-        `[Hotkeys] ${hotkeys.scan} (scan): ${ok ? '✓ registered' : '✗ FAILED'}`
-      )
+      console.log(`[Hotkeys] ${hotkeys.scan} (scan): ${ok ? '✓ registered' : '✗ FAILED'}`)
     }
 
     // Report hotkey — same show/hide behavior as toggle
@@ -803,9 +772,7 @@ function registerGlobalHotkeys(): void {
         }
       })
       status.report = ok
-      console.log(
-        `[Hotkeys] ${hotkeys.report} (report): ${ok ? '✓ registered' : '✗ FAILED'}`
-      )
+      console.log(`[Hotkeys] ${hotkeys.report} (report): ${ok ? '✓ registered' : '✗ FAILED'}`)
     }
 
     // Cycle through paragon boards — detach the next board

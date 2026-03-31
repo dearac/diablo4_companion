@@ -26,6 +26,26 @@ export function affixMatches(scannedAffix: string, buildAffixName: string): bool
 }
 
 /**
+ * Simple fuzzy match for aspects and non-affix string comparison.
+ * Checks if all significant tokens from the expected name exist in the scanned name.
+ * Bypasses the canonical terminology mapping since aspects are not in the database.
+ */
+export function aspectMatches(scanned: string, expected: string): boolean {
+  if (!scanned || !expected) return false
+  const cleanScanned = scanned
+    .toLowerCase()
+    .replace(/aspect of the |aspect of | aspect|,|'/g, '')
+    .trim()
+  const cleanExpected = expected
+    .toLowerCase()
+    .replace(/aspect of the |aspect of | aspect|,|'/g, '')
+    .trim()
+
+  const expectedTokens = cleanExpected.split(/\s+/).filter(Boolean)
+  return expectedTokens.length > 0 && expectedTokens.every((t) => cleanScanned.includes(t))
+}
+
+/**
  * Rich comparison — returns full match details with confidence and reason.
  *
  * @param scannedAffix - The raw affix string from OCR

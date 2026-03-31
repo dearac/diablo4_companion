@@ -39,7 +39,7 @@ test.describe('Live OCR Monitor', () => {
     // ─────────────────────────────────────────────────
     console.log('\n🚀 Launching Electron app...')
     electronApp = await electron.launch({
-      args: [path.join(__dirname, '../../out/main/index.js')]
+      args: ['.'] // Use '.' so app.getAppPath() yields the project root, not out/main
     })
 
     // Capture ALL main-process console output

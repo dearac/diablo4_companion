@@ -61,6 +61,7 @@ export const AFFIX_ALIASES: Record<string, string> = {
   'all resistances': 'All Resistances',
 
   // ── Damage Types ──
+  'damage to elites': 'Damage to Elites',
   'damage to close enemies': 'Damage to Close Enemies',
   'damage to distant enemies': 'Damage to Distant Enemies',
   'damage to crowd controlled enemies': 'Damage to Crowd Controlled Enemies',

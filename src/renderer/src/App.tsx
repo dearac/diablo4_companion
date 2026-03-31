@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import type { RawBuildData, ScanHistoryEntry, ScannedGearPiece, ScanVerdict } from '../../shared/types'
+import type { RawBuildData, ScanHistoryEntry, ScanVerdict } from '../../shared/types'
 import ImportForm from './components/ImportForm'
 import StatusIndicator from './components/StatusIndicator'
 import BuildSummaryCard from './components/BuildSummaryCard'
@@ -46,17 +46,13 @@ function App(): React.JSX.Element {
   // Scan State
   const [scanHistory, setScanHistory] = useState<ScanHistoryEntry[]>([])
   const [latestScanResult, setLatestScanResult] = useState<{
-    mode: string
     verdict: ScanVerdict | null
-    equippedItem: ScannedGearPiece | null
     error: string | null
   } | null>(null)
-  const [equippedGear, setEquippedGear] = useState<Record<string, ScannedGearPiece>>({})
 
   // Load initial data
   useEffect(() => {
     window.api.getScanHistory().then(setScanHistory)
-    window.api.getEquippedGear().then(setEquippedGear)
     window.api.getCurrentBuild().then((data) => {
       if (data) setBuildData(data)
     })
@@ -82,16 +78,7 @@ function App(): React.JSX.Element {
 
       setLatestScanResult(result)
 
-      // Equip mode: update equipped gear state with the newly scanned item
-      if (result.mode === 'equip' && result.equippedItem) {
-        setEquippedGear((prev) => ({
-          ...prev,
-          [result.equippedItem!.slot]: result.equippedItem!
-        }))
-        setActiveTab('gear')
-      }
-
-      // Compare mode: add verdict to scan history
+      // Add verdict to scan history
       if (result.verdict) {
         setScanHistory((prev) => [
           {
@@ -100,10 +87,6 @@ function App(): React.JSX.Element {
           },
           ...prev
         ])
-      }
-
-      // Auto-switch to Scans tab on compare result
-      if (result.mode === 'compare') {
         setActiveTab('scans')
       }
     })
@@ -154,7 +137,7 @@ function App(): React.JSX.Element {
           </div>
         )
       case 'gear':
-        return <GearTab buildData={buildData} equippedGear={equippedGear} />
+        return <GearTab buildData={buildData} />
       case 'skills':
         return (
           <div className="tab-pane">

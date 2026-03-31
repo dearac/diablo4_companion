@@ -69,12 +69,12 @@ function AffixEditor({ item, buildSlot, onSave, onCancel }: AffixEditorProps): R
   /** Preview: compute match score from current edits */
   const previewVerdict = (): ScanVerdict | null => {
     if (!buildSlot) return null
-    return compareGear(buildUpdatedItem(), buildSlot, null)
+    return compareGear(buildUpdatedItem(), buildSlot)
   }
 
   const handleSave = (): void => {
     const updated = buildUpdatedItem()
-    const verdict = buildSlot ? compareGear(updated, buildSlot, null) : null
+    const verdict = buildSlot ? compareGear(updated, buildSlot) : null
     onSave(updated, verdict)
   }
 

@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
-import type { ScannedGearPiece, ScanMode } from '../shared/types'
+import type { ScannedGearPiece } from '../shared/types'
 
 /**
  * Custom API for Renderer process
@@ -93,12 +93,6 @@ const api = {
   clearScanHistory: () => ipcRenderer.invoke('clear-scan-history'),
   updateScanHistoryEntry: (scannedAt: number, updatedItem: ScannedGearPiece) =>
     ipcRenderer.invoke('scan:update-entry', scannedAt, updatedItem),
-  getEquippedGear: () => ipcRenderer.invoke('get-equipped-gear'),
-  setEquippedGear: (gear: Record<string, ScannedGearPiece>) =>
-    ipcRenderer.invoke('set-equipped-gear', gear),
-  getScanMode: () => ipcRenderer.invoke('get-scan-mode'),
-  setScanMode: (mode: ScanMode) => ipcRenderer.invoke('set-scan-mode', mode),
-  toggleScanMode: () => ipcRenderer.invoke('toggle-scan-mode'),
   onLaunchOverlay: (callback: () => void): (() => void) => {
     const subscription = (_event: IpcRendererEvent): void => callback() // eslint-disable-line @typescript-eslint/no-unused-vars
     ipcRenderer.on('launch-overlay', subscription)
@@ -107,8 +101,7 @@ const api = {
 
   // Maintenance actions
   clearParagonCache: () => ipcRenderer.invoke('clear-paragon-cache'),
-  clearBoardCalibration: () => ipcRenderer.invoke('clear-board-calibration'),
-  clearEquippedGear: () => ipcRenderer.invoke('clear-equipped-gear')
+  clearBoardCalibration: () => ipcRenderer.invoke('clear-board-calibration')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
