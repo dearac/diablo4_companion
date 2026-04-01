@@ -108,6 +108,7 @@ export interface IGearSlot {
   rampageEffect: string | null
   feastEffect: string | null
   socketedGems: string[]
+  minItemPower?: number
 }
 
 /**
@@ -116,6 +117,7 @@ export interface IGearSlot {
 export interface IAffix {
   name: string
   isGreater: boolean
+  minValue?: number
 }
 
 /**
@@ -268,6 +270,7 @@ export interface PerfectibilityResult {
   overallVerdict: PerfectibilityVerdict
   overallReason: string
   steps: {
+    powerCheck?: PerfectibilityStep
     bloodied: PerfectibilityStep
     baseAffixes: PerfectibilityStep & {
       matchCount: number

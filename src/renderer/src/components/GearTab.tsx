@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ScannedGearPiece, RawBuildData, AffixType } from '../../../shared/types'
+import type { ScannedGearPiece, RawBuildData, AffixType, IGearSlot } from '../../../shared/types'
 import { affixMatches } from '../../../shared/AffixMatcher'
 
 interface GearTabProps {
@@ -12,9 +12,15 @@ const RIGHT_COLUMN = ['Amulet', 'Ring 1', 'Ring 2', 'Weapon', 'Offhand']
 function GearTab({ buildData }: GearTabProps): React.JSX.Element {
   const [editingSlot, setEditingSlot] = useState<string | null>(null)
   const [localEdits, setLocalEdits] = useState<Record<string, ScannedGearPiece>>({})
+  const [localBuildEdits, setLocalBuildEdits] = useState<Record<string, IGearSlot>>({})
 
   const getEffectiveGear = (slot: string): ScannedGearPiece | null => {
     return localEdits[slot] || null
+  }
+
+  const getEffectiveBuildSlot = (slot: string): IGearSlot | null => {
+    if (localBuildEdits[slot]) return localBuildEdits[slot]
+    return buildData?.gearSlots.find((gs) => gs.slot === slot) || null
   }
 
   const handleEditAffix = (slot: string, index: number, newType: AffixType): void => {
@@ -40,11 +46,30 @@ function GearTab({ buildData }: GearTabProps): React.JSX.Element {
     setLocalEdits(prev => ({ ...prev, [slot]: updated }))
   }
 
+  const handleMinItemPowerChange = (slot: string, val: string): void => {
+    const bs = getEffectiveBuildSlot(slot)
+    if (!bs) return
+    const num = parseInt(val)
+    const updated = { ...bs }
+    updated.minItemPower = isNaN(num) ? undefined : num
+    setLocalBuildEdits((prev) => ({ ...prev, [slot]: updated }))
+  }
+
+  const handleMinValueChange = (slot: string, index: number, val: string): void => {
+    const bs = getEffectiveBuildSlot(slot)
+    if (!bs || !bs.affixes[index]) return
+    const num = parseFloat(val)
+    const updated = { ...bs }
+    updated.affixes = [...bs.affixes]
+    updated.affixes[index] = { ...updated.affixes[index], minValue: isNaN(num) ? undefined : num }
+    setLocalBuildEdits((prev) => ({ ...prev, [slot]: updated }))
+  }
+
   const renderColumn = (slots: string[]): React.JSX.Element => (
     <div className="gear-column">
       {slots.map(slotName => {
         const gear = getEffectiveGear(slotName)
-        const buildSlot = buildData?.gearSlots.find(gs => gs.slot === slotName)
+        const buildSlot = getEffectiveBuildSlot(slotName)
         const isEditing = editingSlot === slotName
 
         // Comparison Logic
@@ -52,6 +77,7 @@ function GearTab({ buildData }: GearTabProps): React.JSX.Element {
         const missing: string[] = []
         let pct = 0
         let colorClass = 'border'
+        let ipFailed = false
 
         if (gear && buildSlot) {
           const buildReqs = [
@@ -74,10 +100,18 @@ function GearTab({ buildData }: GearTabProps): React.JSX.Element {
           const total = matched.length + missing.length
           pct = total > 0 ? Math.round((matched.length / total) * 100) : 0
           
-          if (pct >= 100) colorClass = 'item-unique'
-          else if (pct >= 75) colorClass = 'item-legendary'
-          else if (pct >= 50) colorClass = 'item-rare'
-          else colorClass = 'error'
+          if (buildSlot.minItemPower !== undefined && gear.itemPower < buildSlot.minItemPower) {
+            ipFailed = true
+            colorClass = 'error'
+          } else if (pct >= 100) {
+            colorClass = 'item-unique'
+          } else if (pct >= 75) {
+            colorClass = 'item-legendary'
+          } else if (pct >= 50) {
+            colorClass = 'item-rare'
+          } else {
+            colorClass = 'error'
+          }
         }
 
         return (
@@ -97,7 +131,9 @@ function GearTab({ buildData }: GearTabProps): React.JSX.Element {
                 <>
                   <h3 className="gear-card__item-name">{gear.itemName}</h3>
                   <div className="gear-card__meta">
-                    <span>{gear.itemPower} iP</span>
+                    <span style={{ color: ipFailed ? 'var(--error)' : 'inherit' }}>
+                      {gear.itemPower} iP {ipFailed && `(Requires ${buildSlot?.minItemPower})`}
+                    </span>
                     <span>{gear.itemType}</span>
                   </div>
                 </>
@@ -133,31 +169,70 @@ function GearTab({ buildData }: GearTabProps): React.JSX.Element {
                 className="btn btn--outline btn--sm"
                 onClick={() => setEditingSlot(isEditing ? null : slotName)}
               >
-                {isEditing ? 'Close' : '✏️ Edit'}
+                {isEditing ? 'Close' : '✏️ Edit Settings'}
               </button>
             </div>
 
-            {isEditing && gear && (
+            {isEditing && (
               <div className="affix-editor-overlay">
-                {[...gear.affixes, ...gear.temperedAffixes, ...gear.greaterAffixes, ...gear.implicitAffixes].map((affix, idx) => (
-                  <div key={idx} className="affix-editor">
-                    <span className="affix-editor__label">{affix}</span>
-                    <select 
-                      className="affix-editor__select"
-                      value={
-                        gear.affixes.includes(affix) ? 'regular' :
-                        gear.temperedAffixes.includes(affix) ? 'tempered' :
-                        gear.greaterAffixes.includes(affix) ? 'greater' : 'implicit'
-                      }
-                      onChange={(e) => handleEditAffix(slotName, idx, e.target.value as AffixType)}
-                    >
-                      <option value="regular">Regular</option>
-                      <option value="tempered">Tempered</option>
-                      <option value="greater">Greater</option>
-                      <option value="implicit">Implicit</option>
-                    </select>
+                {buildSlot && (
+                  <div className="affix-editor-section">
+                    <div style={{ fontWeight: 'bold', fontSize: '12px', marginBottom: '8px', color: 'var(--text-dim)' }}>
+                      Build Requirements
+                    </div>
+                    <div className="affix-editor">
+                      <span className="affix-editor__label">Min Item Power</span>
+                      <input 
+                        type="number"
+                        className="affix-editor__select"
+                        value={buildSlot.minItemPower ?? ''}
+                        onChange={(e) => handleMinItemPowerChange(slotName, e.target.value)}
+                        placeholder="e.g. 900"
+                      />
+                    </div>
+                    {buildSlot.affixes.map((affix, idx) => (
+                      <div key={idx} className="affix-editor">
+                        <span className="affix-editor__label" style={{ fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {affix.name} (Min Roll)
+                        </span>
+                        <input
+                          type="number"
+                          step="0.1"
+                          className="affix-editor__select"
+                          value={affix.minValue ?? ''}
+                          onChange={(e) => handleMinValueChange(slotName, idx, e.target.value)}
+                          placeholder="Any"
+                        />
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
+                {gear && (
+                  <div className="affix-editor-section" style={{ marginTop: '16px' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '12px', marginBottom: '8px', color: 'var(--text-dim)' }}>
+                      Scanned Gear Preview Setup
+                    </div>
+                    {[...gear.affixes, ...gear.temperedAffixes, ...gear.greaterAffixes, ...gear.implicitAffixes].map((affix, idx) => (
+                      <div key={idx} className="affix-editor">
+                        <span className="affix-editor__label">{affix}</span>
+                        <select 
+                          className="affix-editor__select"
+                          value={
+                            gear.affixes.includes(affix) ? 'regular' :
+                            gear.temperedAffixes.includes(affix) ? 'tempered' :
+                            gear.greaterAffixes.includes(affix) ? 'greater' : 'implicit'
+                          }
+                          onChange={(e) => handleEditAffix(slotName, idx, e.target.value as AffixType)}
+                        >
+                          <option value="regular">Regular</option>
+                          <option value="tempered">Tempered</option>
+                          <option value="greater">Greater</option>
+                          <option value="implicit">Implicit</option>
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

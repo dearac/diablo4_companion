@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import type { ScannedGearPiece, IGearSlot, AffixType, ScanVerdict } from '../../../shared/types'
+import type { ScannedGearPiece, IGearSlot, AffixType, ScanVerdict, IAffix } from '../../../shared/types'
 import { compareGear } from '../../../shared/GearComparer'
 
 interface AffixEditorProps {
   item: ScannedGearPiece
   buildSlot: IGearSlot | null
-  onSave: (updated: ScannedGearPiece, newVerdict: ScanVerdict | null) => void
+  onSave: (updated: ScannedGearPiece, newVerdict: ScanVerdict | null, updatedBuildSlot?: IGearSlot) => void
   onCancel: () => void
 }
 
@@ -34,6 +34,12 @@ function AffixEditor({ item, buildSlot, onSave, onCancel }: AffixEditorProps): R
   const [affixes, setAffixes] = useState<EditableAffix[]>(buildInitialAffixes)
   const [sockets, setSockets] = useState(item.sockets)
   const [aspectName, setAspectName] = useState(item.aspect?.name ?? '')
+  const [itemPower, setItemPower] = useState(item.itemPower)
+
+  // Local build slot threshold state
+  const [localBuildSlot, setLocalBuildSlot] = useState<IGearSlot | null>(
+    buildSlot ? JSON.parse(JSON.stringify(buildSlot)) : null
+  )
 
   const handleTextChange = (index: number, text: string): void => {
     setAffixes((prev) => prev.map((a, i) => (i === index ? { ...a, text } : a)))
@@ -51,10 +57,36 @@ function AffixEditor({ item, buildSlot, onSave, onCancel }: AffixEditorProps): R
     setAffixes((prev) => [...prev, { text: '', type: 'regular' }])
   }
 
+  /** Modify the build's minimum stat threshold */
+  const handleThresholdChange = (index: number, val: string): void => {
+    if (!localBuildSlot) return
+    const num = parseFloat(val)
+    const updated = { ...localBuildSlot }
+    if (!isNaN(num)) {
+      updated.affixes[index].minValue = num
+    } else {
+      updated.affixes[index].minValue = undefined
+    }
+    setLocalBuildSlot(updated)
+  }
+
+  const handleMinItemPowerChange = (val: string): void => {
+    if (!localBuildSlot) return
+    const num = parseInt(val)
+    const updated = { ...localBuildSlot }
+    if (!isNaN(num)) {
+      updated.minItemPower = num
+    } else {
+      updated.minItemPower = undefined
+    }
+    setLocalBuildSlot(updated)
+  }
+
   /** Reconstruct a ScannedGearPiece from the editable state */
   const buildUpdatedItem = (): ScannedGearPiece => {
     return {
       ...item,
+      itemPower,
       affixes: affixes.filter((a) => a.type === 'regular').map((a) => a.text),
       temperedAffixes: affixes.filter((a) => a.type === 'tempered').map((a) => a.text),
       greaterAffixes: affixes.filter((a) => a.type === 'greater').map((a) => a.text),
@@ -68,14 +100,14 @@ function AffixEditor({ item, buildSlot, onSave, onCancel }: AffixEditorProps): R
 
   /** Preview: compute match score from current edits */
   const previewVerdict = (): ScanVerdict | null => {
-    if (!buildSlot) return null
-    return compareGear(buildUpdatedItem(), buildSlot)
+    if (!localBuildSlot) return null
+    return compareGear(buildUpdatedItem(), localBuildSlot)
   }
 
   const handleSave = (): void => {
     const updated = buildUpdatedItem()
-    const verdict = buildSlot ? compareGear(updated, buildSlot) : null
-    onSave(updated, verdict)
+    const verdict = localBuildSlot ? compareGear(updated, localBuildSlot) : null
+    onSave(updated, verdict, localBuildSlot ?? undefined)
   }
 
   const preview = previewVerdict()
@@ -83,7 +115,7 @@ function AffixEditor({ item, buildSlot, onSave, onCancel }: AffixEditorProps): R
   return (
     <div className="affix-editor-panel">
       <div className="affix-editor-panel__header">
-        <span className="affix-editor-panel__title">Edit Affixes</span>
+        <span className="affix-editor-panel__title">Edit Affixes & Thresholds</span>
         {preview && (
           <span className="affix-editor-panel__preview">
             Preview: {preview.buildMatchCount}/{preview.buildTotalExpected} (
@@ -93,6 +125,9 @@ function AffixEditor({ item, buildSlot, onSave, onCancel }: AffixEditorProps): R
       </div>
 
       <div className="affix-editor-panel__list">
+        <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '0.9em', color: 'var(--text-dim)' }}>
+          Scanned Gear Roll Values
+        </div>
         {affixes.map((affix, idx) => (
           <div key={idx} className="affix-editor-row">
             <input
@@ -123,11 +158,58 @@ function AffixEditor({ item, buildSlot, onSave, onCancel }: AffixEditorProps): R
         ))}
       </div>
 
-      <button className="affix-editor-panel__add-btn" onClick={handleAdd}>
+      <button className="affix-editor-panel__add-btn" onClick={handleAdd} style={{ marginBottom: '16px' }}>
         ＋ Add Affix
       </button>
 
-      <div className="affix-editor-panel__extras">
+      {localBuildSlot && localBuildSlot.affixes.length > 0 && (
+        <div className="affix-editor-panel__list">
+          <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '0.9em', color: 'var(--text-dim)' }}>
+            Build Base Affix Thresholds
+          </div>
+          {localBuildSlot.affixes.map((affix, idx) => (
+            <div key={idx} className="affix-editor-row">
+              <span className="affix-editor-row__label" style={{ flex: 1, fontSize: '13px' }}>
+                {affix.name}
+              </span>
+              <input
+                className="affix-editor-row__text"
+                type="number"
+                step="0.1"
+                value={affix.minValue ?? ''}
+                onChange={(e) => handleThresholdChange(idx, e.target.value)}
+                placeholder="Min value..."
+                style={{ width: '100px', flex: 'none' }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="affix-editor-panel__extras" style={{ marginTop: '16px' }}>
+        <div className="affix-editor-panel__socket-row" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
+          <span style={{ minWidth: '80px' }}>Item Power:</span>
+          <input
+            className="affix-editor-row__text"
+            type="number"
+            value={itemPower}
+            onChange={(e) => setItemPower(parseInt(e.target.value) || 0)}
+            style={{ width: '80px' }}
+          />
+          {localBuildSlot && (
+            <>
+              <span style={{ marginLeft: '16px' }}>Min IP Requirement:</span>
+              <input
+                className="affix-editor-row__text"
+                type="number"
+                value={localBuildSlot.minItemPower ?? ''}
+                onChange={(e) => handleMinItemPowerChange(e.target.value)}
+                placeholder="e.g. 900"
+                style={{ width: '80px' }}
+              />
+            </>
+          )}
+        </div>
         <div className="affix-editor-panel__socket-row">
           <span>Sockets:</span>
           <button
