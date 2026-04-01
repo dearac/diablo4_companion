@@ -23,18 +23,42 @@ import type {
 // ─── Step helpers ────────────────────────────────────────────────────────────
 
 /**
+ * Step 0 — Power Check.
+ *
+ * Rejects items that are below the build's minimum item power threshold.
+ */
+function checkPower(item: ScannedGearPiece, buildSlot: IGearSlot): PerfectibilityStep {
+  if (buildSlot.minItemPower === undefined) {
+    return {
+      name: 'Item Power',
+      passed: true,
+      skipped: true,
+      reason: 'No minimum item power required for this slot.',
+      action: null
+    }
+  }
+
+  const passed = item.itemPower >= buildSlot.minItemPower
+  return {
+    name: 'Item Power',
+    passed,
+    skipped: false,
+    reason: passed
+      ? `Item power ${item.itemPower} meets or exceeds required ${buildSlot.minItemPower}.`
+      : `Item power ${item.itemPower} is below required ${buildSlot.minItemPower}.`,
+    action: passed ? null : 'Junk this item — Item power is too low.'
+  }
+}
+
+/**
  * Step 1 — Bloodied Check.
  *
  * Builds that use Rampage or Feast killstreak mechanics require "Bloodied"
  * Ancestral items. If the build slot has either effect and the scanned item
  * name does not include "Bloodied", it fails immediately.
  */
-function checkBloodied(
-  item: ScannedGearPiece,
-  buildSlot: IGearSlot
-): PerfectibilityStep {
-  const needsKillstreak =
-    buildSlot.rampageEffect !== null || buildSlot.feastEffect !== null
+function checkBloodied(item: ScannedGearPiece, buildSlot: IGearSlot): PerfectibilityStep {
+  const needsKillstreak = buildSlot.rampageEffect !== null || buildSlot.feastEffect !== null
 
   if (!needsKillstreak) {
     return {
@@ -61,8 +85,7 @@ function checkBloodied(
     name: 'Bloodied',
     passed: false,
     skipped: false,
-    reason:
-      'Build requires a Bloodied item for killstreak but this item lacks the prefix.',
+    reason: 'Build requires a Bloodied item for killstreak but this item lacks the prefix.',
     action: 'Junk this item — Bloodied prefix cannot be added post-drop.'
   }
 }
@@ -81,13 +104,32 @@ function checkBaseAffixes(
   const totalBase = buildAffixes.length
 
   // Run compareAffixes for each build affix against all scanned affixes
-  // Collect the best match result per build affix
   const matchDetails: AffixMatchResult[] = []
+  const thresholdFailures: string[] = []
+
   const matched = buildAffixes.filter((ba) => {
     const best = scannedAffixes
-      .map((sa) => compareAffixes(sa, ba.name))
+      .map((sa) => {
+        const r = compareAffixes(sa, ba.name)
+        if (r.matched && ba.minValue !== undefined) {
+          const valMatch = sa.match(/-?[\d,]+(\.\d+)?/)
+          if (valMatch) {
+            const val = parseFloat(valMatch[0].replace(/,/g, ''))
+            if (val < ba.minValue) {
+              thresholdFailures.push(`Fail: ${ba.name} +${val} (Needed: +${ba.minValue})`)
+            }
+          } else {
+            thresholdFailures.push(`Fail: ${ba.name} (Could not read stat value)`)
+          }
+        }
+        return r
+      })
       .reduce((best, r) => (r.confidence > best.confidence ? r : best), {
-        matched: false, confidence: 0, reason: 'no scanned affixes', canonicalName: null, method: 'unresolved' as const
+        matched: false,
+        confidence: 0,
+        reason: 'no scanned affixes',
+        canonicalName: null,
+        method: 'unresolved' as const
       })
     matchDetails.push(best)
     return best.matched
@@ -99,7 +141,7 @@ function checkBaseAffixes(
 
   const matchCount = matched.length
   const threshold = Math.max(totalBase - 1, 1) // need at least N-1 matches
-  const passed = matchCount >= threshold
+  const passed = matchCount >= threshold && thresholdFailures.length === 0
 
   // Identify enchant target: prefer lowest-confidence matched scanned affix
   // (the one we're least sure about is the best candidate to reroll away)
@@ -113,7 +155,10 @@ function checkBaseAffixes(
     )
     // Use lowest-confidence non-greater unmatched scanned affix as reroll target
     const lowestConf = unmatchedScanned
-      .map((sa) => ({ sa, conf: Math.max(...buildAffixes.map((ba) => compareAffixes(sa, ba.name).confidence)) }))
+      .map((sa) => ({
+        sa,
+        conf: Math.max(...buildAffixes.map((ba) => compareAffixes(sa, ba.name).confidence))
+      }))
       .sort((a, b) => a.conf - b.conf)
     rerollTarget = lowestConf[0]?.sa ?? unmatchedScanned[0] ?? null
     rerollReplacement = unmatched[0]?.name ?? null
@@ -127,16 +172,21 @@ function checkBaseAffixes(
       ? matchCount === totalBase
         ? `All ${totalBase}/${totalBase} required base affixes present.`
         : `${matchCount}/${totalBase} required affixes match — 1 can be enchanted.`
-      : `Only ${matchCount}/${totalBase} required affixes match — too few to salvage.`,
+      : thresholdFailures.length > 0
+        ? `Stat rolls too low: ${thresholdFailures.join(', ')}`
+        : `Only ${matchCount}/${totalBase} required affixes match — too few to salvage.`,
     action: passed
       ? rerollTarget
         ? `Enchant "${rerollTarget}" → "${rerollReplacement}".`
         : null
-      : 'Junk this item — base affix foundation is insufficient.',
+      : thresholdFailures.length > 0
+        ? 'Junk this item — stat rolls do not meet required minimums.'
+        : 'Junk this item — base affix foundation is insufficient.',
     matchCount,
     totalBase,
     rerollTarget,
     rerollReplacement,
+    thresholdFailures,
     matchDetails
   }
 }
@@ -175,9 +225,7 @@ function checkGreaterAffixes(
     reason: passed
       ? 'All required Greater Affixes are present.'
       : `Missing ${missingGA.length} required Greater Affix${missingGA.length > 1 ? 'es' : ''}: ${missingGA.join(', ')}.`,
-    action: passed
-      ? null
-      : 'Junk this item — missing GAs cannot be added after the drop.',
+    action: passed ? null : 'Junk this item — missing GAs cannot be added after the drop.',
     missingGA
   }
 }
@@ -236,31 +284,26 @@ export function evaluatePerfectibility(
   scannedItem: ScannedGearPiece,
   buildSlot: IGearSlot
 ): PerfectibilityResult {
+  const powerCheck = checkPower(scannedItem, buildSlot)
   const bloodied = checkBloodied(scannedItem, buildSlot)
 
   const baseAffixes = checkBaseAffixes(scannedItem.affixes, buildSlot.affixes)
 
-  // Gate: if base affixes fail, the item is NOT_PERFECTIBLE
-  if (!baseAffixes.passed) {
-    const greaterAffixes = checkGreaterAffixes(
-      scannedItem.greaterAffixes,
-      buildSlot.greaterAffixes
-    )
+  // Gate: if power or base affixes fail, the item is NOT_PERFECTIBLE
+  if (!powerCheck.passed || !baseAffixes.passed) {
+    const greaterAffixes = checkGreaterAffixes(scannedItem.greaterAffixes, buildSlot.greaterAffixes)
     const tempering = checkTempering(
       [...scannedItem.affixes, ...scannedItem.temperedAffixes],
       buildSlot.temperedAffixes
     )
     return {
       overallVerdict: 'NOT_PERFECTIBLE',
-      overallReason: baseAffixes.reason,
-      steps: { bloodied, baseAffixes, greaterAffixes, tempering }
+      overallReason: !powerCheck.passed ? powerCheck.reason : baseAffixes.reason,
+      steps: { powerCheck, bloodied, baseAffixes, greaterAffixes, tempering }
     }
   }
 
-  const greaterAffixes = checkGreaterAffixes(
-    scannedItem.greaterAffixes,
-    buildSlot.greaterAffixes
-  )
+  const greaterAffixes = checkGreaterAffixes(scannedItem.greaterAffixes, buildSlot.greaterAffixes)
 
   const tempering = checkTempering(
     [...scannedItem.affixes, ...scannedItem.temperedAffixes],
@@ -279,9 +322,10 @@ export function evaluatePerfectibility(
     overallReason = `Good base — but ${tempering.missingTempers.length} temper${tempering.missingTempers.length > 1 ? 's' : ''} still needed.`
   } else {
     overallVerdict = 'PERFECTIBLE'
-    overallReason = bloodied.passed || bloodied.skipped
-      ? 'All checks pass — this item can be perfected for the build.'
-      : 'Good base — can be perfected, but missing recommended Bloodied prefix.'
+    overallReason =
+      bloodied.passed || bloodied.skipped
+        ? 'All checks pass — this item can be perfected for the build.'
+        : 'Good base — can be perfected, but missing recommended Bloodied prefix.'
   }
 
   // Confidence-based RISKY downgrade:
@@ -298,6 +342,6 @@ export function evaluatePerfectibility(
   return {
     overallVerdict,
     overallReason,
-    steps: { bloodied, baseAffixes, greaterAffixes, tempering }
+    steps: { powerCheck, bloodied, baseAffixes, greaterAffixes, tempering }
   }
 }
