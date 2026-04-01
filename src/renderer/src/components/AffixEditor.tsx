@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ScannedGearPiece, IGearSlot, AffixType, ScanVerdict, IAffix } from '../../../shared/types'
+import type { ScannedGearPiece, IGearSlot, AffixType, ScanVerdict } from '../../../shared/types'
 import { compareGear } from '../../../shared/GearComparer'
 
 interface AffixEditorProps {
