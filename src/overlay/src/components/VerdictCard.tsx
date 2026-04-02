@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ScanVerdict } from '../../../shared/types'
+import { DebugOcrBox } from './DebugOcrBox'
 
 /**
  * VerdictCard — Displays scan results as a slide-in card.
@@ -28,6 +29,7 @@ const VERDICT_STYLES: Record<string, { emoji: string; className: string }> = {
 
 function VerdictCard({ result, onDismiss }: VerdictCardProps): React.JSX.Element | null {
   const [isVisible, setIsVisible] = useState(false)
+  const [debugMode, setDebugMode] = useState(false)
 
   /** Slide in when result arrives, auto-dismiss after 10s */
   useEffect(() => {
@@ -50,6 +52,12 @@ function VerdictCard({ result, onDismiss }: VerdictCardProps): React.JSX.Element
       clearTimeout(dismissTimeout)
     }
   }, [result, onDismiss])
+
+  useEffect(() => {
+    if (window.api.getDebugMode) {
+      window.api.getDebugMode().then(setDebugMode)
+    }
+  }, [result])
 
   if (!result) return null
 
@@ -91,6 +99,7 @@ function VerdictCard({ result, onDismiss }: VerdictCardProps): React.JSX.Element
       onMouseEnter={() => window.api.setIgnoreMouseEvents(false)}
       onMouseLeave={() => window.api.setIgnoreMouseEvents(true, { forward: true })}
     >
+      {debugMode && <DebugOcrBox rawText={verdict.scannedItem.rawText || ''} />}
       {/* Dismiss button */}
       <button className="verdict-card__dismiss" onClick={handleDismiss}>
         ✕

@@ -82,6 +82,9 @@ declare global {
       // Maintenance
       clearParagonCache: () => Promise<{ success: boolean }>
       clearBoardCalibration: () => Promise<{ success: boolean }>
+      // Debug mode
+      getDebugMode: () => Promise<boolean>
+      setDebugMode: (enabled: boolean) => Promise<boolean>
     }
   }
 }

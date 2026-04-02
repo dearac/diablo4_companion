@@ -101,7 +101,12 @@ const api = {
 
   // Maintenance actions
   clearParagonCache: () => ipcRenderer.invoke('clear-paragon-cache'),
-  clearBoardCalibration: () => ipcRenderer.invoke('clear-board-calibration')
+  clearBoardCalibration: () => ipcRenderer.invoke('clear-board-calibration'),
+
+  // Debug mode
+  getDebugMode: (): Promise<boolean> => ipcRenderer.invoke('get-debug-mode'),
+  setDebugMode: (enabled: boolean): Promise<boolean> =>
+    ipcRenderer.invoke('set-debug-mode', enabled)
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

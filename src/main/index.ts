@@ -685,6 +685,15 @@ function setupIpcHandlers(): void {
   ipcMain.handle('scan:isRecordingEnabled', () => {
     return scanService.isRecordingEnabled()
   })
+
+  ipcMain.handle('get-debug-mode', () => {
+    return store?.get('overlayDebugMode', false) || false
+  })
+
+  ipcMain.handle('set-debug-mode', (_event, enabled: boolean) => {
+    store?.set('overlayDebugMode', enabled)
+    return enabled
+  })
 }
 
 // ============================================================

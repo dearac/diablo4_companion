@@ -43,6 +43,7 @@ function SettingsTab(): React.JSX.Element {
   const [recording, setRecording] = useState<string | null>(null)
   const [conflict, setConflict] = useState<string | null>(null)
   const [maintenanceStatus, setMaintenanceStatus] = useState<Record<string, string>>({})
+  const [debugMode, setDebugMode] = useState(false)
 
   const recordingRef = useRef<string | null>(null)
   recordingRef.current = recording
@@ -51,6 +52,7 @@ function SettingsTab(): React.JSX.Element {
     window.api.getHotkeys().then(setHotkeys)
     window.api.getHotkeyStatus().then(setStatus)
     window.api.onHotkeyStatus(setStatus)
+    window.api.getDebugMode().then(setDebugMode)
   }, [])
 
   useEffect(() => {
@@ -182,6 +184,21 @@ function SettingsTab(): React.JSX.Element {
               onClick={() => triggerMaintenance('history', window.api.clearScanHistory)}
             >
               {maintenanceStatus.history === 'success' ? '✓ Deleted' : '🧹 Clear History'}
+            </button>
+          </div>
+
+          <div className="maintenance-item">
+            <div className="maintenance-item__info">
+              <div className="maintenance-item__label">Developer UI</div>
+              <div className="maintenance-item__desc">Show raw OCR text in scan overlay</div>
+            </div>
+            <button
+              className={`btn btn--sm ${debugMode ? 'btn--primary' : 'btn--outline'}`}
+              onClick={() => {
+                window.api.setDebugMode(!debugMode).then(setDebugMode)
+              }}
+            >
+              {debugMode ? 'Enabled' : 'Disabled'}
             </button>
           </div>
         </div>
