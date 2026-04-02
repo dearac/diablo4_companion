@@ -84,6 +84,23 @@ describe('GearComparer', () => {
       expect(verdict.buildMatchCount).toBe(1)
       expect(verdict.matchedAffixes).toContain('Critical Strike Chance')
     })
+
+    it('should ignore bloodied affix in scoring and extras', () => {
+      const scanned = makeScanned({
+        affixes: ['+10% Critical Strike Chance', '+100% Bloodied Damage']
+      })
+      const buildSlot = makeBuildSlot({
+        affixes: [
+          { name: 'Critical Strike Chance', isGreater: false },
+          { name: 'Bloodied Damage', isGreater: false }
+        ]
+      })
+      const verdict = compareGear(scanned, buildSlot)
+
+      expect(verdict.buildTotalExpected).toBe(1)
+      expect(verdict.matchedAffixes).toContain('Critical Strike Chance')
+      expect(verdict.extraAffixes).not.toContain('+100% Bloodied Damage')
+    })
   })
 
   describe('verdict thresholds', () => {
@@ -374,6 +391,36 @@ describe('GearComparer', () => {
       const verdict = compareGear(scanned, buildSlot)
 
       expect(verdict.aspectComparison).toBeNull()
+    })
+  })
+
+  describe('quick decision metadata', () => {
+    it('should include required affix plan for scanned slot', () => {
+      const buildSlot = makeBuildSlot({
+        affixes: [{ name: 'Critical Strike Chance', isGreater: false }],
+        temperedAffixes: [{ name: 'Damage while Berserking', isGreater: false }],
+        masterworkPriority: ['Critical Strike Chance', 'Cooldown Reduction']
+      })
+      const verdict = compareGear(makeScanned(), buildSlot)
+
+      expect(verdict.requiredAffixPlan.slot).toBe('Helm')
+      expect(verdict.requiredAffixPlan.requiredAffixes).toContain('Critical Strike Chance')
+      expect(verdict.requiredAffixPlan.requiredTemperedAffixes).toContain('Damage while Berserking')
+      expect(verdict.requiredAffixPlan.masterworkPriority).toContain('Cooldown Reduction')
+    })
+
+    it('should generate a masterwork recommendation when masterwork priorities exist', () => {
+      const verdict = compareGear(
+        makeScanned(),
+        makeBuildSlot({
+          masterworkPriority: ['Critical Strike Chance', 'Vulnerable Damage']
+        })
+      )
+
+      const masterworkRec = verdict.recommendations.find((r) => r.action === 'masterwork')
+      expect(masterworkRec).toBeDefined()
+      expect(masterworkRec!.addAffix).toContain('Critical Strike Chance')
+      expect(masterworkRec!.vendor).toBe('Blacksmith')
     })
   })
 })

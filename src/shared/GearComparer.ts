@@ -25,6 +25,18 @@ import { affixMatches, aspectMatches } from './AffixMatcher'
 
 import { normalizeAffix } from './AffixNormalizer'
 
+function isBloodiedAffix(affixName: string): boolean {
+  const clean = normalizeAffix(affixName).parsedName.toLowerCase()
+  return clean.includes('bloodied')
+}
+
+function dedupeAndCleanAffixNames(affixes: IAffix[]): string[] {
+  const names = affixes
+    .map((a) => normalizeAffix(a.name).parsedName || a.name)
+    .filter((name) => !isBloodiedAffix(name))
+  return [...new Set(names)]
+}
+
 /**
  * Counts how many build-expected affixes are present in the scanned item.
  * Returns the matched affix names and unmatched (missing) affix names.
@@ -37,7 +49,7 @@ function matchAffixes(
   buildAffixes: IAffix[]
 ): { matched: string[]; missing: string[] } {
   // Deduplicate build affixes by name (d4builds stores greater + non-greater entries separately)
-  const uniqueNames = [...new Set(buildAffixes.map((a) => a.name))]
+  const uniqueNames = dedupeAndCleanAffixNames(buildAffixes)
 
   const matched: string[] = []
   const missing: string[] = []
@@ -60,8 +72,9 @@ function matchAffixes(
  * These are "extra" affixes — candidates for enchanting away.
  */
 function findExtraAffixes(scannedAffixes: string[], buildAffixes: IAffix[]): string[] {
+  const filteredBuildAffixes = buildAffixes.filter((ba) => !isBloodiedAffix(ba.name))
   return scannedAffixes.filter((sa) => {
-    return !buildAffixes.some((ba) => affixMatches(sa, ba.name))
+    return !isBloodiedAffix(sa) && !filteredBuildAffixes.some((ba) => affixMatches(sa, ba.name))
   })
 }
 
@@ -192,6 +205,26 @@ function generateSocketRecommendations(socketDelta: number): CraftingRecommendat
   ]
 }
 
+function generateMasterworkRecommendations(masterworkPriority: string[]): CraftingRecommendation[] {
+  const cleanPriority = masterworkPriority
+    .map((p) => normalizeAffix(p).parsedName || p)
+    .filter((p) => !isBloodiedAffix(p))
+    .slice(0, 3)
+
+  if (cleanPriority.length === 0) return []
+
+  return [
+    {
+      action: 'masterwork',
+      removeAffix: null,
+      addAffix: cleanPriority.join(' → '),
+      vendor: 'Blacksmith',
+      resultScore: 'Target these masterwork crits',
+      priority: 70
+    }
+  ]
+}
+
 /**
 /**
  * Compares a scanned gear piece against the build's expected gear slot.
@@ -241,7 +274,7 @@ export function compareGear(scannedItem: ScannedGearPiece, buildSlot: IGearSlot)
     ...scannedItem.affixes,
     ...scannedItem.temperedAffixes,
     ...scannedItem.greaterAffixes
-  ]
+  ].filter((affix) => !isBloodiedAffix(affix))
 
   // ---- Build match scoring ----
   const { matched, missing } = matchAffixes(allScannedAffixes, allBuildAffixes)
@@ -273,7 +306,8 @@ export function compareGear(scannedItem: ScannedGearPiece, buildSlot: IGearSlot)
     // Pass the full unified scanned pool — OCR cannot distinguish tempered from regular
     // affixes in the tooltip (they appear identically), so we must check all pools
     ...generateTemperRecommendations(allScannedAffixes, buildSlot.temperedAffixes),
-    ...generateSocketRecommendations(socketDelta)
+    ...generateSocketRecommendations(socketDelta),
+    ...generateMasterworkRecommendations(buildSlot.masterworkPriority)
   ]
 
   // Add aspect recommendation when aspect is missing
@@ -304,6 +338,14 @@ export function compareGear(scannedItem: ScannedGearPiece, buildSlot: IGearSlot)
     greaterAffixCount: scannedItem.greaterAffixes.length,
     verdict,
     aspectComparison,
+    requiredAffixPlan: {
+      slot: buildSlot.slot,
+      requiredAffixes: dedupeAndCleanAffixNames(buildSlot.affixes),
+      requiredTemperedAffixes: dedupeAndCleanAffixNames(buildSlot.temperedAffixes),
+      masterworkPriority: [...new Set(buildSlot.masterworkPriority)].filter(
+        (affix) => !isBloodiedAffix(affix)
+      )
+    },
     recommendations
   }
 }

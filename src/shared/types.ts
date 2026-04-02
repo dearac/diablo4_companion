@@ -212,12 +212,19 @@ export interface ScannedGearPiece {
 
 /** A recommendation for how to improve an item. */
 export interface CraftingRecommendation {
-  action: 'enchant' | 'temper' | 'socket' | 'aspect' | 'none'
+  action: 'enchant' | 'temper' | 'socket' | 'aspect' | 'masterwork' | 'none'
   removeAffix: string | null
   addAffix: string
   vendor: string
   resultScore: string
   priority: number
+}
+
+export interface RequiredAffixPlan {
+  slot: string
+  requiredAffixes: string[]
+  requiredTemperedAffixes: string[]
+  masterworkPriority: string[]
 }
 
 /** The result of comparing a scanned item to the loaded build. */
@@ -236,6 +243,7 @@ export interface ScanVerdict {
     expectedAspect: string
     hasMatch: boolean
   } | null
+  requiredAffixPlan: RequiredAffixPlan
   recommendations: CraftingRecommendation[]
 }
 

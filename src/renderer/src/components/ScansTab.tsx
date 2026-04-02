@@ -62,6 +62,25 @@ function getAffixType(affixText: string, item: ScannedGearPiece): AffixType {
   return 'regular'
 }
 
+function recLabel(rec: ScanVerdict['recommendations'][number]): string {
+  if (rec.action === 'enchant') {
+    return `Reroll "${rec.removeAffix}" → "${rec.addAffix}"`
+  }
+  if (rec.action === 'temper') {
+    return `Temper "${rec.addAffix}"`
+  }
+  if (rec.action === 'masterwork') {
+    return `Masterwork targets: ${rec.addAffix}`
+  }
+  if (rec.action === 'aspect') {
+    return `Imprint "${rec.addAffix}"`
+  }
+  if (rec.action === 'socket') {
+    return `Add ${rec.addAffix}`
+  }
+  return rec.addAffix
+}
+
 /**
  * Mutate a ScannedGearPiece to move an affix from its current pool to the new type's pool.
  * Returns a new ScannedGearPiece without mutating the original.
@@ -236,6 +255,9 @@ function ScansTab({
 
     const v = selectedEntry.verdict
     const color = VERDICT_COLORS[v.verdict] || 'var(--text-dim)'
+    const masterworkRec = v.recommendations.find((rec) => rec.action === 'masterwork')
+    const rerollRec = v.recommendations.find((rec) => rec.action === 'enchant')
+    const temperRec = v.recommendations.find((rec) => rec.action === 'temper')
 
     // All affixes for the tag grid
     const allAffixes = [
@@ -298,6 +320,72 @@ function ScansTab({
         )}
 
         {/* ── Section 2: Clickable Affix Grid ── */}
+        <div className="scan-required-grid">
+          <div className="scan-required-grid__title">Build Requirements ({v.requiredAffixPlan.slot})</div>
+          <div className="scan-required-grid__columns">
+            <div className="scan-required-grid__column">
+              <span className="scan-required-grid__label">Required Affixes</span>
+              {v.requiredAffixPlan.requiredAffixes.length === 0 ? (
+                <span className="scan-required-grid__empty">None required</span>
+              ) : (
+                v.requiredAffixPlan.requiredAffixes.map((affix) => (
+                  <span key={`req-${affix}`} className="scan-required-grid__pill">
+                    {affix}
+                  </span>
+                ))
+              )}
+            </div>
+
+            <div className="scan-required-grid__column">
+              <span className="scan-required-grid__label">Required Tempers</span>
+              {v.requiredAffixPlan.requiredTemperedAffixes.length === 0 ? (
+                <span className="scan-required-grid__empty">None required</span>
+              ) : (
+                v.requiredAffixPlan.requiredTemperedAffixes.map((affix) => (
+                  <span key={`temp-${affix}`} className="scan-required-grid__pill">
+                    {affix}
+                  </span>
+                ))
+              )}
+            </div>
+
+            <div className="scan-required-grid__column">
+              <span className="scan-required-grid__label">Masterwork Priority</span>
+              {v.requiredAffixPlan.masterworkPriority.length === 0 ? (
+                <span className="scan-required-grid__empty">No priority set</span>
+              ) : (
+                v.requiredAffixPlan.masterworkPriority.map((affix, idx) => (
+                  <span key={`mw-${affix}-${idx}`} className="scan-required-grid__pill">
+                    #{idx + 1} {affix}
+                  </span>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="scan-next-actions">
+          <div className="scan-next-actions__title">Quick Decision Actions</div>
+          <div className="scan-next-actions__row">
+            <span className="scan-next-actions__label">Reroll</span>
+            <span className="scan-next-actions__value">
+              {rerollRec ? recLabel(rerollRec) : 'No reroll needed'}
+            </span>
+          </div>
+          <div className="scan-next-actions__row">
+            <span className="scan-next-actions__label">Temper</span>
+            <span className="scan-next-actions__value">
+              {temperRec ? recLabel(temperRec) : 'No temper needed'}
+            </span>
+          </div>
+          <div className="scan-next-actions__row">
+            <span className="scan-next-actions__label">Masterwork</span>
+            <span className="scan-next-actions__value">
+              {masterworkRec ? recLabel(masterworkRec) : 'No masterwork target set in build'}
+            </span>
+          </div>
+        </div>
+
         <div className="scan-affix-grid">
           <div className="scan-affix-grid__title">Affixes — Click to Reclassify</div>
           {allAffixes.length === 0 && (
