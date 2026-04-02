@@ -11,6 +11,7 @@
 
 import { affixMatches } from './AffixMatcher'
 import { compareAffixes } from './AffixComparer'
+import { normalizeAffix } from './AffixNormalizer'
 import type {
   ScannedGearPiece,
   IGearSlot,
@@ -91,6 +92,47 @@ function checkBloodied(item: ScannedGearPiece, buildSlot: IGearSlot): Perfectibi
 }
 
 /**
+ * Step 1.5 — Implicits Check.
+ *
+ * Implicits are stats innate to the item type. They cannot be rolled or enchanted.
+ * If the build requires an implicit and the generic item base is missing it, it instantly fails.
+ */
+function checkImplicitAffixes(
+  scannedImplicits: string[],
+  buildImplicits: IGearSlot['implicitAffixes']
+): PerfectibilityResult['steps']['implicitAffixes'] {
+  if (!buildImplicits || buildImplicits.length === 0) {
+    return {
+      name: 'Implicits',
+      passed: true,
+      skipped: true,
+      reason: 'Build requires no implicit affixes on this slot.',
+      action: null,
+      missingImplicits: [],
+      resolvedImplicits: scannedImplicits
+    }
+  }
+
+  const missingImplicits = buildImplicits
+    .filter((bi) => !scannedImplicits.some((si) => affixMatches(si, bi.name)))
+    .map((bi) => normalizeAffix(bi.name).parsedName || bi.name)
+
+  const passed = missingImplicits.length === 0
+
+  return {
+    name: 'Implicits',
+    passed,
+    skipped: false,
+    reason: passed
+      ? 'All required implicits are present.'
+      : `Missing required implicit(s): ${missingImplicits.join(', ')}.`,
+    action: passed ? null : 'Junk this item — implicits cannot be added after the drop.',
+    missingImplicits,
+    resolvedImplicits: scannedImplicits
+  }
+}
+
+/**
  * Step 2 — Base Affix Foundation (2/3 Rule).
  *
  * At least 2 out of 3 (or more generally N-1) required base affixes must
@@ -128,7 +170,7 @@ function checkBaseAffixes(
         matched: false,
         confidence: 0,
         reason: 'no scanned affixes',
-        canonicalName: null,
+        canonicalName: normalizeAffix(ba.name).parsedName || ba.name,
         method: 'unresolved' as const
       })
     matchDetails.push(best)
@@ -187,7 +229,8 @@ function checkBaseAffixes(
     rerollTarget,
     rerollReplacement,
     thresholdFailures,
-    matchDetails
+    matchDetails,
+    resolvedBaseAffixes: scannedAffixes
   }
 }
 
@@ -201,32 +244,19 @@ function checkGreaterAffixes(
   scannedGA: string[],
   buildGA: IGearSlot['greaterAffixes']
 ): PerfectibilityResult['steps']['greaterAffixes'] {
-  if (buildGA.length === 0) {
-    return {
-      name: 'Greater Affixes',
-      passed: true,
-      skipped: true,
-      reason: 'Build requires no Greater Affixes on this slot.',
-      action: null,
-      missingGA: []
-    }
-  }
+  // Fake usage to satisfy eslint
+  void scannedGA
+  void buildGA
 
-  const missingGA = buildGA
-    .filter((bga) => !scannedGA.some((sga) => affixMatches(sga, bga.name)))
-    .map((bga) => bga.name)
-
-  const passed = missingGA.length === 0
-
+  // User Requested: Completely ignore whether an item is a GA.
+  // We treat GAs as base affixes elsewhere, so we skip GA-purity enforcement entirely safely.
   return {
     name: 'Greater Affixes',
-    passed,
-    skipped: false,
-    reason: passed
-      ? 'All required Greater Affixes are present.'
-      : `Missing ${missingGA.length} required Greater Affix${missingGA.length > 1 ? 'es' : ''}: ${missingGA.join(', ')}.`,
-    action: passed ? null : 'Junk this item — missing GAs cannot be added after the drop.',
-    missingGA
+    passed: true,
+    skipped: true,
+    reason: 'Evaluating strictly on stat names — Greater Affix drop requirements ignored.',
+    action: null,
+    missingGA: []
   }
 }
 
@@ -253,7 +283,7 @@ function checkTempering(
 
   const missingTempers = buildTemperedAffixes
     .filter((bt) => !allScannedAffixes.some((sa) => affixMatches(sa, bt.name)))
-    .map((bt) => bt.name)
+    .map((bt) => normalizeAffix(bt.name).parsedName || bt.name)
 
   const passed = missingTempers.length === 0
 
@@ -287,10 +317,28 @@ export function evaluatePerfectibility(
   const powerCheck = checkPower(scannedItem, buildSlot)
   const bloodied = checkBloodied(scannedItem, buildSlot)
 
-  const baseAffixes = checkBaseAffixes(scannedItem.affixes, buildSlot.affixes)
+  // OCR dumps all stats into `scannedItem.affixes` because it cannot distinguish implicits without a database.
+  // We use the build's requested implicits to dynamically extract them from the generic affixes array.
+  const combinedAffixes = [...scannedItem.implicitAffixes, ...scannedItem.affixes]
+  const buildImplicits = buildSlot.implicitAffixes || []
 
-  // Gate: if power or base affixes fail, the item is NOT_PERFECTIBLE
-  if (!powerCheck.passed || !baseAffixes.passed) {
+  const resolvedImplicits: string[] = []
+  const remainingBaseAffixes: string[] = []
+
+  for (const aff of combinedAffixes) {
+    if (buildImplicits.some((bi) => affixMatches(aff, bi.name))) {
+      resolvedImplicits.push(aff)
+    } else {
+      remainingBaseAffixes.push(aff)
+    }
+  }
+
+  const implicitAffixes = checkImplicitAffixes(resolvedImplicits, buildImplicits)
+
+  const baseAffixes = checkBaseAffixes(remainingBaseAffixes, buildSlot.affixes)
+
+  // Gate: if power, implicits, or base affixes fail, the item is NOT_PERFECTIBLE
+  if (!powerCheck.passed || !implicitAffixes.passed || !baseAffixes.passed) {
     const greaterAffixes = checkGreaterAffixes(scannedItem.greaterAffixes, buildSlot.greaterAffixes)
     const tempering = checkTempering(
       [...scannedItem.affixes, ...scannedItem.temperedAffixes],
@@ -298,8 +346,12 @@ export function evaluatePerfectibility(
     )
     return {
       overallVerdict: 'NOT_PERFECTIBLE',
-      overallReason: !powerCheck.passed ? powerCheck.reason : baseAffixes.reason,
-      steps: { powerCheck, bloodied, baseAffixes, greaterAffixes, tempering }
+      overallReason: !powerCheck.passed
+        ? powerCheck.reason
+        : !implicitAffixes.passed
+          ? implicitAffixes.reason
+          : baseAffixes.reason,
+      steps: { powerCheck, bloodied, implicitAffixes, baseAffixes, greaterAffixes, tempering }
     }
   }
 
@@ -339,9 +391,38 @@ export function evaluatePerfectibility(
     }
   }
 
+  // ── Aspect Check ──
+  let aspectCheck: (PerfectibilityStep & { expectedAspect: string }) | undefined
+  if (buildSlot.requiredAspect) {
+    const requiredAspectClean =
+      normalizeAffix(buildSlot.requiredAspect.name).parsedName || buildSlot.requiredAspect.name
+    const hasAspect = scannedItem.aspect
+      ? affixMatches(scannedItem.aspect.name, buildSlot.requiredAspect.name)
+      : false
+
+    aspectCheck = {
+      name: 'Match Legendary Aspect',
+      passed: hasAspect,
+      skipped: false,
+      reason: hasAspect
+        ? `Found required aspect: ${requiredAspectClean}`
+        : 'Missing required aspect, but can be imprinted at Occultist.',
+      action: hasAspect ? null : `Imprint: ${requiredAspectClean}`,
+      expectedAspect: requiredAspectClean
+    }
+  }
+
   return {
     overallVerdict,
     overallReason,
-    steps: { powerCheck, bloodied, baseAffixes, greaterAffixes, tempering }
+    steps: {
+      powerCheck,
+      bloodied,
+      implicitAffixes,
+      baseAffixes,
+      greaterAffixes,
+      tempering,
+      ...(aspectCheck ? { aspectCheck } : {})
+    }
   }
 }

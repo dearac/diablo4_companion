@@ -28,10 +28,7 @@ export class ScanRecordingStore {
    * @param screenshotSourcePath - Path to the screenshot to copy into the recording
    * @returns The saved ScanRecording with generated id and timestamp
    */
-  save(
-    data: Omit<ScanRecording, 'id' | 'timestamp'>,
-    screenshotSourcePath: string
-  ): ScanRecording {
+  save(data: Omit<ScanRecording, 'id' | 'timestamp'>, screenshotSourcePath: string): ScanRecording {
     const now = new Date()
     const id = now.toISOString().replace(/[:.]/g, '-')
     const timestamp = now.toISOString()
@@ -49,7 +46,7 @@ export class ScanRecordingStore {
       ...data,
       id,
       timestamp,
-      screenshotPath: 'screenshot.png'  // relative to recording dir
+      screenshotPath: 'screenshot.png' // relative to recording dir
     }
 
     // Write recording JSON
@@ -66,8 +63,8 @@ export class ScanRecordingStore {
     if (!existsSync(this.baseDir)) return []
 
     const dirs = readdirSync(this.baseDir, { withFileTypes: true })
-      .filter(d => d.isDirectory())
-      .map(d => d.name)
+      .filter((d) => d.isDirectory())
+      .map((d) => d.name)
       .sort()
       .reverse()
 

@@ -177,7 +177,7 @@ describe('GearComparer', () => {
 
       const enchantRec = verdict.recommendations.find((r) => r.action === 'enchant')
       expect(enchantRec).toBeDefined()
-      expect(enchantRec!.removeAffix).toBe('+100 Thorns')
+      expect(enchantRec!.removeAffix).toBe('Thorns')
     })
 
     it('should never recommend rerolling a greater affix', () => {
@@ -279,7 +279,7 @@ describe('GearComparer', () => {
   describe('scannedItem passthrough', () => {
     it('should include the original scanned item in the verdict', () => {
       const scanned = makeScanned()
-      const verdict = compareGear(scanned, makeBuildSlot(), null)
+      const verdict = compareGear(scanned, makeBuildSlot())
 
       expect(verdict.scannedItem).toEqual(scanned)
     })
@@ -295,7 +295,7 @@ describe('GearComparer', () => {
         affixes: [],
         temperedAffixes: [{ name: 'Attack Speed', isGreater: false }]
       })
-      const verdict = compareGear(scanned, buildSlot, null)
+      const verdict = compareGear(scanned, buildSlot)
 
       expect(verdict.buildMatchCount).toBe(1)
       expect(verdict.matchedAffixes).toContain('Attack Speed')
@@ -307,7 +307,7 @@ describe('GearComparer', () => {
         greaterAffixes: [{ name: 'Vulnerable Damage', isGreater: true }]
       })
       const scanned = makeScanned({ affixes: ['+10% Critical Strike Chance'] })
-      const verdict = compareGear(scanned, buildSlot, null)
+      const verdict = compareGear(scanned, buildSlot)
 
       // totalExpected should be 2 (CSC + Vulnerable Damage from greaterAffixes)
       expect(verdict.buildTotalExpected).toBeGreaterThanOrEqual(2)
@@ -322,7 +322,7 @@ describe('GearComparer', () => {
         affixes: [],
         temperedAffixes: [{ name: 'Vulnerable Damage', isGreater: false }]
       })
-      const verdict = compareGear(scanned, buildSlot, null)
+      const verdict = compareGear(scanned, buildSlot)
 
       expect(verdict.buildMatchCount).toBe(1)
       expect(verdict.matchedAffixes).toContain('Vulnerable Damage')
@@ -337,7 +337,7 @@ describe('GearComparer', () => {
       const buildSlot = makeBuildSlot({
         requiredAspect: { name: 'Dire Wolf', description: null }
       })
-      const verdict = compareGear(scanned, buildSlot, null)
+      const verdict = compareGear(scanned, buildSlot)
 
       expect(verdict.aspectComparison).not.toBeNull()
       expect(verdict.aspectComparison!.hasMatch).toBe(true)
@@ -349,7 +349,7 @@ describe('GearComparer', () => {
       const buildSlot = makeBuildSlot({
         requiredAspect: { name: 'Ravenous Aspect', description: null }
       })
-      const verdict = compareGear(scanned, buildSlot, null)
+      const verdict = compareGear(scanned, buildSlot)
 
       expect(verdict.aspectComparison).not.toBeNull()
       expect(verdict.aspectComparison!.hasMatch).toBe(false)
@@ -360,7 +360,7 @@ describe('GearComparer', () => {
       const buildSlot = makeBuildSlot({
         requiredAspect: { name: 'Ravenous Aspect', description: null }
       })
-      const verdict = compareGear(scanned, buildSlot, null)
+      const verdict = compareGear(scanned, buildSlot)
 
       const aspectRec = verdict.recommendations.find((r) => r.action === 'aspect')
       expect(aspectRec).toBeDefined()
@@ -371,7 +371,7 @@ describe('GearComparer', () => {
     it('should return aspectComparison: null when build has no required aspect', () => {
       const scanned = makeScanned({ aspect: null })
       const buildSlot = makeBuildSlot({ requiredAspect: null })
-      const verdict = compareGear(scanned, buildSlot, null)
+      const verdict = compareGear(scanned, buildSlot)
 
       expect(verdict.aspectComparison).toBeNull()
     })

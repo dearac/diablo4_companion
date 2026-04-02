@@ -121,7 +121,8 @@ function ScanHistoryTab(): React.JSX.Element {
                         : 'history-card__affix--miss'
                     }`}
                   >
-                    {v.aspectComparison.hasMatch ? '✅' : '❌'} Aspect: {v.aspectComparison.expectedAspect}
+                    {v.aspectComparison.hasMatch ? '✅' : '❌'} Aspect:{' '}
+                    {v.aspectComparison.expectedAspect}
                   </span>
                 )}
               </div>
@@ -140,7 +141,6 @@ function ScanHistoryTab(): React.JSX.Element {
                   ))}
                 </div>
               )}
-
 
               {/* Greater affixes */}
               {v.greaterAffixCount > 0 && (

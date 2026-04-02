@@ -5,7 +5,11 @@ import { compareGear } from '../../../shared/GearComparer'
 interface AffixEditorProps {
   item: ScannedGearPiece
   buildSlot: IGearSlot | null
-  onSave: (updated: ScannedGearPiece, newVerdict: ScanVerdict | null, updatedBuildSlot?: IGearSlot) => void
+  onSave: (
+    updated: ScannedGearPiece,
+    newVerdict: ScanVerdict | null,
+    updatedBuildSlot?: IGearSlot
+  ) => void
   onCancel: () => void
 }
 
@@ -125,7 +129,14 @@ function AffixEditor({ item, buildSlot, onSave, onCancel }: AffixEditorProps): R
       </div>
 
       <div className="affix-editor-panel__list">
-        <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '0.9em', color: 'var(--text-dim)' }}>
+        <div
+          style={{
+            fontWeight: 'bold',
+            marginBottom: '8px',
+            fontSize: '0.9em',
+            color: 'var(--text-dim)'
+          }}
+        >
           Scanned Gear Roll Values
         </div>
         {affixes.map((affix, idx) => (
@@ -158,13 +169,24 @@ function AffixEditor({ item, buildSlot, onSave, onCancel }: AffixEditorProps): R
         ))}
       </div>
 
-      <button className="affix-editor-panel__add-btn" onClick={handleAdd} style={{ marginBottom: '16px' }}>
+      <button
+        className="affix-editor-panel__add-btn"
+        onClick={handleAdd}
+        style={{ marginBottom: '16px' }}
+      >
         ＋ Add Affix
       </button>
 
       {localBuildSlot && localBuildSlot.affixes.length > 0 && (
         <div className="affix-editor-panel__list">
-          <div style={{ fontWeight: 'bold', marginBottom: '8px', fontSize: '0.9em', color: 'var(--text-dim)' }}>
+          <div
+            style={{
+              fontWeight: 'bold',
+              marginBottom: '8px',
+              fontSize: '0.9em',
+              color: 'var(--text-dim)'
+            }}
+          >
             Build Base Affix Thresholds
           </div>
           {localBuildSlot.affixes.map((affix, idx) => (
@@ -187,7 +209,10 @@ function AffixEditor({ item, buildSlot, onSave, onCancel }: AffixEditorProps): R
       )}
 
       <div className="affix-editor-panel__extras" style={{ marginTop: '16px' }}>
-        <div className="affix-editor-panel__socket-row" style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
+        <div
+          className="affix-editor-panel__socket-row"
+          style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}
+        >
           <span style={{ minWidth: '80px' }}>Item Power:</span>
           <input
             className="affix-editor-row__text"

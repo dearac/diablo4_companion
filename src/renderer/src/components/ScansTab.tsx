@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import type {
   ScanHistoryEntry,
   RawBuildData,
@@ -51,16 +51,11 @@ const PERFECTIBILITY_LABELS: Record<string, string> = {
 
 /** Determine match status of an affix against a verdict's matched list. */
 function getMatchStatus(affixText: string, matchedAffixes: string[]): 'match' | 'miss' {
-  return matchedAffixes.some((m) => affixMatches(affixText, m))
-    ? 'match'
-    : 'miss'
+  return matchedAffixes.some((m) => affixMatches(affixText, m)) ? 'match' : 'miss'
 }
 
 /** Determine AffixType from which sub-array the affix came from. */
-function getAffixType(
-  affixText: string,
-  item: ScannedGearPiece
-): AffixType {
+function getAffixType(affixText: string, item: ScannedGearPiece): AffixType {
   if (item.greaterAffixes.includes(affixText)) return 'greater'
   if (item.temperedAffixes.includes(affixText)) return 'tempered'
   if (item.implicitAffixes.includes(affixText)) return 'implicit'
@@ -108,66 +103,89 @@ function reclassifyAffix(
   return updated
 }
 
-function ScansTab({ scanHistory, buildData, latestScanResult, onClearHistory }: ScansTabProps): React.JSX.Element {
-  const [selectedEntry, setSelectedEntry] = useState<ScanHistoryEntry | null>(null)
-  // Local item state for inline tag editing (doesn't require re-scan)
-  const [localItem, setLocalItem] = useState<ScannedGearPiece | null>(null)
-  const [perfResult, setPerfResult] = useState<PerfectibilityResult | null>(null)
+function ScansTab({
+  scanHistory,
+  buildData,
+  latestScanResult,
+  onClearHistory
+}: ScansTabProps): React.JSX.Element {
+  const [selectedEntryId, setSelectedEntryId] = useState<number | null>(null)
+  const [localItemData, setLocalItemData] = useState<{ id: number; item: ScannedGearPiece } | null>(
+    null
+  )
 
-  // Auto-select latest scan result when it arrives
-  useEffect(() => {
-    if (latestScanResult?.verdict) {
-      const entry = scanHistory.find((e) => e.scannedAt === scanHistory[0]?.scannedAt)
-      if (entry) setSelectedEntry(entry)
+  // Auto-select latest scan result when it drops (Render Phase state update)
+  const [prevLatestScan, setPrevLatestScan] = useState(latestScanResult)
+  if (latestScanResult !== prevLatestScan) {
+    setPrevLatestScan(latestScanResult)
+    if (latestScanResult?.verdict && scanHistory.length > 0) {
+      setSelectedEntryId(scanHistory[0].scannedAt)
     }
-  }, [latestScanResult, scanHistory])
+  }
 
-  // Default selection to first item if none selected
-  useEffect(() => {
-    if (!selectedEntry && scanHistory.length > 0) {
-      setSelectedEntry(scanHistory[0])
-    }
-  }, [scanHistory, selectedEntry])
+  // Derive selectedEntry directly instead of using an effect
+  const selectedEntry =
+    scanHistory.find((e) => e.scannedAt === selectedEntryId) ||
+    (scanHistory.length > 0 ? scanHistory[0] : null)
 
-  // Sync localItem whenever selectedEntry changes
-  useEffect(() => {
-    if (selectedEntry) {
-      setLocalItem({ ...selectedEntry.verdict.scannedItem })
-    } else {
-      setLocalItem(null)
-    }
-  }, [selectedEntry])
+  // Derive and reset localItem when selection changes
+  if (selectedEntry && selectedEntry.scannedAt !== localItemData?.id) {
+    setLocalItemData({
+      id: selectedEntry.scannedAt,
+      item: { ...selectedEntry.verdict.scannedItem }
+    })
+  } else if (!selectedEntry && localItemData !== null) {
+    setLocalItemData(null)
+  }
 
-  // Recompute perfectibility whenever localItem or buildData changes
-  useEffect(() => {
-    if (!localItem || !buildData) {
-      setPerfResult(null)
-      return
-    }
-    // Normalize OCR slot → canonical slot, then handle Ring 1 / Ring 2 fallback
+  const localItem = localItemData?.item || null
+
+  const perfResult = useMemo(() => {
+    if (!localItem || !buildData) return null
+
     const canonical = normalizeSlot(localItem.slot)
-    let buildSlot = buildData.gearSlots.find(
-      (gs) => gs.slot.toLowerCase() === canonical.toLowerCase()
-    )
-    // "Ring" from OCR doesn't include the number — try both
-    if (!buildSlot && canonical === 'Ring') {
-      buildSlot =
-        buildData.gearSlots.find((gs) => gs.slot.toLowerCase() === 'ring 1') ??
-        buildData.gearSlots.find((gs) => gs.slot.toLowerCase() === 'ring 2')
+
+    // Find all matching build slots
+    const candidateSlots = buildData.gearSlots.filter((gs) => {
+      if (canonical === 'Ring') return gs.slot.toLowerCase().startsWith('ring')
+      if (canonical === 'Weapon')
+        return (
+          gs.slot.toLowerCase() === 'weapon' ||
+          gs.slot.toLowerCase() === 'slashing weapon' ||
+          gs.slot.toLowerCase() === 'bludgeoning weapon' ||
+          gs.slot.toLowerCase() === 'dual-wield weapon 1' ||
+          gs.slot.toLowerCase() === 'dual-wield weapon 2'
+        )
+      return gs.slot.toLowerCase() === canonical.toLowerCase()
+    })
+
+    if (candidateSlots.length === 0) return null
+
+    let bestEval: PerfectibilityResult | null = null
+    let bestScore = -1
+
+    for (const candidate of candidateSlots) {
+      const evaluation = evaluatePerfectibility(localItem, candidate)
+      // Score based on base affix match count + implicit passed + greater passed
+      const score =
+        evaluation.steps.baseAffixes.matchCount +
+        (evaluation.steps.implicitAffixes.passed ? 100 : 0) +
+        (evaluation.steps.baseAffixes.passed ? 10 : 0)
+
+      if (!bestEval || score > bestScore) {
+        bestEval = evaluation
+        bestScore = score
+      }
     }
-    if (!buildSlot) {
-      setPerfResult(null)
-      return
-    }
-    setPerfResult(evaluatePerfectibility(localItem, buildSlot))
+
+    return bestEval
   }, [localItem, buildData])
 
   const handleTagChange = useCallback(
     async (affixText: string, newType: AffixType) => {
       if (!localItem || !selectedEntry) return
       const updated = reclassifyAffix(localItem, affixText, newType)
-      setLocalItem(updated)
-      // Persist to disk (fire-and-forget — UI is already updated optimistically)
+      setLocalItemData({ id: selectedEntry.scannedAt, item: updated })
       try {
         await window.api.updateScanHistoryEntry(selectedEntry.scannedAt, updated)
       } catch (err) {
@@ -187,10 +205,12 @@ function ScansTab({ scanHistory, buildData, latestScanResult, onClearHistory }: 
       <div
         key={entry.scannedAt}
         className={`scan-inbox__item ${isSelected ? 'scan-inbox__item--active' : ''}`}
-        onClick={() => setSelectedEntry(entry)}
+        onClick={() => setSelectedEntryId(entry.scannedAt)}
       >
         <div className="scan-inbox__item-header">
-          <span className="scan-inbox__item-name" style={{ color }}>{item.itemName}</span>
+          <span className="scan-inbox__item-name" style={{ color }}>
+            {item.itemName}
+          </span>
           <span className="scan-inbox__item-time">{timeAgo(entry.scannedAt)}</span>
         </div>
         <div className="scan-inbox__item-meta">
@@ -198,8 +218,12 @@ function ScansTab({ scanHistory, buildData, latestScanResult, onClearHistory }: 
           <span>{item.itemPower} iP</span>
         </div>
         <div className="scan-inbox__item-verdict">
-          <span className="badge" style={{ backgroundColor: color }}>{v.verdict}</span>
-          <span className="scan-inbox__item-score">{v.buildMatchCount}/{v.buildTotalExpected} MATCH</span>
+          <span className="badge" style={{ backgroundColor: color }}>
+            {v.verdict}
+          </span>
+          <span className="scan-inbox__item-score">
+            {v.buildMatchCount}/{v.buildTotalExpected} MATCH
+          </span>
         </div>
       </div>
     )
@@ -213,8 +237,9 @@ function ScansTab({ scanHistory, buildData, latestScanResult, onClearHistory }: 
     const v = selectedEntry.verdict
     const color = VERDICT_COLORS[v.verdict] || 'var(--text-dim)'
 
-    // All affixes for the tag grid (excluding implicits which aren't really user-taggable)
+    // All affixes for the tag grid
     const allAffixes = [
+      ...localItem.implicitAffixes,
       ...localItem.affixes,
       ...localItem.temperedAffixes,
       ...localItem.greaterAffixes
@@ -230,9 +255,13 @@ function ScansTab({ scanHistory, buildData, latestScanResult, onClearHistory }: 
         {/* ── Header ── */}
         <header className="scan-detail__header">
           <div className="scan-detail__title-group">
-            <h2 className="scan-detail__item-name" style={{ color }}>{localItem.itemName}</h2>
+            <h2 className="scan-detail__item-name" style={{ color }}>
+              {localItem.itemName}
+            </h2>
             <div className="scan-detail__badge-group">
-              <span className="badge" style={{ backgroundColor: color }}>{v.verdict}</span>
+              <span className="badge" style={{ backgroundColor: color }}>
+                {v.verdict}
+              </span>
               {localItem.greaterAffixes.length > 0 && (
                 <span className="badge badge--ga">⭐ {localItem.greaterAffixes.length} GA</span>
               )}
@@ -316,7 +345,6 @@ function ScansTab({ scanHistory, buildData, latestScanResult, onClearHistory }: 
             })}
           </div>
         )}
-
       </div>
     )
   }
@@ -326,16 +354,16 @@ function ScansTab({ scanHistory, buildData, latestScanResult, onClearHistory }: 
       <div className="scan-inbox">
         <div className="scan-inbox__header">
           <h3>Recent Scans</h3>
-          <button className="btn btn--text btn--sm" onClick={onClearHistory}>Clear</button>
+          <button className="btn btn--text btn--sm" onClick={onClearHistory}>
+            Clear
+          </button>
         </div>
         <div className="scan-inbox__list">
           {scanHistory.map(renderInboxItem)}
           {scanHistory.length === 0 && <p className="empty-state">No scans yet.</p>}
         </div>
       </div>
-      <div className="scan-detail-view">
-        {renderDetail()}
-      </div>
+      <div className="scan-detail-view">{renderDetail()}</div>
     </div>
   )
 }

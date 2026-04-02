@@ -15,7 +15,7 @@ import { playShutterSound, playSuccessSound, playErrorSound } from './utils/audi
 
 /**
  * Diablo IV Companion — Main Application
- * 
+ *
  * 6-Tab Layout:
  * 1. Builds — Import and Library
  * 2. Gear — 2-Column Grid with Build Comparison
@@ -41,7 +41,11 @@ function App(): React.JSX.Element {
   const [buildData, setBuildData] = useState<RawBuildData | null>(null)
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState('')
-  const [importProgress, setImportProgress] = useState<{ step: number; totalSteps: number; label: string } | null>(null)
+  const [importProgress, setImportProgress] = useState<{
+    step: number
+    totalSteps: number
+    label: string
+  } | null>(null)
 
   // Scan State
   const [scanHistory, setScanHistory] = useState<ScanHistoryEntry[]>([])
@@ -128,8 +132,17 @@ function App(): React.JSX.Element {
       case 'builds':
         return (
           <div className="tab-pane">
-            <ImportForm onImportStart={handleImportStart} onImportSuccess={handleImportSuccess} onImportError={handleImportError} isLoading={status === 'loading'} />
-            <StatusIndicator status={status} errorMessage={errorMessage} progress={importProgress} />
+            <ImportForm
+              onImportStart={handleImportStart}
+              onImportSuccess={handleImportSuccess}
+              onImportError={handleImportError}
+              isLoading={status === 'loading'}
+            />
+            <StatusIndicator
+              status={status}
+              errorMessage={errorMessage}
+              progress={importProgress}
+            />
             {buildData && status === 'success' && (
               <BuildSummaryCard build={buildData} onLaunchOverlay={() => {}} />
             )}
@@ -181,13 +194,13 @@ function App(): React.JSX.Element {
   return (
     <div className="app-shell">
       <UpdateBanner />
-      
+
       <header className="app-header">
         <div className="app-header__title-group">
           <h1 className="app-header__title">🩸 Diablo IV Companion</h1>
           {buildData && <span className="app-header__build-name">{buildData.name}</span>}
         </div>
-        
+
         <nav className="app-tabs">
           {TAB_LABELS.map((tab) => (
             <button
@@ -201,9 +214,7 @@ function App(): React.JSX.Element {
         </nav>
       </header>
 
-      <main className="app-main">
-        {renderCurrentTab()}
-      </main>
+      <main className="app-main">{renderCurrentTab()}</main>
 
       <footer className="status-bar">
         <div className="status-bar__item">

@@ -1,4 +1,10 @@
-import type { BuildSourceSite, ISkillAllocation, IParagonBoard, IGearSlot, IRune } from '../../shared/types'
+import type {
+  BuildSourceSite,
+  ISkillAllocation,
+  IParagonBoard,
+  IGearSlot,
+  IRune
+} from '../../shared/types'
 
 /** Raw data scraped from a build website before normalization. */
 export interface RawBuildData {

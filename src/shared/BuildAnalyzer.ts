@@ -1,10 +1,5 @@
 import { compareGear } from './GearComparer'
-import type {
-  ScannedGearPiece,
-  IGearSlot,
-  CraftingRecommendation,
-  ScanVerdict
-} from './types'
+import type { ScannedGearPiece, IGearSlot, CraftingRecommendation, ScanVerdict } from './types'
 
 /**
  * Per-slot analysis breakdown.

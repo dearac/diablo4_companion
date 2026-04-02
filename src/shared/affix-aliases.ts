@@ -9,16 +9,16 @@
 
 export const AFFIX_ALIASES: Record<string, string> = {
   // ── Primary Stats ──
-  'strength': 'Strength',
-  'str': 'Strength',
-  'intelligence': 'Intelligence',
-  'int': 'Intelligence',
-  'willpower': 'Willpower',
-  'will': 'Willpower',
-  'dexterity': 'Dexterity',
-  'dex': 'Dexterity',
+  strength: 'Strength',
+  str: 'Strength',
+  intelligence: 'Intelligence',
+  int: 'Intelligence',
+  willpower: 'Willpower',
+  will: 'Willpower',
+  dexterity: 'Dexterity',
+  dex: 'Dexterity',
   'all stats': 'All Stats',
-  'allstats': 'All Stats',    // OCR merges words
+  allstats: 'All Stats', // OCR merges words
 
   // ── Offensive ──
   'critical strike chance': 'Critical Strike Chance',
@@ -35,8 +35,8 @@ export const AFFIX_ALIASES: Record<string, string> = {
   // ── Defensive ──
   'maximum life': 'Maximum Life',
   'max life': 'Maximum Life',
-  'life': 'Maximum Life',
-  'armor': 'Armor',
+  life: 'Maximum Life',
+  armor: 'Armor',
   'total armor': 'Total Armor',
   'damage reduction': 'Damage Reduction',
   'damage reduction from close enemies': 'Damage Reduction from Close Enemies',
@@ -45,11 +45,11 @@ export const AFFIX_ALIASES: Record<string, string> = {
 
   // ── Resource ──
   'cooldown reduction': 'Cooldown Reduction',
-  'cdr': 'Cooldown Reduction',
+  cdr: 'Cooldown Reduction',
   'resource generation': 'Resource Generation',
   'resource cost reduction': 'Resource Cost Reduction',
   'lucky hit chance': 'Lucky Hit Chance',
-  'lucky hit: chance': 'Lucky Hit Chance',    // OCR sometimes catches the colon
+  'lucky hit: chance': 'Lucky Hit Chance', // OCR sometimes catches the colon
   'lucky hit': 'Lucky Hit Chance',
 
   // ── Resistance ──
@@ -66,14 +66,14 @@ export const AFFIX_ALIASES: Record<string, string> = {
   'damage to distant enemies': 'Damage to Distant Enemies',
   'damage to crowd controlled enemies': 'Damage to Crowd Controlled Enemies',
   'damage to cc': 'Damage to Crowd Controlled Enemies',
-  'damage to cc\'d enemies': 'Damage to Crowd Controlled Enemies',
+  "damage to cc'd enemies": 'Damage to Crowd Controlled Enemies',
   'damage to slowed enemies': 'Damage to Slowed Enemies',
   'damage to stunned enemies': 'Damage to Stunned Enemies',
   'damage to injured enemies': 'Damage to Injured Enemies',
   'damage to healthy enemies': 'Damage to Healthy Enemies',
 
   // ── Misc ──
-  'thorns': 'Thorns',
+  thorns: 'Thorns',
   'life on kill': 'Life on Kill',
   'life per hit': 'Life per Hit',
   'movement speed': 'Movement Speed',
@@ -86,7 +86,7 @@ export const AFFIX_ALIASES: Record<string, string> = {
   // ── Tempered / Specialized ──
   'chance to deal double damage': 'Chance to Deal Double Damage',
   'ranks to all skills': 'Ranks to All Skills',
-  'ranks of all skills': 'Ranks to All Skills',
+  'ranks of all skills': 'Ranks to All Skills'
 }
 
 /**

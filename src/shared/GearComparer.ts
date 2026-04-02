@@ -23,6 +23,8 @@ import { affixMatches, aspectMatches } from './AffixMatcher'
  *   - Greater Affixes: drop-only, NEVER suggest rerolling these
  */
 
+import { normalizeAffix } from './AffixNormalizer'
+
 /**
  * Counts how many build-expected affixes are present in the scanned item.
  * Returns the matched affix names and unmatched (missing) affix names.
@@ -42,10 +44,11 @@ function matchAffixes(
 
   for (const buildAffixName of uniqueNames) {
     const found = scannedAffixes.some((sa) => affixMatches(sa, buildAffixName))
+    const cleanName = normalizeAffix(buildAffixName).parsedName || buildAffixName
     if (found) {
-      matched.push(buildAffixName)
+      matched.push(cleanName)
     } else {
-      missing.push(buildAffixName)
+      missing.push(cleanName)
     }
   }
 
@@ -111,11 +114,14 @@ function generateEnchantRecommendations(
   if (expendable.length === 0) return []
 
   // Recommend enchanting the first expendable affix → first missing affix
+  const cleanRemove = normalizeAffix(expendable[0]).parsedName || expendable[0]
+  const cleanAdd = missingAffixes[0] // this was already normalized in matchAffixes!
+
   return [
     {
       action: 'enchant',
-      removeAffix: expendable[0],
-      addAffix: missingAffixes[0],
+      removeAffix: cleanRemove,
+      addAffix: cleanAdd,
       vendor: 'Occultist',
       resultScore: `${missingAffixes.length - 1} remaining missing`,
       priority: 100
@@ -149,10 +155,11 @@ function generateTemperRecommendations(
     const alreadyHas = allScannedAffixes.some((st) => affixMatches(st, temperName))
 
     if (!alreadyHas) {
+      const cleanName = normalizeAffix(temperName).parsedName || temperName
       recommendations.push({
         action: 'temper',
         removeAffix: null,
-        addAffix: temperName,
+        addAffix: cleanName,
         vendor: 'Blacksmith',
         resultScore: 'Temper via manual',
         priority: 80
@@ -195,10 +202,30 @@ function generateSocketRecommendations(socketDelta: number): CraftingRecommendat
  * @param buildSlot - The build's expected gear for this slot
  * @returns A ScanVerdict with match scores, verdict, and recommendations
  */
-export function compareGear(
-  scannedItem: ScannedGearPiece,
-  buildSlot: IGearSlot
-): ScanVerdict {
+export function compareGear(scannedItem: ScannedGearPiece, buildSlot: IGearSlot): ScanVerdict {
+  // ---- Dynamically Extract Implicits ----
+  // OCR dumps implicits into affixes. We must extract them so they aren't penalized as "extra" affixes.
+  const combinedAffixes = [...scannedItem.implicitAffixes, ...scannedItem.affixes]
+  const buildImplicits = buildSlot.implicitAffixes || []
+
+  const resolvedImplicits: string[] = []
+  const remainingBaseAffixes: string[] = []
+
+  for (const aff of combinedAffixes) {
+    if (buildImplicits.some((bi) => affixMatches(aff, bi.name))) {
+      resolvedImplicits.push(aff)
+    } else {
+      remainingBaseAffixes.push(aff)
+    }
+  }
+
+  // Update scannedItem to reflect the correct distributions
+  scannedItem = {
+    ...scannedItem,
+    implicitAffixes: resolvedImplicits,
+    affixes: remainingBaseAffixes
+  }
+
   // ---- Unified affix pools ----
   // Combine all build affix categories into one required list for scoring.
   // Intentionally excludes implicitAffixes — they're fixed by item type and
@@ -251,10 +278,11 @@ export function compareGear(
 
   // Add aspect recommendation when aspect is missing
   if (aspectComparison && !aspectComparison.hasMatch) {
+    const cleanAspect = normalizeAffix(aspectComparison.expectedAspect).parsedName || aspectComparison.expectedAspect
     recommendations.push({
       action: 'aspect',
       removeAffix: null,
-      addAffix: aspectComparison.expectedAspect,
+      addAffix: cleanAspect,
       vendor: 'Occultist',
       resultScore: 'Imprint required aspect',
       priority: 90
@@ -279,4 +307,3 @@ export function compareGear(
     recommendations
   }
 }
-

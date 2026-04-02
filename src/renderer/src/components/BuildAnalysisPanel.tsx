@@ -27,10 +27,7 @@ function BuildAnalysisPanel({ analysis }: BuildAnalysisPanelProps): React.JSX.El
 
   return (
     <div className="build-analysis">
-      <button
-        className="build-analysis__header"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
+      <button className="build-analysis__header" onClick={() => setIsExpanded(!isExpanded)}>
         <span className="build-analysis__headline">
           <span className="build-analysis__label">Build Analysis</span>
           <span className="build-analysis__pct" style={{ color: overallColor }}>
@@ -57,9 +54,7 @@ function BuildAnalysisPanel({ analysis }: BuildAnalysisPanelProps): React.JSX.El
                     className="build-analysis__slot-pct"
                     style={{ color: VERDICT_COLORS[slot.verdict] }}
                   >
-                    {slot.verdict === 'EMPTY'
-                      ? 'Not scanned'
-                      : `${Math.round(slot.matchPercent)}%`}
+                    {slot.verdict === 'EMPTY' ? 'Not scanned' : `${Math.round(slot.matchPercent)}%`}
                   </span>
                 </div>
                 <div className="build-analysis__slot-bar-track">

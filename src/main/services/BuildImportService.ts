@@ -34,11 +34,11 @@ export async function importBuild(
   onProgress?: ImportProgressCallback
 ): Promise<RawBuildData> {
   if (!scraper) throw new Error('Build import not initialized — call initBuildImport() first')
-  
+
   const normalized = url.toLowerCase().trim()
   if (!normalized.includes('d4builds.gg')) {
     throw new Error(`No scraper available for "${url}". Supported sites: d4builds.gg`)
   }
-  
+
   return scraper.scrape(url, onProgress)
 }

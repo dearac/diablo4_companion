@@ -2,10 +2,18 @@ import { useState, useEffect, useRef } from 'react'
 
 const HOTKEY_META: Record<string, { icon: string; label: string; desc: string }> = {
   scan: { icon: '📸', label: 'Scan Item', desc: 'Capture and analyze a gear tooltip' },
-  report: { icon: '📊', label: 'Toggle Always-on-Top', desc: 'Toggle the application overlay mode' },
+  report: {
+    icon: '📊',
+    label: 'Toggle Always-on-Top',
+    desc: 'Toggle the application overlay mode'
+  },
   toggle: { icon: '👁️', label: 'Toggle State', desc: 'Reserved for future toggle actions' },
   detach: { icon: '⊞', label: 'Detach Board', desc: 'Cycle to the next paragon board overlay' },
-  boardScan: { icon: '🔍', label: 'Board Scan', desc: 'OCR scan to identify & overlay the paragon board' }
+  boardScan: {
+    icon: '🔍',
+    label: 'Board Scan',
+    desc: 'OCR scan to identify & overlay the paragon board'
+  }
 }
 
 const ACTIONS = ['scan', 'report', 'detach', 'boardScan'] as const
@@ -58,9 +66,13 @@ function SettingsTab(): React.JSX.Element {
       const accelerator = keyEventToAccelerator(e)
       if (!accelerator) return
       const action = recordingRef.current
-      const conflictAction = Object.entries(hotkeys).find(([a, k]) => a !== action && k === accelerator)
+      const conflictAction = Object.entries(hotkeys).find(
+        ([a, k]) => a !== action && k === accelerator
+      )
       if (conflictAction) {
-        setConflict(`"${accelerator}" is already used by ${HOTKEY_META[conflictAction[0]]?.label || conflictAction[0]}`)
+        setConflict(
+          `"${accelerator}" is already used by ${HOTKEY_META[conflictAction[0]]?.label || conflictAction[0]}`
+        )
         return
       }
       setConflict(null)
@@ -72,13 +84,13 @@ function SettingsTab(): React.JSX.Element {
   }, [hotkeys])
 
   const triggerMaintenance = async (id: string, fn: () => Promise<any>): Promise<void> => {
-    setMaintenanceStatus(prev => ({ ...prev, [id]: 'loading' }))
+    setMaintenanceStatus((prev) => ({ ...prev, [id]: 'loading' }))
     try {
       await fn()
-      setMaintenanceStatus(prev => ({ ...prev, [id]: 'success' }))
-      setTimeout(() => setMaintenanceStatus(prev => ({ ...prev, [id]: '' })), 3000)
+      setMaintenanceStatus((prev) => ({ ...prev, [id]: 'success' }))
+      setTimeout(() => setMaintenanceStatus((prev) => ({ ...prev, [id]: '' })), 3000)
     } catch (err) {
-      setMaintenanceStatus(prev => ({ ...prev, [id]: 'error' }))
+      setMaintenanceStatus((prev) => ({ ...prev, [id]: 'error' }))
     }
   }
 
@@ -86,10 +98,12 @@ function SettingsTab(): React.JSX.Element {
     <div className="settings-pane" id="settings-tab">
       <section className="settings-section">
         <h3 className="settings-section__title">Keyboard Shortcuts</h3>
-        <p className="settings-section__desc">Click a key to rebind. Conflict warnings will appear if a key is already in use.</p>
-        
+        <p className="settings-section__desc">
+          Click a key to rebind. Conflict warnings will appear if a key is already in use.
+        </p>
+
         <div className="hotkey-list">
-          {ACTIONS.map(action => {
+          {ACTIONS.map((action) => {
             const meta = HOTKEY_META[action]
             const isRecording = recording === action
             const isOk = status[action]
@@ -104,13 +118,15 @@ function SettingsTab(): React.JSX.Element {
                 </div>
                 <div className="hotkey-row__controls">
                   {isOk !== undefined && (
-                    <span className={`status-dot ${isOk ? 'status-dot--ok' : 'status-dot--error'}`} />
+                    <span
+                      className={`status-dot ${isOk ? 'status-dot--ok' : 'status-dot--error'}`}
+                    />
                   )}
-                  <button 
+                  <button
                     className={`hotkey-badge ${isRecording ? 'hotkey-badge--recording' : ''}`}
                     onClick={() => setRecording(action)}
                   >
-                    {isRecording ? 'Press a key...' : (hotkeys[action] || '...')}
+                    {isRecording ? 'Press a key...' : hotkeys[action] || '...'}
                   </button>
                 </div>
               </div>
@@ -118,7 +134,11 @@ function SettingsTab(): React.JSX.Element {
           })}
         </div>
         {conflict && <div className="settings-error">⚠️ {conflict}</div>}
-        <button className="btn btn--outline btn--sm" style={{ marginTop: '1rem' }} onClick={() => window.api.resetHotkeys().then(setHotkeys)}>
+        <button
+          className="btn btn--outline btn--sm"
+          style={{ marginTop: '1rem' }}
+          onClick={() => window.api.resetHotkeys().then(setHotkeys)}
+        >
           Reset to Defaults
         </button>
       </section>
@@ -131,7 +151,7 @@ function SettingsTab(): React.JSX.Element {
               <div className="maintenance-item__label">Paragon Cache</div>
               <div className="maintenance-item__desc">Force reload all board image data</div>
             </div>
-            <button 
+            <button
               className="btn btn--outline btn--sm"
               onClick={() => triggerMaintenance('cache', window.api.clearParagonCache)}
             >
@@ -144,7 +164,7 @@ function SettingsTab(): React.JSX.Element {
               <div className="maintenance-item__label">Board Calibration</div>
               <div className="maintenance-item__desc">Reset the screen region for board scans</div>
             </div>
-            <button 
+            <button
               className="btn btn--outline btn--sm"
               onClick={() => triggerMaintenance('calib', window.api.clearBoardCalibration)}
             >
@@ -152,13 +172,12 @@ function SettingsTab(): React.JSX.Element {
             </button>
           </div>
 
-
           <div className="maintenance-item">
             <div className="maintenance-item__info">
               <div className="maintenance-item__label">Scan History</div>
               <div className="maintenance-item__desc">Delete all past comparison results</div>
             </div>
-            <button 
+            <button
               className="btn btn--outline btn--sm"
               onClick={() => triggerMaintenance('history', window.api.clearScanHistory)}
             >

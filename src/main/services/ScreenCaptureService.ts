@@ -123,9 +123,7 @@ export class ScreenCaptureService {
     })
 
     // Look for the game window by title (case-insensitive partial match)
-    const gameWindow = windowSources.find(
-      (s) => s.name.toLowerCase().includes('diablo')
-    )
+    const gameWindow = windowSources.find((s) => s.name.toLowerCase().includes('diablo'))
 
     if (gameWindow) {
       console.log(`[BoardScan] Found game window: "${gameWindow.name}"`)

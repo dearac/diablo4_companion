@@ -13,11 +13,7 @@ export default defineConfig({
     },
     server: {
       fs: {
-        allow: [
-          resolve('src/renderer'),
-          resolve('src/shared'),
-          resolve('node_modules')
-        ]
+        allow: [resolve('src/renderer'), resolve('src/shared'), resolve('node_modules')]
       }
     },
     plugins: [react()],

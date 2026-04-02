@@ -7,7 +7,13 @@
  *
  * Run:  npx playwright test test/e2e/visual-audit.spec.ts
  */
-import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
+import {
+  test,
+  expect,
+  _electron as electron,
+  type ElectronApplication,
+  type Page
+} from '@playwright/test'
 import path from 'path'
 
 const SCREENSHOT_DIR = path.join(__dirname, '..', '..', 'test-screenshots')
@@ -60,7 +66,10 @@ test.describe('Diablo IV Companion — Visual Audit', () => {
 
   test('should render the app shell correctly', async () => {
     // Screenshot the initial state
-    await page.screenshot({ path: path.join(SCREENSHOT_DIR, '00-initial-load.png'), fullPage: true })
+    await page.screenshot({
+      path: path.join(SCREENSHOT_DIR, '00-initial-load.png'),
+      fullPage: true
+    })
 
     // Check the header exists
     const header = page.locator('.app-header')

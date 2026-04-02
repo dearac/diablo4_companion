@@ -43,7 +43,12 @@ declare global {
         verdict: import('./shared/types').ScanVerdict | null
         error: string | null
       }>
-      onScanResult: (callback: (result: { verdict: import('./shared/types').ScanVerdict | null; error: string | null }) => void) => () => void
+      onScanResult: (
+        callback: (result: {
+          verdict: import('./shared/types').ScanVerdict | null
+          error: string | null
+        }) => void
+      ) => () => void
       getScanHistory: () => Promise<ScanHistoryEntry[]>
       clearScanHistory: () => Promise<void>
       updateScanHistoryEntry: (

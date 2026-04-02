@@ -1,9 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import type {
-  RawBuildData,
-  ScanVerdict,
-  ScanHistoryEntry
-} from '../../shared/types'
+import type { RawBuildData, ScanVerdict, ScanHistoryEntry } from '../../shared/types'
 import OverlayHeader from './components/OverlayHeader'
 import TabBar from './components/TabBar'
 import type { TabId } from './components/TabBar'
@@ -193,10 +189,7 @@ function App(): React.JSX.Element {
             <ParagonPanel boards={buildData.paragonBoards} onDetach={handleDetachBoard} />
           )}
           {activeTab === 'gear' && (
-            <GearPanel
-              gearSlots={buildData.gearSlots}
-              activeRunes={buildData.activeRunes || []}
-            />
+            <GearPanel gearSlots={buildData.gearSlots} activeRunes={buildData.activeRunes || []} />
           )}
           {activeTab === 'scans' && <ScansPanel entries={scanHistory} onClear={handleClearScans} />}
         </div>

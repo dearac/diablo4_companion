@@ -202,7 +202,6 @@ function VerdictCard({ result, onDismiss }: VerdictCardProps): React.JSX.Element
           ))}
         </div>
       )}
-
     </div>
   )
 }

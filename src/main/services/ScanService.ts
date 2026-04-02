@@ -6,7 +6,7 @@ import { ScanHistoryStore } from './ScanHistoryStore'
 import { ScanRecordingStore } from './ScanRecordingStore'
 import { normalizeSlot } from '../../shared/SlotNormalizer'
 import type { ScanHistoryEntry } from '../../shared/types'
-import type { ScanVerdict, ScannedGearPiece, RawBuildData } from '../../shared/types'
+import type { ScanVerdict, ScannedGearPiece, RawBuildData, IGearSlot } from '../../shared/types'
 import { statSync } from 'fs'
 import { basename } from 'path'
 
@@ -65,10 +65,7 @@ export class ScanService {
    * Updates a scan history entry's scannedItem in-place (pass-through to ScanHistoryStore).
    * Enables the inline affix tag editor to re-classify affixes without re-scanning.
    */
-  updateScanHistoryEntry(
-    scannedAt: number,
-    updatedItem: ScannedGearPiece
-  ): boolean {
+  updateScanHistoryEntry(scannedAt: number, updatedItem: ScannedGearPiece): boolean {
     return this.scanHistory.updateEntry(scannedAt, updatedItem)
   }
 
@@ -123,17 +120,35 @@ export class ScanService {
       }
 
       // Find matching build slot using canonical name.
-      // For "Ring", try both "Ring 1" and "Ring 2".
-      let buildSlot = buildData.gearSlots.find(
-        (gs) => gs.slot.toLowerCase() === canonicalSlot.toLowerCase()
-      )
-      if (!buildSlot && canonicalSlot === 'Ring') {
-        buildSlot = buildData.gearSlots.find(
-          (gs) => gs.slot.toLowerCase() === 'ring 1' || gs.slot.toLowerCase() === 'ring 2'
-        )
+      // For "Ring" or "Weapon", try all variants and pick the best matching one.
+      let bestSlot: IGearSlot | null = null
+      let bestVerdict: ScanVerdict | null = null
+
+      const candidateSlots = buildData.gearSlots.filter((gs) => {
+        if (canonicalSlot === 'Ring') return gs.slot.toLowerCase().startsWith('ring')
+        if (canonicalSlot === 'Weapon')
+          return (
+            gs.slot.toLowerCase() === 'weapon' ||
+            gs.slot.toLowerCase() === 'slashing weapon' ||
+            gs.slot.toLowerCase() === 'bludgeoning weapon' ||
+            gs.slot.toLowerCase() === 'dual-wield weapon 1' ||
+            gs.slot.toLowerCase() === 'dual-wield weapon 2'
+          )
+        return gs.slot.toLowerCase() === canonicalSlot.toLowerCase()
+      })
+
+      for (const candidate of candidateSlots) {
+        const v = compareGear(scannedItem, candidate)
+        if (!bestVerdict || v.buildMatchCount > bestVerdict.buildMatchCount) {
+          bestVerdict = v
+          bestSlot = candidate
+        }
       }
 
-      if (!buildSlot) {
+      const buildSlot = bestSlot
+      const verdict = bestVerdict
+
+      if (!buildSlot || !verdict) {
         console.log(
           `[SCAN] ── ERROR ── No build data for slot: ${scannedItem.slot} (canonical: ${canonicalSlot})`
         )
@@ -142,9 +157,6 @@ export class ScanService {
           error: `No build data for slot: ${canonicalSlot}`
         }
       }
-
-      // Score it
-      const verdict = compareGear(scannedItem, buildSlot)
       console.log('[SCAN] ── VERDICT ──')
       console.log(
         `[SCAN]   Result:     ${verdict.verdict} (${verdict.buildMatchCount}/${verdict.buildTotalExpected} build affixes matched)`
@@ -165,15 +177,18 @@ export class ScanService {
       // Recording hook — save a snapshot of this scan for offline replay testing
       if (this.recordingEnabled && this.recordingStore) {
         try {
-          this.recordingStore.save({
-            screenshotPath: imagePath,
-            ocrLines: lineTexts,
-            parsedItem: scannedItem,
-            buildSlot: buildSlot ?? null,
-            buildName: buildData?.name ?? null,
-            verdict: verdict ?? null,
-            perfectibility: null  // Will be populated in Phase 3
-          }, imagePath)
+          this.recordingStore.save(
+            {
+              screenshotPath: imagePath,
+              ocrLines: lineTexts,
+              parsedItem: scannedItem,
+              buildSlot: buildSlot ?? null,
+              buildName: buildData?.name ?? null,
+              verdict: verdict ?? null,
+              perfectibility: null // Will be populated in Phase 3
+            },
+            imagePath
+          )
           console.log('[SCAN] ── RECORDING SAVED ──')
         } catch (err) {
           console.warn('[SCAN] ── RECORDING FAILED ──', err)

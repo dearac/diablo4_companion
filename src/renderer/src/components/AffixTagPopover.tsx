@@ -35,7 +35,12 @@ const MATCH_ICONS: Record<string, string> = {
   reroll: '🔧'
 }
 
-function AffixTagPopover({ affixText, currentType, matchStatus, onTag }: AffixTagPopoverProps): React.JSX.Element {
+function AffixTagPopover({
+  affixText,
+  currentType,
+  matchStatus,
+  onTag
+}: AffixTagPopoverProps): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 

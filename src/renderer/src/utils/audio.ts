@@ -1,6 +1,6 @@
 /**
  * Audio Utility — Low-latency Scan Feedback
- * 
+ *
  * Assets expected in public/audio/
  */
 
@@ -11,7 +11,7 @@ const audioPool: Record<string, HTMLAudioElement> = {
 }
 
 // Pre-load sounds
-Object.values(audioPool).forEach(audio => {
+Object.values(audioPool).forEach((audio) => {
   audio.load()
   audio.volume = 0.4
 })

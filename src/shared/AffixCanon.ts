@@ -10,7 +10,7 @@
 import { AFFIX_ALIASES, CANONICAL_AFFIX_NAMES } from './affix-aliases'
 
 /** Lowercase canonical names for reverse lookup */
-const CANONICAL_SET = new Set(CANONICAL_AFFIX_NAMES.map(n => n.toLowerCase()))
+const CANONICAL_SET = new Set(CANONICAL_AFFIX_NAMES.map((n) => n.toLowerCase()))
 
 /** Pre-built lowercase alias map for O(1) lookup */
 const ALIAS_MAP = new Map<string, string>()
@@ -36,7 +36,9 @@ export function resolveCanonicalName(raw: string): string | null {
   // Direct canonical name match
   if (CANONICAL_SET.has(lower)) {
     // Return the properly-cased canonical name
-    return AFFIX_ALIASES[lower] ?? CANONICAL_AFFIX_NAMES.find(n => n.toLowerCase() === lower) ?? null
+    return (
+      AFFIX_ALIASES[lower] ?? CANONICAL_AFFIX_NAMES.find((n) => n.toLowerCase() === lower) ?? null
+    )
   }
 
   // Alias lookup

@@ -116,12 +116,7 @@ function initServices(): void {
     ? join(devAppPath, 'sidecar', 'bin')
     : join(process.resourcesPath, 'sidecar', 'bin')
   const recordingStore = new ScanRecordingStore(join(dataPaths.scans, 'recordings'))
-  scanService = new ScanService(
-    captureService,
-    scanHistoryStore,
-    sidecarDir,
-    recordingStore
-  )
+  scanService = new ScanService(captureService, scanHistoryStore, sidecarDir, recordingStore)
   boardPositionService = new BoardPositionService()
 
   // Load saved board calibration if store is already initialized

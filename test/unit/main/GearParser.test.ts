@@ -128,12 +128,7 @@ describe('GearParser', () => {
   })
 
   it('should keep aspect null when no "Imprinted:" line is present', () => {
-    const lines = [
-      'Test Helm',
-      'Legendary Helm',
-      '925 Item Power',
-      '+100 Maximum Life'
-    ]
+    const lines = ['Test Helm', 'Legendary Helm', '925 Item Power', '+100 Maximum Life']
     const result = parseTooltip(lines)
     expect(result.aspect).toBeNull()
   })
@@ -198,7 +193,7 @@ describe('GearParser', () => {
 
   it('should strip "& Materials" UI noise from item name', () => {
     const lines =
-      "ACTER\nEARAC\ntle Selected\n& Materials\nRAPID Doom\napcj\nLegendary Gloves\n750 Item Power\n+96 Strength +[89 - 99]\n+88 Life OnHit [84-92]".split(
+      'ACTER\nEARAC\ntle Selected\n& Materials\nRAPID Doom\napcj\nLegendary Gloves\n750 Item Power\n+96 Strength +[89 - 99]\n+88 Life OnHit [84-92]'.split(
         '\n'
       )
     const result = parseTooltip(lines)
@@ -209,7 +204,7 @@ describe('GearParser', () => {
 
   it('should strip "CHARACTE]" crop artifact from "FISTS OF FATE"', () => {
     const lines =
-      "CHARACTE]\nFISTS OF FATE\nUnique Gloves\n750 Item Power\n562 Armor\n+3.6% Attack speed [0.1-8.71%\n+5.6% Critical Strike Chance [0.1 -".split(
+      'CHARACTE]\nFISTS OF FATE\nUnique Gloves\n750 Item Power\n562 Armor\n+3.6% Attack speed [0.1-8.71%\n+5.6% Critical Strike Chance [0.1 -'.split(
         '\n'
       )
     const result = parseTooltip(lines)
@@ -233,7 +228,7 @@ describe('GearParser', () => {
 
   it('should produce clean name for "CHAR DAWN FIRE" → "DAWN FIRE"', () => {
     const lines =
-      "CHAR\nDAWN FIRE\nUnique Gloves\n750 Item Power\n562 Armor\n+83 Strength +[73-831\n+244 Maximum Life [244 - 2721".split(
+      'CHAR\nDAWN FIRE\nUnique Gloves\n750 Item Power\n562 Armor\n+83 Strength +[73-831\n+244 Maximum Life [244 - 2721'.split(
         '\n'
       )
     const result = parseTooltip(lines)

@@ -24,10 +24,18 @@ describe('ScanRecordingStore', () => {
       screenshotPath: '/fake/screenshot.png',
       ocrLines: ['line 1', 'line 2'],
       parsedItem: {
-        slot: 'Helm', itemName: 'Test', itemType: 'Legendary',
-        itemPower: 925, affixes: ['+100 Strength'], implicitAffixes: [],
-        temperedAffixes: [], greaterAffixes: [], sockets: 0,
-        socketContents: [], aspect: null, rawText: ''
+        slot: 'Helm',
+        itemName: 'Test',
+        itemType: 'Legendary',
+        itemPower: 925,
+        affixes: ['+100 Strength'],
+        implicitAffixes: [],
+        temperedAffixes: [],
+        greaterAffixes: [],
+        sockets: 0,
+        socketContents: [],
+        aspect: null,
+        rawText: ''
       },
       buildSlot: null,
       buildName: null,

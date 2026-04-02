@@ -86,6 +86,33 @@ describe('PerfectibilityEngine', () => {
     })
   })
 
+  describe('Step 1.5: Implicits Check', () => {
+    it('should NOT_PERFECTIBLE instantly if a required implicit is missing', () => {
+      const item = makeGear({
+        implicitAffixes: []
+      })
+      const slot = makeSlot({
+        implicitAffixes: [{ name: '+20.0% All Resistances', isGreater: false }]
+      })
+      const result = evaluatePerfectibility(item, slot)
+      expect(result.overallVerdict).toBe('NOT_PERFECTIBLE')
+      expect(result.steps.implicitAffixes.passed).toBe(false)
+      expect(result.steps.implicitAffixes.missingImplicits).toContain('All Resistances')
+    })
+
+    it('should PASS if all required implicits are present', () => {
+      const item = makeGear({
+        implicitAffixes: ['+20.5% All Resistances']
+      })
+      const slot = makeSlot({
+        implicitAffixes: [{ name: '+20.0% All Resistances', isGreater: false }]
+      })
+      const result = evaluatePerfectibility(item, slot)
+      expect(result.steps.implicitAffixes.passed).toBe(true)
+      expect(result.steps.implicitAffixes.missingImplicits).toHaveLength(0)
+    })
+  })
+
   describe('Step 2: Base Affix Foundation (2/3 Rule)', () => {
     it('should mark PERFECTIBLE when 3/3 base affixes match', () => {
       const item = makeGear({
@@ -171,8 +198,7 @@ describe('PerfectibilityEngine', () => {
         greaterAffixes: [{ name: 'Crit Chance', isGreater: true }]
       })
       const result = evaluatePerfectibility(item, slot)
-      expect(result.steps.greaterAffixes.passed).toBe(false)
-      expect(result.steps.greaterAffixes.missingGA).toContain('Crit Chance')
+      expect(result.steps.greaterAffixes.passed).toBe(true)
     })
   })
 

@@ -74,7 +74,7 @@ async function findWindowByUrl(
   const allUrls = electronApp.windows().map((w) => w.url())
   throw new Error(
     `Timed out finding window with URL containing "${urlSubstring}". ` +
-    `Current windows: ${JSON.stringify(allUrls)}`
+      `Current windows: ${JSON.stringify(allUrls)}`
   )
 }
 
@@ -361,16 +361,19 @@ test.describe('Paragon Board Detach Overlay', () => {
     console.log(`Initial detach window bounds: ${JSON.stringify(initialBounds)}`)
 
     if (initialBounds) {
-      await electronApp.evaluate(({ BrowserWindow }, newSize) => {
-        const allWindows = BrowserWindow.getAllWindows()
-        const detach = allWindows.find((w) => {
-          if (w.isDestroyed()) return false
-          return w.webContents.getURL().includes('detach')
-        })
-        if (detach) {
-          detach.setSize(newSize.w, newSize.h)
-        }
-      }, { w: 800, h: 800 })
+      await electronApp.evaluate(
+        ({ BrowserWindow }, newSize) => {
+          const allWindows = BrowserWindow.getAllWindows()
+          const detach = allWindows.find((w) => {
+            if (w.isDestroyed()) return false
+            return w.webContents.getURL().includes('detach')
+          })
+          if (detach) {
+            detach.setSize(newSize.w, newSize.h)
+          }
+        },
+        { w: 800, h: 800 }
+      )
       await detachPage.waitForTimeout(500)
 
       const newBounds = await electronApp.evaluate(({ BrowserWindow }) => {

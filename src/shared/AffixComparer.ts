@@ -11,7 +11,7 @@
  */
 
 import type { AffixMatchResult, MatchMethod } from './types'
-import { normalizeAffix } from './AffixNormalizer'
+import { normalizeAffix, levenshtein } from './AffixNormalizer'
 
 /**
  * Compares two affix strings and returns a detailed match result.
@@ -61,7 +61,7 @@ export function compareAffixes(scannedAffix: string, buildAffix: string): AffixM
   const buildTokens = (build.canonicalName ?? '').toLowerCase().split(/\s+/).filter(Boolean)
 
   if (scannedTokens.length > 0 && buildTokens.length > 0) {
-    const overlap = scannedTokens.filter(t => buildTokens.includes(t))
+    const overlap = scannedTokens.filter((t) => buildTokens.includes(t))
     const overlapRatio = Math.max(
       overlap.length / scannedTokens.length,
       overlap.length / buildTokens.length
@@ -94,10 +94,22 @@ export function compareAffixes(scannedAffix: string, buildAffix: string): AffixM
     }
   }
 
-  // Layer 5: Fuzzy fallback between canonical names (already handled by normalizer)
-  // If one side resolved via fuzzy to the same canonical name as the other, Layers 1-2 caught it.
-  // This layer handles the case where neither resolved but the stat name portions are close.
-  // For safety, this is intentionally NOT implemented in v1 — Layers 1-4 cover the known cases.
+  // Layer 5: Fuzzy fallback between unrecognized base strings
+  // This handles unrecognized class skills/passives that get garbled by OCR (e.g., Juggemaut vs Juggernaut)
+  if (cleanScannedName && cleanBuildName) {
+    const dist = levenshtein(cleanScannedName, cleanBuildName)
+    // Allow up to 2 edits for words > 10 chars, or 1 edit for > 5 chars
+    const maxDist = cleanBuildName.length > 10 ? 2 : cleanBuildName.length > 5 ? 1 : 0
+    if (dist <= maxDist) {
+      return {
+        matched: true,
+        confidence: dist === 0 ? 0.8 : 0.65,
+        reason: `Fuzzy text match (${dist} edits): "${scanned.parsedName}" ≈ "${build.parsedName}"`,
+        canonicalName: build.parsedName,
+        method: 'fuzzy'
+      }
+    }
+  }
 
   return noMatch(
     `No match: "${scanned.canonicalName ?? scannedAffix}" and "${build.canonicalName ?? buildAffix}" are different stats`

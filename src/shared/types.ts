@@ -271,15 +271,22 @@ export interface PerfectibilityResult {
   steps: {
     powerCheck?: PerfectibilityStep
     bloodied: PerfectibilityStep
+    implicitAffixes: PerfectibilityStep & {
+      missingImplicits: string[]
+      resolvedImplicits: string[]
+    }
     baseAffixes: PerfectibilityStep & {
       matchCount: number
       totalBase: number
       rerollTarget: string | null
       rerollReplacement: string | null
       thresholdFailures: string[]
+      matchDetails?: AffixMatchResult[]
+      resolvedBaseAffixes: string[]
     }
     greaterAffixes: PerfectibilityStep & { missingGA: string[] }
     tempering: PerfectibilityStep & { missingTempers: string[] }
+    aspectCheck?: PerfectibilityStep & { expectedAspect: string }
   }
 }
 

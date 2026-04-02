@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ScannedGearPiece, RawBuildData, AffixType, IGearSlot } from '../../../shared/types'
-import { affixMatches } from '../../../shared/AffixMatcher'
+import { evaluatePerfectibility } from '../../../shared/PerfectibilityEngine'
+import { normalizeAffix } from '../../../shared/AffixNormalizer'
 
 interface GearTabProps {
   buildData: RawBuildData | null
@@ -28,22 +29,27 @@ function GearTab({ buildData }: GearTabProps): React.JSX.Element {
     if (!original) return
 
     const updated = { ...original }
-    const allAffixes = [...updated.affixes, ...updated.temperedAffixes, ...updated.greaterAffixes, ...updated.implicitAffixes]
+    const allAffixes = [
+      ...updated.affixes,
+      ...updated.temperedAffixes,
+      ...updated.greaterAffixes,
+      ...updated.implicitAffixes
+    ]
     const target = allAffixes[index]
     if (!target) return
 
     // Remove from old lists, add to new one
-    updated.affixes = updated.affixes.filter(a => a !== target)
-    updated.temperedAffixes = updated.temperedAffixes.filter(a => a !== target)
-    updated.greaterAffixes = updated.greaterAffixes.filter(a => a !== target)
-    updated.implicitAffixes = updated.implicitAffixes.filter(a => a !== target)
+    updated.affixes = updated.affixes.filter((a) => a !== target)
+    updated.temperedAffixes = updated.temperedAffixes.filter((a) => a !== target)
+    updated.greaterAffixes = updated.greaterAffixes.filter((a) => a !== target)
+    updated.implicitAffixes = updated.implicitAffixes.filter((a) => a !== target)
 
     if (newType === 'regular') updated.affixes.push(target)
     else if (newType === 'tempered') updated.temperedAffixes.push(target)
     else if (newType === 'greater') updated.greaterAffixes.push(target)
     else if (newType === 'implicit') updated.implicitAffixes.push(target)
 
-    setLocalEdits(prev => ({ ...prev, [slot]: updated }))
+    setLocalEdits((prev) => ({ ...prev, [slot]: updated }))
   }
 
   const handleMinItemPowerChange = (slot: string, val: string): void => {
@@ -67,63 +73,47 @@ function GearTab({ buildData }: GearTabProps): React.JSX.Element {
 
   const renderColumn = (slots: string[]): React.JSX.Element => (
     <div className="gear-column">
-      {slots.map(slotName => {
+      {slots.map((slotName) => {
         const gear = getEffectiveGear(slotName)
         const buildSlot = getEffectiveBuildSlot(slotName)
         const isEditing = editingSlot === slotName
 
         // Comparison Logic
-        const matched: string[] = []
-        const missing: string[] = []
         let pct = 0
         let colorClass = 'border'
         let ipFailed = false
+        let evaluation: import('../../../shared/types').PerfectibilityResult | null = null
 
         if (gear && buildSlot) {
-          const buildReqs = [
-            ...buildSlot.affixes.map(a => a.name),
-            ...buildSlot.temperedAffixes.map(a => a.name),
-            ...buildSlot.greaterAffixes.map(a => a.name)
-          ]
-          const gearAffixes = [
-            ...gear.affixes,
-            ...gear.temperedAffixes,
-            ...gear.greaterAffixes,
-            ...gear.implicitAffixes
-          ]
+          evaluation = evaluatePerfectibility(gear, buildSlot)
 
-          buildReqs.forEach(req => {
-            if (gearAffixes.some(ga => affixMatches(ga, req))) matched.push(req)
-            else missing.push(req)
-          })
-
-          const total = matched.length + missing.length
-          pct = total > 0 ? Math.round((matched.length / total) * 100) : 0
-          
-          if (buildSlot.minItemPower !== undefined && gear.itemPower < buildSlot.minItemPower) {
+          if (!evaluation.steps.powerCheck?.passed) {
             ipFailed = true
             colorClass = 'error'
-          } else if (pct >= 100) {
+          } else if (evaluation.overallVerdict === 'PERFECTIBLE') {
             colorClass = 'item-unique'
-          } else if (pct >= 75) {
-            colorClass = 'item-legendary'
-          } else if (pct >= 50) {
+            pct = 100
+          } else if (evaluation.overallVerdict === 'RISKY') {
             colorClass = 'item-rare'
+            pct = 75
           } else {
             colorClass = 'error'
+            pct = 0
           }
         }
 
         return (
-          <div 
-            key={slotName} 
-            className="gear-card" 
+          <div
+            key={slotName}
+            className="gear-card"
             style={{ borderLeftColor: `var(--${colorClass})` }}
           >
             <div className="gear-card__header">
               <span className="gear-card__slot">{slotName}</span>
               {gear && buildSlot && <span className="gear-card__match-badge">{pct}% MATCH</span>}
-              {gear && !buildSlot && <span className="gear-card__match-badge gear-card__match-badge--no-build">—</span>}
+              {gear && !buildSlot && (
+                <span className="gear-card__match-badge gear-card__match-badge--no-build">—</span>
+              )}
             </div>
 
             <div className="gear-card__item-info">
@@ -142,30 +132,158 @@ function GearTab({ buildData }: GearTabProps): React.JSX.Element {
               )}
             </div>
 
-            {gear && buildSlot && (
-              <div className="gear-card__affixes">
-                {matched.map(a => (
-                  <div key={a} className="gear-card__affix gear-card__affix--match">
-                    <span className="gear-card__affix-icon">✅</span> {a}
+            {gear && buildSlot && evaluation && (
+              <>
+                <div className="gear-card__affixes" style={{ marginBottom: '16px' }}>
+                  {evaluation.steps.implicitAffixes.resolvedImplicits &&
+                    evaluation.steps.implicitAffixes.resolvedImplicits.length > 0 && (
+                      <div
+                        style={{
+                          borderBottom: '1px solid var(--border)',
+                          paddingBottom: '8px',
+                          marginBottom: '8px'
+                        }}
+                      >
+                        {evaluation.steps.implicitAffixes.resolvedImplicits.map((imp) => (
+                          <div key={imp} style={{ color: 'var(--text-dim)', fontSize: '0.9em' }}>
+                            • {imp}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  {evaluation.steps.baseAffixes.resolvedBaseAffixes.map((a) => (
+                    <div key={a} className="gear-card__affix">
+                      • {a}
+                    </div>
+                  ))}
+                  {gear.greaterAffixes.map((a) => (
+                    <div
+                      key={a}
+                      className="gear-card__affix"
+                      style={{ color: 'var(--item-unique)' }}
+                    >
+                      ✮ {a}
+                    </div>
+                  ))}
+                  {gear.temperedAffixes.map((a) => (
+                    <div key={a} className="gear-card__affix" style={{ color: 'var(--item-rare)' }}>
+                      ⚒ {a}
+                    </div>
+                  ))}
+                </div>
+
+                <div
+                  style={{
+                    backgroundColor: 'rgba(0,0,0,0.2)',
+                    padding: '12px',
+                    borderRadius: '4px',
+                    marginBottom: '16px'
+                  }}
+                >
+                  <div style={{ fontWeight: 'bold', marginBottom: '8px', color: 'var(--text)' }}>
+                    Build Checklist
                   </div>
-                ))}
-                {missing.map(a => (
-                  <div key={a} className="gear-card__affix gear-card__affix--miss">
-                    <span className="gear-card__affix-icon">❌</span> {a}
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px',
+                      fontSize: '0.9em'
+                    }}
+                  >
+                    {/* Implicits Checklist */}
+                    {buildSlot.implicitAffixes.map((imp) => {
+                      const isMissing = evaluation?.steps.implicitAffixes.missingImplicits.includes(
+                        normalizeAffix(imp.name).parsedName || imp.name
+                      )
+                      return (
+                        <div
+                          key={`imp-${imp.name}`}
+                          style={{ color: isMissing ? 'var(--error)' : 'var(--item-unique)' }}
+                        >
+                          {isMissing ? '❌ Missing Implicit:' : '✅ Found:'}{' '}
+                          {normalizeAffix(imp.name).parsedName || imp.name}
+                        </div>
+                      )
+                    })}
+                    {/* Base Affixes Checklist */}
+                    {evaluation.steps.baseAffixes.matchDetails?.map((detail, idx) => (
+                      <div
+                        key={`base-${idx}`}
+                        style={{
+                          color: detail.matched ? 'var(--item-unique)' : 'var(--item-rare)'
+                        }}
+                      >
+                        {detail.matched ? '✅ Found:' : '⚒️ Reroll target:'}{' '}
+                        {detail.canonicalName ?? 'Unknown'}
+                      </div>
+                    ))}
+                    {evaluation.steps.baseAffixes.thresholdFailures?.map((fail, idx) => (
+                      <div key={`fail-${idx}`} style={{ color: 'var(--error)' }}>
+                        ❌ {fail}
+                      </div>
+                    ))}
+                    {/* Greater Affixes Checklist */}
+                    {buildSlot.greaterAffixes.map((ga) => {
+                      const isMissing = evaluation?.steps.greaterAffixes.missingGA.includes(
+                        normalizeAffix(ga.name).parsedName || ga.name
+                      )
+                      return (
+                        <div
+                          key={`ga-${ga.name}`}
+                          style={{ color: isMissing ? 'var(--error)' : 'var(--item-unique)' }}
+                        >
+                          {isMissing ? '❌ Missing GA:' : '✅ Found GA:'}{' '}
+                          {normalizeAffix(ga.name).parsedName || ga.name}
+                        </div>
+                      )
+                    })}
+                    {/* Required Aspect Checklist */}
+                    {evaluation.steps.aspectCheck && (
+                      <div
+                        style={{
+                          color: !evaluation.steps.aspectCheck.passed
+                            ? 'var(--item-legendary)'
+                            : 'var(--item-unique)'
+                        }}
+                      >
+                        {!evaluation.steps.aspectCheck.passed
+                          ? '⚒️ Imprint Aspect:'
+                          : '✅ Found Aspect:'}{' '}
+                        {evaluation.steps.aspectCheck.expectedAspect}
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
+                </div>
+              </>
             )}
             {gear && !buildSlot && (
-              <div className="gear-card__affixes">
-                {[...gear.affixes, ...gear.temperedAffixes, ...gear.greaterAffixes, ...gear.implicitAffixes].map(a => (
-                  <div key={a} className="gear-card__affix">• {a}</div>
+              <div className="gear-card__affixes" style={{ marginBottom: '16px' }}>
+                {gear.implicitAffixes && gear.implicitAffixes.length > 0 && (
+                  <div
+                    style={{
+                      borderBottom: '1px solid var(--border)',
+                      paddingBottom: '8px',
+                      marginBottom: '8px'
+                    }}
+                  >
+                    {gear.implicitAffixes.map((imp) => (
+                      <div key={imp} style={{ color: 'var(--text-dim)', fontSize: '0.9em' }}>
+                        • {imp}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {[...gear.affixes, ...gear.temperedAffixes, ...gear.greaterAffixes].map((a) => (
+                  <div key={a} className="gear-card__affix">
+                    • {a}
+                  </div>
                 ))}
               </div>
             )}
 
             <div className="gear-card__actions">
-              <button 
+              <button
                 className="btn btn--outline btn--sm"
                 onClick={() => setEditingSlot(isEditing ? null : slotName)}
               >
@@ -177,12 +295,19 @@ function GearTab({ buildData }: GearTabProps): React.JSX.Element {
               <div className="affix-editor-overlay">
                 {buildSlot && (
                   <div className="affix-editor-section">
-                    <div style={{ fontWeight: 'bold', fontSize: '12px', marginBottom: '8px', color: 'var(--text-dim)' }}>
+                    <div
+                      style={{
+                        fontWeight: 'bold',
+                        fontSize: '12px',
+                        marginBottom: '8px',
+                        color: 'var(--text-dim)'
+                      }}
+                    >
                       Build Requirements
                     </div>
                     <div className="affix-editor">
                       <span className="affix-editor__label">Min Item Power</span>
-                      <input 
+                      <input
                         type="number"
                         className="affix-editor__select"
                         value={buildSlot.minItemPower ?? ''}
@@ -192,7 +317,15 @@ function GearTab({ buildData }: GearTabProps): React.JSX.Element {
                     </div>
                     {buildSlot.affixes.map((affix, idx) => (
                       <div key={idx} className="affix-editor">
-                        <span className="affix-editor__label" style={{ fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <span
+                          className="affix-editor__label"
+                          style={{
+                            fontSize: '11px',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
+                          }}
+                        >
                           {affix.name} (Min Roll)
                         </span>
                         <input
@@ -209,20 +342,38 @@ function GearTab({ buildData }: GearTabProps): React.JSX.Element {
                 )}
                 {gear && (
                   <div className="affix-editor-section" style={{ marginTop: '16px' }}>
-                    <div style={{ fontWeight: 'bold', fontSize: '12px', marginBottom: '8px', color: 'var(--text-dim)' }}>
+                    <div
+                      style={{
+                        fontWeight: 'bold',
+                        fontSize: '12px',
+                        marginBottom: '8px',
+                        color: 'var(--text-dim)'
+                      }}
+                    >
                       Scanned Gear Preview Setup
                     </div>
-                    {[...gear.affixes, ...gear.temperedAffixes, ...gear.greaterAffixes, ...gear.implicitAffixes].map((affix, idx) => (
+                    {[
+                      ...gear.affixes,
+                      ...gear.temperedAffixes,
+                      ...gear.greaterAffixes,
+                      ...gear.implicitAffixes
+                    ].map((affix, idx) => (
                       <div key={idx} className="affix-editor">
                         <span className="affix-editor__label">{affix}</span>
-                        <select 
+                        <select
                           className="affix-editor__select"
                           value={
-                            gear.affixes.includes(affix) ? 'regular' :
-                            gear.temperedAffixes.includes(affix) ? 'tempered' :
-                            gear.greaterAffixes.includes(affix) ? 'greater' : 'implicit'
+                            gear.affixes.includes(affix)
+                              ? 'regular'
+                              : gear.temperedAffixes.includes(affix)
+                                ? 'tempered'
+                                : gear.greaterAffixes.includes(affix)
+                                  ? 'greater'
+                                  : 'implicit'
                           }
-                          onChange={(e) => handleEditAffix(slotName, idx, e.target.value as AffixType)}
+                          onChange={(e) =>
+                            handleEditAffix(slotName, idx, e.target.value as AffixType)
+                          }
                         >
                           <option value="regular">Regular</option>
                           <option value="tempered">Tempered</option>

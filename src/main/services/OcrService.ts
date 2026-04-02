@@ -105,4 +105,3 @@ export function runOcr(imagePath: string, sidecarDir: string): Promise<OcrResult
     )
   })
 }
-

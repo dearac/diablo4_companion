@@ -31,12 +31,18 @@ export class D4BuildsScraper implements BuildScraper {
     return normalized.includes('d4builds.gg/builds/')
   }
 
-  private async waitForSelector(win: BrowserWindow, selector: string, timeoutMs: number = 10000): Promise<void> {
+  private async waitForSelector(
+    win: BrowserWindow,
+    selector: string,
+    timeoutMs: number = 10000
+  ): Promise<void> {
     const start = Date.now()
     while (Date.now() - start < timeoutMs) {
-      const found = await win.webContents.executeJavaScript(`!!document.querySelector('${selector}')`)
+      const found = await win.webContents.executeJavaScript(
+        `!!document.querySelector('${selector}')`
+      )
       if (found) return
-      await new Promise(r => setTimeout(r, 200))
+      await new Promise((r) => setTimeout(r, 200))
     }
     throw new Error(`Timeout waiting for selector: ${selector}`)
   }
@@ -44,9 +50,9 @@ export class D4BuildsScraper implements BuildScraper {
   async scrape(url: string, onProgress?: ImportProgressCallback): Promise<RawBuildData> {
     const TOTAL_STEPS = 6
 
-    const win = new BrowserWindow({ 
-      show: false, 
-      width: 1920, 
+    const win = new BrowserWindow({
+      show: false,
+      width: 1920,
       height: 1080,
       webPreferences: { sandbox: true }
     })
@@ -57,14 +63,22 @@ export class D4BuildsScraper implements BuildScraper {
       await this.waitForSelector(win, '.builder__header__description', 30000)
       await this.waitForSelector(win, '.build__skill__wrapper', 5000).catch(() => {})
 
-      const buildName = await this.extractText(win, '.builder__header__description', 'Unknown Build')
+      const buildName = await this.extractText(
+        win,
+        '.builder__header__description',
+        'Unknown Build'
+      )
 
-      const d4ClassRaw: string = await win.webContents.executeJavaScript(`(function() {
+      const d4ClassRaw: string = await win.webContents
+        .executeJavaScript(
+          `(function() {
         const el = document.querySelector('.builder__header__icon');
         if (!el) return 'Unknown';
         const classes = el.className.split(/\\s+/);
         return classes.find(c => c !== 'builder__header__icon') || 'Unknown';
-      })()`).catch(() => 'Unknown')
+      })()`
+        )
+        .catch(() => 'Unknown')
       const d4Class = this.normalizeClass(d4ClassRaw)
 
       onProgress?.({ step: 2, totalSteps: TOTAL_STEPS, label: 'Importing skills' })
@@ -78,7 +92,7 @@ export class D4BuildsScraper implements BuildScraper {
 
       onProgress?.({ step: 5, totalSteps: TOTAL_STEPS, label: 'Importing gear' })
       await this.clickTab(win, 'Gear')
-      await new Promise(r => setTimeout(r, 300))
+      await new Promise((r) => setTimeout(r, 300))
       const gearSlots = await this.scrapeGear(win)
 
       onProgress?.({ step: 6, totalSteps: TOTAL_STEPS, label: 'Importing runes' })
@@ -104,7 +118,11 @@ export class D4BuildsScraper implements BuildScraper {
     }
   }
 
-  private async extractText(win: BrowserWindow, selector: string, fallback: string): Promise<string> {
+  private async extractText(
+    win: BrowserWindow,
+    selector: string,
+    fallback: string
+  ): Promise<string> {
     try {
       return await win.webContents.executeJavaScript(`(function() {
         const el = document.querySelector('${selector}');
@@ -122,7 +140,7 @@ export class D4BuildsScraper implements BuildScraper {
         const tab = tabs.find(el => el.textContent && el.textContent.includes('${tabText}'));
         if (tab) tab.click();
       })()`)
-      await new Promise(r => setTimeout(r, 500))
+      await new Promise((r) => setTimeout(r, 500))
     } catch {
       console.warn(`Tab "${tabText}" not found, skipping`)
     }
@@ -289,13 +307,20 @@ export class D4BuildsScraper implements BuildScraper {
         for (const bIdx of uncachedBoardIndices) {
           for (let tIdx = 0; tIdx < boardsData[bIdx].allocatedNodes.length; tIdx++) {
             const n = boardsData[bIdx].allocatedNodes[tIdx]
-            if (n.allocated || n.nodeType === 'rare' || n.nodeType === 'legendary' || n.nodeType === 'gate') {
+            if (
+              n.allocated ||
+              n.nodeType === 'rare' ||
+              n.nodeType === 'legendary' ||
+              n.nodeType === 'gate'
+            ) {
               tileIndices.push({ boardIdx: bIdx, tileIdx: tIdx })
             }
           }
         }
 
-        const allTooltipData: any[] = await win.webContents.executeJavaScript(`
+        const allTooltipData: any[] = await win.webContents
+          .executeJavaScript(
+            `
           (async function(indices) {
             const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
             const results = [];
@@ -345,7 +370,9 @@ export class D4BuildsScraper implements BuildScraper {
             }
             return results;
           })(${JSON.stringify(tileIndices)})
-        `).catch(() => [])
+        `
+          )
+          .catch(() => [])
 
         for (const tip of allTooltipData) {
           const board = boardsData[tip.boardIdx]
@@ -475,7 +502,9 @@ export class D4BuildsScraper implements BuildScraper {
         });
       })()`)
 
-      const aspectData: any[] = await win.webContents.executeJavaScript(`
+      const aspectData: any[] = await win.webContents
+        .executeJavaScript(
+          `
         (async function() {
           const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
           const results = [];
@@ -501,20 +530,29 @@ export class D4BuildsScraper implements BuildScraper {
           }
           return results;
         })()
-      `).catch(() => [])
+      `
+        )
+        .catch(() => [])
 
       return topGear
         .filter((gear) => gear.slot !== 'Unknown Slot')
         .map((gear, i) => {
           const stats = statsData.find((s) => s.slot.toLowerCase() === gear.slot.toLowerCase()) || {
-            affixes: [], implicitAffixes: [], temperedAffixes: [], greaterAffixes: [], rampageEffect: null, feastEffect: null
+            affixes: [],
+            implicitAffixes: [],
+            temperedAffixes: [],
+            greaterAffixes: [],
+            rampageEffect: null,
+            feastEffect: null
           }
           const aspect = aspectData.find((a) => a.index === i)
           return {
             slot: gear.slot,
             itemName: gear.itemName,
             itemType: gear.itemType,
-            requiredAspect: aspect?.name ? { name: aspect.name, description: aspect.description || null } : null,
+            requiredAspect: aspect?.name
+              ? { name: aspect.name, description: aspect.description || null }
+              : null,
             affixes: stats.affixes,
             implicitAffixes: stats.implicitAffixes,
             temperedAffixes: stats.temperedAffixes,
