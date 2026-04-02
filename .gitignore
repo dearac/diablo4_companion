@@ -48,6 +48,7 @@ test-results
 
 # Agent / AI tooling
 .agents/
+.uswarm/
 SAVEPOINT.md
 TESTING_RULES.md
 docs/plans/
@@ -62,12 +63,21 @@ tree.txt
 
 # Sample / test screenshots
 resources/Samples/
+test-screenshots/
+
+# Test output text files
+test_output*.txt
+test_output*.log
 
 # Research notes
 Research/
 
 # Test coverage
 coverage/
+
+# One-off scripts and code test artifacts
+code_test/
+rewrite.py
 
 # Local config overrides
 *.local
