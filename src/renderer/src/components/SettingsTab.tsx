@@ -46,7 +46,9 @@ function SettingsTab(): React.JSX.Element {
   const [debugMode, setDebugMode] = useState(false)
 
   const recordingRef = useRef<string | null>(null)
-  recordingRef.current = recording
+  useEffect(() => {
+    recordingRef.current = recording
+  }, [recording])
 
   useEffect(() => {
     window.api.getHotkeys().then(setHotkeys)
@@ -85,13 +87,13 @@ function SettingsTab(): React.JSX.Element {
     return () => window.removeEventListener('keydown', handleKeyDown, true)
   }, [hotkeys])
 
-  const triggerMaintenance = async (id: string, fn: () => Promise<any>): Promise<void> => {
+  const triggerMaintenance = async (id: string, fn: () => Promise<unknown>): Promise<void> => {
     setMaintenanceStatus((prev) => ({ ...prev, [id]: 'loading' }))
     try {
       await fn()
       setMaintenanceStatus((prev) => ({ ...prev, [id]: 'success' }))
       setTimeout(() => setMaintenanceStatus((prev) => ({ ...prev, [id]: '' })), 3000)
-    } catch (err) {
+    } catch {
       setMaintenanceStatus((prev) => ({ ...prev, [id]: 'error' }))
     }
   }
