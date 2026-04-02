@@ -137,6 +137,7 @@ function ScanHistoryTab(): React.JSX.Element {
                       {rec.action === 'temper' && `⚒️ Temper: ${rec.addAffix}`}
                       {rec.action === 'socket' && `💎 Add ${rec.addAffix}`}
                       {rec.action === 'aspect' && `🔮 Imprint: ${rec.addAffix}`}
+                      {rec.action === 'masterwork' && `🛠️ Masterwork: ${rec.addAffix}`}
                     </div>
                   ))}
                 </div>
