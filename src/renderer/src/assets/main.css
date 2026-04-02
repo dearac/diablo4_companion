@@ -544,9 +544,9 @@
   text-transform: uppercase;
 }
 
-.badge--success { background: rgba(74, 222, 128, 0.1); color: var(--success); }
+.badge--success { background: rgba(91, 196, 122, 0.1); color: var(--success); }
 .badge--error { background: rgba(239, 68, 68, 0.1); color: var(--error); }
-.badge--warning { background: rgba(251, 191, 36, 0.1); color: var(--warning); }
+.badge--warning { background: rgba(229, 168, 32, 0.1); color: var(--warning); }
 
 .affix-editor {
   display: flex;
@@ -671,7 +671,7 @@
 }
 
 .scan-controls__toggle--equip:hover {
-  background: rgba(74, 222, 128, 0.1);
+  background: rgba(91, 196, 122, 0.1);
 }
 
 .scan-controls__toggle-icon {
@@ -1027,7 +1027,7 @@
 }
 
 .scan-detail__upgrade-badge--up {
-  background: rgba(74, 222, 128, 0.1);
+  background: rgba(91, 196, 122, 0.1);
   color: var(--success);
   border: 1px solid var(--success);
 }
@@ -1489,9 +1489,9 @@
   color: var(--text-muted);
 }
 
-.gear-slot__type-badge--legendary { color: var(--item-legendary); background: rgba(255, 170, 0, 0.1); }
-.gear-slot__type-badge--unique { color: var(--item-unique); background: rgba(199, 139, 72, 0.1); }
-.gear-slot__type-badge--rare { color: var(--item-rare); background: rgba(255, 255, 0, 0.06); }
+.gear-slot__type-badge--legendary { color: var(--item-legendary); background: rgba(232, 122, 42, 0.1); }
+.gear-slot__type-badge--unique { color: var(--item-unique); background: rgba(212, 169, 74, 0.1); }
+.gear-slot__type-badge--rare { color: var(--item-rare); background: rgba(245, 227, 91, 0.06); }
 .gear-slot__type-badge--mythic { color: var(--item-mythic); background: rgba(165, 85, 247, 0.12); }
 
 .gear-slot__item-name {
@@ -1514,7 +1514,7 @@
 
 .gear-slot__aspect {
   padding: 8px 10px;
-  background: rgba(255, 170, 0, 0.06);
+  background: rgba(232, 122, 42, 0.06);
   border-left: 3px solid var(--item-legendary);
   border-radius: 0 3px 3px 0;
   font-size: 12px;
@@ -1661,7 +1661,7 @@
 
 .rune-card__type--rare {
   color: var(--item-rare);
-  background: rgba(255, 255, 0, 0.06);
+  background: rgba(245, 227, 91, 0.06);
 }
 
 .rune-card__effects {
@@ -1997,7 +1997,7 @@
 
 .gear-card__affix--match {
   color: var(--success);
-  background: rgba(74, 222, 128, 0.05);
+  background: rgba(91, 196, 122, 0.05);
 }
 
 .gear-card__affix--miss {
@@ -2502,13 +2502,13 @@
 }
 
 .perfectibility-banner--perfectible {
-  background: rgba(74, 222, 128, 0.08);
-  border-color: rgba(74, 222, 128, 0.4);
+  background: rgba(91, 196, 122, 0.08);
+  border-color: rgba(91, 196, 122, 0.4);
 }
 
 .perfectibility-banner--risky {
-  background: rgba(251, 191, 36, 0.08);
-  border-color: rgba(251, 191, 36, 0.4);
+  background: rgba(229, 168, 32, 0.08);
+  border-color: rgba(229, 168, 32, 0.4);
 }
 
 .perfectibility-banner--not-perfectible {

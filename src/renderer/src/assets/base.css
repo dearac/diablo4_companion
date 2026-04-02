@@ -31,18 +31,18 @@
   --border-focus: #057AF0;
 
   /* Item rarity (Maxroll-accurate) */
-  --item-unique: #DCA779;
-  --item-legendary: #BF642F;
-  --item-rare: #FFFF00;
+  --item-unique: #D4A94A;
+  --item-legendary: #E87A2A;
+  --item-rare: #F5E35B;
   --item-magic: #6699FF;
   --item-greater: #AF67F2;
   --item-tempered: #00C8C8;
   --item-mythic: #A855F7;
 
   /* Feedback */
-  --success: #4ADE80;
+  --success: #5BC47A;
   --error: #EF4444;
-  --warning: #FBBF24;
+  --warning: #E5A820;
 
   /* Typography */
   --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
