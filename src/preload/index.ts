@@ -99,6 +99,10 @@ const api = {
     return () => ipcRenderer.removeListener('launch-overlay', subscription)
   },
 
+  // Autoscan
+  toggleAutoscan: (enabled: boolean) => ipcRenderer.invoke('toggle-autoscan', enabled),
+  getAutoscanState: () => ipcRenderer.invoke('get-autoscan-state'),
+
   // Maintenance actions
   clearParagonCache: () => ipcRenderer.invoke('clear-paragon-cache'),
   clearBoardCalibration: () => ipcRenderer.invoke('clear-board-calibration'),

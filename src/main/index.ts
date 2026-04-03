@@ -284,6 +284,9 @@ function createDetachWindow(
   })
 }
 
+/** The geometric shape overlay window for gear compare */
+let overlayWindow: BrowserWindow | null = null
+
 /** The calibration snipping window */
 let calibrateWindow: BrowserWindow | null = null
 
@@ -440,6 +443,57 @@ function openCalibrationWindow(): void {
   calibrateWindow.on('closed', () => {
     calibrateWindow = null
   })
+}
+
+// ============================================================
+// OVERLAY WINDOW
+// ============================================================
+
+/**
+ * Creates a transparent, click-through, full-screen overlay window.
+ * This draws geometric shapes over affix bullets to indicate match status.
+ */
+function createOverlayWindow(): void {
+  const primaryDisplay = screen.getPrimaryDisplay()
+  const { width: sw, height: sh } = primaryDisplay.bounds
+
+  overlayWindow = new BrowserWindow({
+    x: primaryDisplay.bounds.x,
+    y: primaryDisplay.bounds.y,
+    width: sw,
+    height: sh,
+    transparent: true,
+    frame: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    hasShadow: false,
+    show: false,
+    focusable: false,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false
+    }
+  })
+
+  // Crucial: allow clicks to pass right through into the game
+  overlayWindow.setIgnoreMouseEvents(true, { forward: true })
+
+  overlayWindow.on('ready-to-show', () => {
+    overlayWindow?.show()
+    overlayWindow?.setAlwaysOnTop(true, 'screen-saver')
+  })
+
+  overlayWindow.on('closed', () => {
+    overlayWindow = null
+  })
+
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    const devUrl = process.env['ELECTRON_RENDERER_URL']
+    overlayWindow.loadURL(`${devUrl}/overlay.html`)
+  } else {
+    overlayWindow.loadFile(join(__dirname, '../renderer/overlay.html'))
+  }
 }
 
 // ============================================================
@@ -613,6 +667,53 @@ function setupIpcHandlers(): void {
     }
   )
 
+  // ---- Autoscan feature ----
+  let autoscanInterval: NodeJS.Timeout | null = null
+  let isScanning = false
+
+  ipcMain.handle('toggle-autoscan', (_event, enabled: boolean) => {
+    if (enabled && !autoscanInterval) {
+      console.log('[Autoscan] Started')
+      autoscanInterval = setInterval(async () => {
+        if (isScanning || !currentBuildData) return
+        isScanning = true
+        try {
+          // Send active bounds if overlay exists
+          let activeBounds = { x: 0, y: 0, width: 0, height: 0 }
+          if (overlayWindow) {
+            const cursorPoint = screen.getCursorScreenPoint()
+            const activeDisplay = screen.getDisplayNearestPoint(cursorPoint)
+            activeBounds = activeDisplay.bounds
+            overlayWindow.setBounds(activeBounds)
+          }
+
+          const result = await scanService.scan(currentBuildData)
+          mainWindow?.webContents.send('scan-result', result)
+
+          if (overlayWindow) {
+            overlayWindow.webContents.send('scan-result', {
+              verdict: result.verdict,
+              error: result.error,
+              bounds: activeBounds
+            })
+          }
+        } catch (err) {
+          console.error('[Autoscan] Failed:', err)
+        } finally {
+          isScanning = false
+        }
+      }, 2000)
+    } else if (!enabled && autoscanInterval) {
+      console.log('[Autoscan] Stopped')
+      clearInterval(autoscanInterval)
+      autoscanInterval = null
+    }
+  })
+
+  ipcMain.handle('get-autoscan-state', () => {
+    return autoscanInterval !== null
+  })
+
   // ---- Paragon Detach IPC ----
 
   /** Open a detach window showing a single paragon board */
@@ -749,8 +850,26 @@ function registerGlobalHotkeys(): void {
         try {
           // Play shutter sound by notifying renderer we started
           mainWindow.webContents.send('scan-started')
+
+          // Ensure the overlay window spans the monitor where the cursor currently is
+          let activeBounds = { x: 0, y: 0, width: 0, height: 0 }
+          if (overlayWindow) {
+            const cursorPoint = screen.getCursorScreenPoint()
+            const activeDisplay = screen.getDisplayNearestPoint(cursorPoint)
+            activeBounds = activeDisplay.bounds
+            overlayWindow.setBounds(activeBounds)
+          }
+
           const result = await scanService.scan(currentBuildData)
           mainWindow.webContents.send('scan-result', result)
+
+          if (overlayWindow) {
+            overlayWindow.webContents.send('scan-result', {
+              verdict: result.verdict,
+              error: result.error,
+              bounds: activeBounds
+            })
+          }
         } catch (err) {
           console.error('[Scan] Hotkey scan failed:', err)
           mainWindow.webContents.send('scan-result', {
@@ -817,7 +936,7 @@ function registerGlobalHotkeys(): void {
           console.log('[BoardScan] ═══ SCANNING ═══')
 
           const captureService = new ScreenCaptureService(dataPaths.scans)
-          const imagePath = await captureService.captureFullScreen()
+          const { filePath: imagePath } = await captureService.captureFullScreen()
           console.log(`[BoardScan] Screenshot saved: ${imagePath}`)
 
           const sidecarDir = is.dev
@@ -903,6 +1022,7 @@ app.whenReady().then(async () => {
   // Show the main window immediately — its HTML/React loads in parallel
   // with service initialization so the user sees the UI right away
   createMainWindow()
+  createOverlayWindow()
 
   // Initialize persistent storage and services
   await initStore()
