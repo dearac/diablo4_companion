@@ -38,9 +38,6 @@ declare global {
       ) => () => void
       onUpdateDownloaded: (callback: () => void) => () => void
       onUpdateStarted: (callback: () => void) => () => void
-      // Autoscan
-      toggleAutoscan: (enabled: boolean) => Promise<void>
-      getAutoscanState: () => Promise<boolean>
       // Scan pipeline
       performScan: () => Promise<{
         verdict: import('./shared/types').ScanVerdict | null

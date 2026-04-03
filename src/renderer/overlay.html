@@ -2,24 +2,15 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>Diablo IV Gear Overlay</title>
-    <!-- Content Security Policy that allows data: images (often used by Tailwind or inline SVGs) -->
+    <title>D4 Companion Overlay</title>
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://sunderarmor.com"
     />
   </head>
 
-  <body
-    style="
-      background: transparent !important;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      user-select: none;
-    "
-  >
+  <body>
     <div id="root"></div>
-    <script type="module" src="/src/overlay.tsx"></script>
+    <script type="module" src="./overlay-entry.ts"></script>
   </body>
 </html>

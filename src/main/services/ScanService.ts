@@ -82,7 +82,7 @@ export class ScanService {
   }> {
     try {
       // Step 1: Capture screen
-      const { filePath: imagePath, crop } = await this.captureService.captureScreen()
+      const imagePath = await this.captureService.captureScreen()
       const fileName = basename(imagePath)
       const fileSize = statSync(imagePath).size
       console.log(`[SCAN] ═══ SCREENSHOT ═══ ${fileName} (${(fileSize / 1024).toFixed(1)} KB)`)
@@ -97,18 +97,8 @@ export class ScanService {
       })
 
       // Step 3: Parse into structured gear piece
-      const scannedItem = parseTooltip(ocrResult.lines)
-
-      // Adjust OCR bounding boxes from crop-relative to absolute screen coordinates
-      scannedItem.parsedAffixes?.forEach((affix) => {
-        if (affix.bbox) {
-          affix.bbox.x = Math.round((crop.x + affix.bbox.x) / crop.scaleX)
-          affix.bbox.y = Math.round((crop.y + affix.bbox.y) / crop.scaleY)
-          affix.bbox.w = Math.round(affix.bbox.w / crop.scaleX)
-          affix.bbox.h = Math.round(affix.bbox.h / crop.scaleY)
-        }
-      })
       const lineTexts = ocrResult.lines.map((l) => l.text)
+      const scannedItem = parseTooltip(lineTexts)
       console.log('[SCAN] ── PARSED ITEM ──')
       console.log(`[SCAN]   Name:       ${scannedItem.itemName}`)
       console.log(`[SCAN]   Slot:       ${scannedItem.slot}`)

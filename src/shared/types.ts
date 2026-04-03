@@ -194,20 +194,6 @@ export interface SavedBuild {
 // SCANNED GEAR — OCR scan results and comparison verdicts
 // ============================================================
 
-/** Bounding box coordinates from OCR output. */
-export interface OcrBBox {
-  x: number
-  y: number
-  w: number
-  h: number
-}
-
-/** An affix that retains its bounding box for overlay rendering. */
-export interface ParsedAffix {
-  text: string
-  bbox?: OcrBBox
-}
-
 /** A piece of gear read from a tooltip by the OCR scanner. */
 export interface ScannedGearPiece {
   slot: string
@@ -218,7 +204,6 @@ export interface ScannedGearPiece {
   implicitAffixes: string[]
   temperedAffixes: string[]
   greaterAffixes: string[]
-  parsedAffixes: ParsedAffix[]
   sockets: number
   socketContents: string[]
   aspect: { name: string; description: string } | null

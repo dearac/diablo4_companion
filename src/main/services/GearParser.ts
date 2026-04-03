@@ -129,12 +129,7 @@ const IMPRINTED_REGEX = /^Imprinted:\s*(.+)/i
  * @param lines - Array of text strings, one per OCR-detected line
  * @returns A structured ScannedGearPiece with all extractable fields
  */
-interface MinimalOcrLine {
-  text: string
-  words?: { text: string; bbox: import('../../shared/types').OcrBBox }[]
-}
-
-export function parseTooltip(lines: string[] | MinimalOcrLine[]): ScannedGearPiece {
+export function parseTooltip(lines: string[]): ScannedGearPiece {
   const result: ScannedGearPiece = {
     slot: 'Unknown',
     itemName: '',
@@ -144,34 +139,10 @@ export function parseTooltip(lines: string[] | MinimalOcrLine[]): ScannedGearPie
     implicitAffixes: [],
     temperedAffixes: [],
     greaterAffixes: [],
-    parsedAffixes: [], // Stores text and bbox for visual overlay
     sockets: 0,
     socketContents: [],
     aspect: null,
-    rawText: lines.map((l) => (typeof l === 'string' ? l : l.text)).join('\n')
-  }
-
-  const getLineText = (line: string | MinimalOcrLine): string =>
-    typeof line === 'string' ? line : line.text
-  const getLineBBox = (
-    line: string | MinimalOcrLine
-  ): import('../../shared/types').OcrBBox | undefined => {
-    if (typeof line === 'string' || !line.words || line.words.length === 0) return undefined
-
-    let minX = 99999,
-      minY = 99999,
-      maxX = -99999,
-      maxY = -99999
-    for (const w of line.words) {
-      if (!w.bbox) continue
-      if (w.bbox.x < minX) minX = w.bbox.x
-      if (w.bbox.x + w.bbox.w > maxX) maxX = w.bbox.x + w.bbox.w
-      if (w.bbox.y < minY) minY = w.bbox.y
-      if (w.bbox.y + w.bbox.h > maxY) maxY = w.bbox.y + w.bbox.h
-    }
-
-    if (minX === 99999) return undefined
-    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY }
+    rawText: lines.join('\n')
   }
 
   // ---- Find the tooltip within the full-screen OCR output ----
@@ -204,7 +175,7 @@ export function parseTooltip(lines: string[] | MinimalOcrLine[]): ScannedGearPie
 
   // Pass 1: Find a line with BOTH a type keyword AND a slot name
   for (let i = 0; i < searchLimit; i++) {
-    const line = getLineText(lines[i]).trim()
+    const line = lines[i].trim()
     if (shouldSkipLine(line)) continue
 
     const upper = line.toUpperCase()
@@ -225,7 +196,7 @@ export function parseTooltip(lines: string[] | MinimalOcrLine[]): ScannedGearPie
   // Search forward (first occurrence is more reliable than last)
   if (typeSlotLineIndex < 0) {
     for (let i = 0; i < searchLimit; i++) {
-      const line = getLineText(lines[i]).trim()
+      const line = lines[i].trim()
       if (shouldSkipLine(line)) continue
 
       const upper = line.toUpperCase()
@@ -242,8 +213,8 @@ export function parseTooltip(lines: string[] | MinimalOcrLine[]): ScannedGearPie
 
   // Look for rarity/type on the same line or the line above
   if (typeSlotLineIndex >= 0) {
-    const searchLines = [getLineText(lines[typeSlotLineIndex])]
-    if (typeSlotLineIndex > 0) searchLines.push(getLineText(lines[typeSlotLineIndex - 1]))
+    const searchLines = [lines[typeSlotLineIndex]]
+    if (typeSlotLineIndex > 0) searchLines.push(lines[typeSlotLineIndex - 1])
 
     for (const line of searchLines) {
       const upper = line.toUpperCase()
@@ -263,7 +234,7 @@ export function parseTooltip(lines: string[] | MinimalOcrLine[]): ScannedGearPie
     const maxLookback = Math.min(6, typeSlotLineIndex)
 
     for (let offset = 1; offset <= maxLookback; offset++) {
-      const candidate = getLineText(lines[typeSlotLineIndex - offset]).trim()
+      const candidate = lines[typeSlotLineIndex - offset].trim()
 
       // STOP conditions (we reached above the name — character panel area)
       if (
@@ -318,18 +289,17 @@ export function parseTooltip(lines: string[] | MinimalOcrLine[]): ScannedGearPie
       if (nameLineCandidates.length >= 3) break
     }
 
-    result.itemName =
-      nameLineCandidates.join(' ') || getLineText(lines[typeSlotLineIndex - 1]).trim()
+    result.itemName = nameLineCandidates.join(' ') || lines[typeSlotLineIndex - 1].trim()
   } else if (lines.length > 0) {
     // Fallback: first line
-    result.itemName = getLineText(lines[0]).trim()
+    result.itemName = lines[0].trim()
   }
 
   // ---- Item Power: search near the type+slot line ----
   const ipSearchStart = Math.max(0, typeSlotLineIndex - 3)
   const ipSearchEnd = Math.min(lines.length, typeSlotLineIndex + 8)
   for (let i = ipSearchStart; i < ipSearchEnd; i++) {
-    const ipMatch = getLineText(lines[i]).match(ITEM_POWER_REGEX)
+    const ipMatch = lines[i].match(ITEM_POWER_REGEX)
     if (ipMatch) {
       result.itemPower = parseInt(ipMatch[1], 10)
       break
@@ -339,7 +309,7 @@ export function parseTooltip(lines: string[] | MinimalOcrLine[]): ScannedGearPie
   // Fallback: scan all lines if the window search missed it
   if (result.itemPower === 0) {
     for (let i = 0; i < lines.length; i++) {
-      const ipMatch = getLineText(lines[i]).match(ITEM_POWER_REGEX)
+      const ipMatch = lines[i].match(ITEM_POWER_REGEX)
       if (ipMatch) {
         result.itemPower = parseInt(ipMatch[1], 10)
         break
@@ -350,12 +320,9 @@ export function parseTooltip(lines: string[] | MinimalOcrLine[]): ScannedGearPie
   // ---- Body parsing (lines after the tooltip header) ----
   const bodyStart = typeSlotLineIndex >= 0 ? typeSlotLineIndex + 1 : 1
 
-  const bodyLines: { text: string; bbox?: import('../../shared/types').OcrBBox }[] = []
-
+  const bodyLines: string[] = []
   for (let i = bodyStart; i < lines.length; i++) {
-    const lineObj = lines[i]
-    const line = getLineText(lineObj).trim()
-    const bbox = getLineBBox(lineObj)
+    const line = lines[i].trim()
     if (!line) continue
 
     // Detect terminal UI text that should never be merged
@@ -364,7 +331,7 @@ export function parseTooltip(lines: string[] | MinimalOcrLine[]): ScannedGearPie
         line
       )
     if (isTerminalText) {
-      bodyLines.push({ text: line, bbox })
+      bodyLines.push(line)
       continue
     }
 
@@ -378,21 +345,20 @@ export function parseTooltip(lines: string[] | MinimalOcrLine[]): ScannedGearPie
 
     // Stitching logic
     if (bodyLines.length > 0) {
-      const prevLineInfo = bodyLines[bodyLines.length - 1]
-      const prevLine = prevLineInfo.text
+      const prevLine = bodyLines[bodyLines.length - 1]
 
       // Case 1: The current line is a number, and the previous line was pure text.
       // E.g., prev: "Arbiter of Justice Cooldown", current: "22.0%"
       if (isOrphanedNumber && /^[a-zA-Z\s]+$/.test(prevLine)) {
         const num = /^[+×x*]/.test(line) ? line : `+${line}`
-        bodyLines[bodyLines.length - 1].text = `${num} ${prevLine}`
+        bodyLines[bodyLines.length - 1] = `${num} ${prevLine}`
         continue
       }
 
       // Case 2: The current line is an orphaned number, and the NEXT line is pure text.
       // E.g., current: "22.0%", next: "Arbiter of Justice Cooldown"
       if (isOrphanedNumber && i + 1 < lines.length) {
-        const nextLine = getLineText(lines[i + 1]).trim()
+        const nextLine = lines[i + 1].trim()
         if (
           /^[a-zA-Z\s]+$/.test(nextLine) &&
           !/^(?:Account Bound|Unequip|Scroll|Mark|Unmark|Only|Item|Value|Classes:|Requires|Socket|Empty)/i.test(
@@ -400,7 +366,7 @@ export function parseTooltip(lines: string[] | MinimalOcrLine[]): ScannedGearPie
           )
         ) {
           const num = /^[+×x*]/.test(line) ? line : `+${line}`
-          bodyLines.push({ text: `${num} ${nextLine}`, bbox })
+          bodyLines.push(`${num} ${nextLine}`)
           i++ // skip the next line since we just merged it
           continue
         }
@@ -416,17 +382,17 @@ export function parseTooltip(lines: string[] | MinimalOcrLine[]): ScannedGearPie
           prevLine.includes('damage') ||
           prevLine.includes('stacks')
         if (isPrevAffix || isPrevAspect) {
-          bodyLines[bodyLines.length - 1].text = `${prevLine} ${line}`
+          bodyLines[bodyLines.length - 1] = `${prevLine} ${line}`
           continue
         }
       }
     }
 
-    bodyLines.push({ text: line, bbox })
+    bodyLines.push(line)
   }
 
   for (let i = 0; i < bodyLines.length; i++) {
-    const { text: line, bbox } = bodyLines[i]
+    const line = bodyLines[i]
     if (!line) continue
 
     // Skip the item power line (already processed)
@@ -487,9 +453,6 @@ export function parseTooltip(lines: string[] | MinimalOcrLine[]): ScannedGearPie
       // Normalize: ensure the affix string starts with + for consistency
       const normalizedAffix = /^[+×x]/.test(cleanLine) ? cleanLine : `+${cleanLine}`
       result.affixes.push(normalizedAffix)
-
-      // Store the parsed affix with its original bounding box for overlay rendering
-      result.parsedAffixes.push({ text: normalizedAffix, bbox })
 
       if (isGreater) {
         // Extract the affix name without the numeric prefix for greater affix tracking

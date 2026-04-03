@@ -41,12 +41,10 @@ export class ScreenCaptureService {
    *
    * @returns Absolute path to the saved screenshot.
    */
-  async captureScreen(): Promise<{
-    filePath: string
-    crop: { x: number; y: number; scaleX: number; scaleY: number }
-  }> {
+  async captureScreen(): Promise<string> {
     const primaryDisplay = screen.getPrimaryDisplay()
     const { width, height } = primaryDisplay.size
+    const scaleFactor = primaryDisplay.scaleFactor
 
     const sources = await desktopCapturer.getSources({
       types: ['screen'],
@@ -60,26 +58,23 @@ export class ScreenCaptureService {
     const thumbnail = sources[0].thumbnail
     const imageSize = thumbnail.getSize()
 
-    // Get cursor position (in display coordinates - logical pixels)
+    // Get cursor position (in display coordinates)
     const cursor = screen.getCursorScreenPoint()
 
-    // Real scale between logical screen and captured image.
-    // desktopCapturer returns physical pixels (e.g. 3840), width is logical (e.g. 2560).
-    const scaleX = imageSize.width / width
-    const scaleY = imageSize.height / height
-
+    // Convert to image coordinates (handle DPI scaling)
+    const scaleX = imageSize.width / (width * scaleFactor)
+    const scaleY = imageSize.height / (height * scaleFactor)
     const cursorImgX = Math.round(cursor.x * scaleX)
     const cursorImgY = Math.round(cursor.y * scaleY)
 
     // Calculate crop region: tooltip is to the LEFT of the cursor
-    // TOOLTIP_WIDTH is defined in logical pixels, convert to physical for crop
     const scaledW = Math.round(TOOLTIP_WIDTH * scaleX)
     const scaledH = Math.round(TOOLTIP_HEIGHT * scaleY)
 
     // Diablo 4 pushes tooltips upwards if they would fall off the bottom of the screen.
     let topOffset = CURSOR_TOP_OFFSET
     if (cursorImgY + (TOOLTIP_HEIGHT - CURSOR_TOP_OFFSET) * scaleY > imageSize.height) {
-      topOffset = TOOLTIP_HEIGHT - 50 // Almost all bounding box is above the cursor
+      topOffset = TOOLTIP_HEIGHT - 50 // ALmost all bounding box is above the cursor
     }
 
     let cropX = cursorImgX - Math.round(CURSOR_LEFT_OFFSET * scaleX)
@@ -93,7 +88,7 @@ export class ScreenCaptureService {
     const cropH = Math.min(scaledH, imageSize.height - cropY)
 
     console.log(
-      `[SCAN] Cursor: (${cursor.x}, ${cursor.y}) → crop: (${cropX}, ${cropY}, ${cropW}×${cropH}) scale: ${scaleX.toFixed(2)}x`
+      `[SCAN] Cursor: (${cursor.x}, ${cursor.y}) → crop: (${cropX}, ${cropY}, ${cropW}×${cropH})`
     )
 
     // Crop the tooltip region
@@ -104,10 +99,7 @@ export class ScreenCaptureService {
     const filePath = join(this.scansDir, filename)
     await writeFile(filePath, jpegBuffer)
 
-    return {
-      filePath,
-      crop: { x: cropX, y: cropY, scaleX, scaleY }
-    }
+    return filePath
   }
 
   /**
@@ -118,10 +110,7 @@ export class ScreenCaptureService {
    *
    * @returns Absolute path to the saved screenshot.
    */
-  async captureFullScreen(): Promise<{
-    filePath: string
-    crop: { x: number; y: number; scaleX: number; scaleY: number }
-  }> {
+  async captureFullScreen(): Promise<string> {
     const primaryDisplay = screen.getPrimaryDisplay()
     const { width, height } = primaryDisplay.size
 
@@ -143,7 +132,7 @@ export class ScreenCaptureService {
       const filePath = join(this.scansDir, filename)
       await writeFile(filePath, jpegBuffer)
 
-      return { filePath, crop: { x: 0, y: 0, scaleX: 1, scaleY: 1 } }
+      return filePath
     }
 
     // Fallback: capture the entire screen if game window not found
@@ -164,6 +153,6 @@ export class ScreenCaptureService {
     const filePath = join(this.scansDir, filename)
     await writeFile(filePath, jpegBuffer)
 
-    return { filePath, crop: { x: 0, y: 0, scaleX: 1, scaleY: 1 } }
+    return filePath
   }
 }
