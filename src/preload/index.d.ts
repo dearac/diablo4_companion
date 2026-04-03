@@ -85,6 +85,10 @@ declare global {
       // Debug mode
       getDebugMode: () => Promise<boolean>
       setDebugMode: (enabled: boolean) => Promise<boolean>
+      // Scan recording
+      enableScanRecording: () => Promise<boolean>
+      disableScanRecording: () => Promise<boolean>
+      isScanRecordingEnabled: () => Promise<boolean>
     }
   }
 }

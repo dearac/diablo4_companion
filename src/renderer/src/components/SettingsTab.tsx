@@ -44,6 +44,7 @@ function SettingsTab(): React.JSX.Element {
   const [conflict, setConflict] = useState<string | null>(null)
   const [maintenanceStatus, setMaintenanceStatus] = useState<Record<string, string>>({})
   const [debugMode, setDebugMode] = useState(false)
+  const [recordingEnabled, setRecordingEnabled] = useState(false)
 
   const recordingRef = useRef<string | null>(null)
   useEffect(() => {
@@ -55,7 +56,17 @@ function SettingsTab(): React.JSX.Element {
     window.api.getHotkeyStatus().then(setStatus)
     window.api.onHotkeyStatus(setStatus)
     window.api.getDebugMode().then(setDebugMode)
+    window.api.isScanRecordingEnabled().then(setRecordingEnabled)
   }, [])
+
+  const handleToggleRecording = async (checked: boolean): Promise<void> => {
+    if (checked) {
+      await window.api.enableScanRecording()
+    } else {
+      await window.api.disableScanRecording()
+    }
+    setRecordingEnabled(checked)
+  }
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
@@ -202,6 +213,71 @@ function SettingsTab(): React.JSX.Element {
             >
               {debugMode ? 'Enabled' : 'Disabled'}
             </button>
+          </div>
+
+          <div
+            className="maintenance-item"
+            style={{
+              marginTop: '0.5rem',
+              paddingTop: '1rem',
+              borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+              gridColumn: '1 / -1',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}
+          >
+            <div className="maintenance-item__info">
+              <div className="maintenance-item__label" style={{ color: '#ffcc00' }}>
+                Debug Scan Recording
+              </div>
+              <div className="maintenance-item__desc">
+                Save offline snapshots of scans to data/scans/recordings
+              </div>
+            </div>
+            <label
+              className="flex items-center cursor-pointer"
+              style={{
+                position: 'relative',
+                display: 'inline-block',
+                width: '40px',
+                height: '20px'
+              }}
+            >
+              <input
+                type="checkbox"
+                style={{ opacity: 0, width: 0, height: 0 }}
+                checked={recordingEnabled}
+                onChange={(e) => handleToggleRecording(e.target.checked)}
+              />
+              <span
+                style={{
+                  position: 'absolute',
+                  cursor: 'pointer',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: recordingEnabled ? '#ffcc00' : '#4a5568',
+                  transition: '.4s',
+                  borderRadius: '34px'
+                }}
+              >
+                <span
+                  style={{
+                    position: 'absolute',
+                    content: '""',
+                    height: '16px',
+                    width: '16px',
+                    left: recordingEnabled ? '22px' : '2px',
+                    bottom: '2px',
+                    backgroundColor: recordingEnabled ? '#1a202c' : 'white',
+                    transition: '.4s',
+                    borderRadius: '50%'
+                  }}
+                ></span>
+              </span>
+            </label>
           </div>
         </div>
       </section>

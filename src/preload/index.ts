@@ -106,7 +106,12 @@ const api = {
   // Debug mode
   getDebugMode: (): Promise<boolean> => ipcRenderer.invoke('get-debug-mode'),
   setDebugMode: (enabled: boolean): Promise<boolean> =>
-    ipcRenderer.invoke('set-debug-mode', enabled)
+    ipcRenderer.invoke('set-debug-mode', enabled),
+
+  // Scan recording
+  enableScanRecording: (): Promise<boolean> => ipcRenderer.invoke('scan:enableRecording'),
+  disableScanRecording: (): Promise<boolean> => ipcRenderer.invoke('scan:disableRecording'),
+  isScanRecordingEnabled: (): Promise<boolean> => ipcRenderer.invoke('scan:isRecordingEnabled')
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to
