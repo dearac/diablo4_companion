@@ -1,5 +1,6 @@
 import { ScreenCaptureService } from './ScreenCaptureService'
 import { runOcr } from './OcrService'
+import { isolateTooltip } from './OcrFilter'
 import { parseTooltip } from './GearParser'
 import { compareGear } from '../../shared/GearComparer'
 import { ScanHistoryStore } from './ScanHistoryStore'
@@ -87,7 +88,9 @@ export class ScanService {
       console.log(`[SCAN] ═══ SCREENSHOT ═══ ${fileName} (${(fileSize / 1024).toFixed(1)} KB)`)
 
       // Step 2: Run OCR
-      const ocrResult = await runOcr(imagePath, this.sidecarDir)
+      const rawOcrResult = await runOcr(imagePath, this.sidecarDir)
+      const ocrResult = isolateTooltip(rawOcrResult)
+
       console.log('[SCAN] ── RAW OCR LINES ──')
       ocrResult.lines.forEach((line, i) => {
         console.log(`[SCAN]   [${i}] "${line.text}"`)

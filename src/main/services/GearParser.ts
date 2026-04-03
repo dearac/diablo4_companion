@@ -58,13 +58,13 @@ const ITEM_POWER_REGEX = /(\d{3,4})\s*(?:Item\s*Power|iP|IP)/i
 const SOCKET_REGEX = /Sockets?\s*(?:\((\d+)\)|(\d+))?/i
 
 /** Regex to detect additive affixes like "+15.5% Crit Chance" */
-const ADDITIVE_AFFIX_REGEX = /^[+]\s*[\d.]+%?\s+.+/
+const ADDITIVE_AFFIX_REGEX = /^[+]\s*[\d., ]*\d[\d., ]*%?\s+[A-Za-z].+/
 
 /** Regex to detect multiplicative affixes like "×12% Vulnerable Damage" */
-const MULTIPLICATIVE_AFFIX_REGEX = /^[×x]\s*[\d.]+%?\s+.+/i
+const MULTIPLICATIVE_AFFIX_REGEX = /^[×x]\s*[\d., ]*\d[\d., ]*%?\s+[A-Za-z].+/i
 
-/** Regex to detect bare-number affixes like "10.8% Cooldown Reduction" (no +/× prefix) */
-const BARE_AFFIX_REGEX = /^\d+[.]?\d*%\s+[A-Z].+/
+/** Regex to detect bare-number affixes like "10.8% Cooldown Reduction" or "217 All Resist" (no +/× prefix) */
+const BARE_AFFIX_REGEX = /^[\d., ]*\d[\d., ]*%?\s+[A-Z].+/
 
 /**
  * Regex for OCR-garbled affixes where the number runs directly into the stat name
@@ -318,8 +318,80 @@ export function parseTooltip(lines: string[]): ScannedGearPiece {
 
   // ---- Body parsing (lines after the tooltip header) ----
   const bodyStart = typeSlotLineIndex >= 0 ? typeSlotLineIndex + 1 : 1
+
+  const bodyLines: string[] = []
   for (let i = bodyStart; i < lines.length; i++) {
     const line = lines[i].trim()
+    if (!line) continue
+
+    // Detect terminal UI text that should never be merged
+    const isTerminalText =
+      /^(?:Account Bound|Unequip|Scroll|Mark|Unmark|Only|Item|Value|Classes:|Requires|Socket|Empty)/i.test(
+        line
+      )
+    if (isTerminalText) {
+      bodyLines.push(line)
+      continue
+    }
+
+    // Detect orphaned number (e.g. "1,199", "+1 15.5 %", "22.0%")
+    const isOrphanedNumber =
+      /^[+×x*]?\s*[\d]+\s*[,.]?\s*[\d]*\s*%?$/.test(line.replace(/\s+/g, '')) ||
+      /^[+×x*]?\s*[\d., ]+%?$/.test(line)
+
+    // A pure text line must be short to be considered an affix continuation, otherwise it's likely an aspect description
+    const isTextOnly = /^[a-zA-Z\s]+$/.test(line) && line.trim().length <= 35
+
+    // Stitching logic
+    if (bodyLines.length > 0) {
+      const prevLine = bodyLines[bodyLines.length - 1]
+
+      // Case 1: The current line is a number, and the previous line was pure text.
+      // E.g., prev: "Arbiter of Justice Cooldown", current: "22.0%"
+      if (isOrphanedNumber && /^[a-zA-Z\s]+$/.test(prevLine)) {
+        const num = /^[+×x*]/.test(line) ? line : `+${line}`
+        bodyLines[bodyLines.length - 1] = `${num} ${prevLine}`
+        continue
+      }
+
+      // Case 2: The current line is an orphaned number, and the NEXT line is pure text.
+      // E.g., current: "22.0%", next: "Arbiter of Justice Cooldown"
+      if (isOrphanedNumber && i + 1 < lines.length) {
+        const nextLine = lines[i + 1].trim()
+        if (
+          /^[a-zA-Z\s]+$/.test(nextLine) &&
+          !/^(?:Account Bound|Unequip|Scroll|Mark|Unmark|Only|Item|Value|Classes:|Requires|Socket|Empty)/i.test(
+            nextLine
+          )
+        ) {
+          const num = /^[+×x*]/.test(line) ? line : `+${line}`
+          bodyLines.push(`${num} ${nextLine}`)
+          i++ // skip the next line since we just merged it
+          continue
+        }
+      }
+
+      // Case 3: The current line is pure text, and it's a continuation of an affix or aspect.
+      // E.g., prev: "+48.1% Chance for Blessed Shield to", current: "Deal Double Damage"
+      // or prev: "+22.0% Arbiter of Justice Cooldown", current: "Reduction"
+      if (isTextOnly) {
+        const isPrevAffix = /^[+×x*]/.test(prevLine)
+        const isPrevAspect =
+          /^Imprinted:/i.test(prevLine) ||
+          prevLine.includes('damage') ||
+          prevLine.includes('stacks')
+        if (isPrevAffix || isPrevAspect) {
+          bodyLines[bodyLines.length - 1] = `${prevLine} ${line}`
+          continue
+        }
+      }
+    }
+
+    bodyLines.push(line)
+  }
+
+  for (let i = 0; i < bodyLines.length; i++) {
+    const line = bodyLines[i]
     if (!line) continue
 
     // Skip the item power line (already processed)
@@ -374,7 +446,7 @@ export function parseTooltip(lines: string[]): ScannedGearPiece {
 
       if (isGreater) {
         // Extract the affix name without the numeric prefix for greater affix tracking
-        const nameMatch = normalizedAffix.match(/^[+×x]\s*[\d.]+%?\s+(.+)/i)
+        const nameMatch = normalizedAffix.match(/^[+×x]\s*[\d., ]*\d[\d., ]*%?\s+(.+)/i)
         if (nameMatch) {
           result.greaterAffixes.push(nameMatch[1].trim())
         }

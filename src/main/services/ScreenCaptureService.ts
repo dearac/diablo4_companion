@@ -22,11 +22,11 @@ const TOOLTIP_HEIGHT = 1200
 const CURSOR_LEFT_OFFSET = 570
 
 /**
- * Vertical offset above the cursor. The tooltip extends both above
- * and below the cursor, but mostly below. We start 350px above
- * to capture headers on items with long tooltip bodies.
+ * Vertical offset above the cursor. Now that we have geometric OcrFilter,
+ * we can capture widely. A 600px offset perfectly centers the 1200px crop
+ * over the cursor, ensuring we never miss the item name on tall tooltips.
  */
-const CURSOR_TOP_OFFSET = 350
+const CURSOR_TOP_OFFSET = 600
 
 export class ScreenCaptureService {
   private scansDir: string
@@ -71,12 +71,10 @@ export class ScreenCaptureService {
     const scaledW = Math.round(TOOLTIP_WIDTH * scaleX)
     const scaledH = Math.round(TOOLTIP_HEIGHT * scaleY)
 
-    // Diablo 4 will shift the tooltip ABOVE the cursor if it doesn't fit below it.
-    // If we assume a typical tooltip might extend ~700px below the cursor:
+    // Diablo 4 pushes tooltips upwards if they would fall off the bottom of the screen.
     let topOffset = CURSOR_TOP_OFFSET
     if (cursorImgY + (TOOLTIP_HEIGHT - CURSOR_TOP_OFFSET) * scaleY > imageSize.height) {
-      // Tooltip will be drawn upwards. Bias the offset to capture above the cursor.
-      topOffset = TOOLTIP_HEIGHT - 50 // Almost all of the bounding box is above the cursor
+      topOffset = TOOLTIP_HEIGHT - 50 // ALmost all bounding box is above the cursor
     }
 
     let cropX = cursorImgX - Math.round(CURSOR_LEFT_OFFSET * scaleX)

@@ -312,7 +312,8 @@ export function compareGear(scannedItem: ScannedGearPiece, buildSlot: IGearSlot)
 
   // Add aspect recommendation when aspect is missing
   if (aspectComparison && !aspectComparison.hasMatch) {
-    const cleanAspect = normalizeAffix(aspectComparison.expectedAspect).parsedName || aspectComparison.expectedAspect
+    const cleanAspect =
+      normalizeAffix(aspectComparison.expectedAspect).parsedName || aspectComparison.expectedAspect
     recommendations.push({
       action: 'aspect',
       removeAffix: null,

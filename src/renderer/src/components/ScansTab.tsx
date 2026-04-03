@@ -321,7 +321,9 @@ function ScansTab({
 
         {/* ── Section 2: Clickable Affix Grid ── */}
         <div className="scan-required-grid">
-          <div className="scan-required-grid__title">Build Requirements ({v.requiredAffixPlan.slot})</div>
+          <div className="scan-required-grid__title">
+            Build Requirements ({v.requiredAffixPlan.slot})
+          </div>
           <div className="scan-required-grid__columns">
             <div className="scan-required-grid__column">
               <span className="scan-required-grid__label">Required Affixes</span>

@@ -92,8 +92,9 @@ export function normalizeAffix(raw: string): NormalizedAffix {
     working = working.replace(TRAILING_RANGE, '').trim()
   }
 
-  // Step 5: Clean the stat name
-  const statName = working.trim()
+  // Step 5: Clean the stat name (strip "to " or "Ranks to " prefix)
+  working = working.replace(/^(?:Ranks\s+)?to\s+/i, '').trim()
+  const statName = working
 
   // Step 6: Resolve canonical name
   let canonicalName: string | null = null

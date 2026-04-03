@@ -59,6 +59,8 @@ export const AFFIX_ALIASES: Record<string, string> = {
   'poison resistance': 'Poison Resistance',
   'shadow resistance': 'Shadow Resistance',
   'all resistances': 'All Resistances',
+  'all resist': 'All Resistances',
+  'resist all elements': 'All Resistances',
 
   // ── Damage Types ──
   'damage to elites': 'Damage to Elites',
