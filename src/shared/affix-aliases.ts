@@ -61,6 +61,7 @@ export const AFFIX_ALIASES: Record<string, string> = {
   'all resistances': 'All Resistances',
   'all resist': 'All Resistances',
   'resist all elements': 'All Resistances',
+  'resistance to all elements': 'All Resistances',
 
   // ── Damage Types ──
   'damage to elites': 'Damage to Elites',
@@ -77,7 +78,11 @@ export const AFFIX_ALIASES: Record<string, string> = {
   // ── Misc ──
   thorns: 'Thorns',
   'life on kill': 'Life on Kill',
+  'lifeonkill': 'Life on Kill',
+  'lifeonki11': 'Life on Kill',
   'life per hit': 'Life per Hit',
+  'life on hit': 'Life per Hit',
+  'lifeonhit': 'Life per Hit',
   'movement speed': 'Movement Speed',
   'move speed': 'Movement Speed',
   'healing received': 'Healing Received',
