@@ -1,5 +1,21 @@
-### Summary
+# Diablo IV Companion v1.13.3
 
-- **Gear Perfectibility Pipeline Completion**: The `PerfectibilityEngine` now enforces item power minimums and fine-grained static stat min-roll limits against OCR-read gear strings. Items that fail threshold checks are natively flagged or rejected as Junk status.
-- **Enhanced Overlay UI Components**: Built out inline build thresholds editing inside `GearTab` and upgraded the dual-panel `AffixEditor` inside the overlay renderer, allowing zero-install modification of acceptable comparison baselines natively in the app.
-- **Robustness**: Stripped outdated module artifacts, patched test suite integrations, mapped generic JSON arrays correctly across TS declarations, and completed overall system parity for fully headless "Build-Only" tracking.
+## What's Changed
+
+* **Scanner Accuracy Improvements**
+  * Fixed OCR failures caused by live stat comparisons (`-21.2%`, `Toughness)`).
+  * Safely ignore base gear stats (like implicit `Armor` and `Damage per Second`) to prevent them from displacing actual item affixes.
+  * Explicitly mapped aliases for minor OCR text corruption (`Life On Hit` vs `Life per Hit`, `Lifeonki11` -> `Life on Kill`, etc.).
+  * Successfully merged correctly formatted "Chest Armor" parsing rules.
+  * **(Dev)** Added a Settings feature to toggle Debug Scan Recording, which streams raw OCR logs and live screenshots for analyzing pipeline faults.
+
+* **UI & Stability**
+  * Cleaned up React warnings and ESLint hits in `SettingsTab` overlay modules.
+
+**Full Commit Log:**
+
+* `fix(aliases)`: add OCR missing combinations for hit and kill life
+* `fix`: ignore stat comparison tooltips and split chest string
+* `feat`: add debug scan recording toggle
+* `feat(scanner)`: optimize affix matching for implicit stats and passives
+* `fix(renderer)`: resolve ESLint issues in SettingsTab

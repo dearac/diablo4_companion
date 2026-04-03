@@ -1,0 +1,1282 @@
+﻿--- SCAN ANALYSIS ---
+
+ID: 2026-04-03T15-28-12-471Z
+Name: GLYPH BRAND
+Slot: Sword
+Type: Rare
+Power: 750
+Affixes (5):
+  - +33.0% Critical Strike Damage
+  - +97 Strength
+  - +244 Maximum Life
+  - +28.0% Damage
+  - +53.0% Overpower Damage
+OCR Lines:
+  [0] GLYPH BRAND
+  [1] Bloodied Rare Sword
+  [2] 750 Item Power
+  [3] 261 Damage Per Second (
+  [4] -192)
+  [5] [190 - 286] Damage per Hit
+  [6] 1.10 Attacks per Second (Fast)
+  [7] +33.0% Critical Strike Damage
+  [8] +97 Strength
+  [9] +244 Maximum Life
+  [10] +28.0% Damage
+  [11] +53.0% Overpower Damage
+  [12] Feast: Every 30 Kills, chains hook 3
+  [13] nearby enemies
+  [14] Requires Level 60
+  [15] Sell Value: 12,898 ΓÇó
+  [16] Durability: 100/100
+  [17] Tempers: 1/1
+  [18] Equip
+  [19] + Link
+  [20] Sillvr
+
+ID: 2026-04-03T15-28-15-681Z
+Name: NIGHT HORROR
+Slot: Sword
+Type: Rare
+Power: 750
+Affixes (4):
+  - +33.0% Critical Strike Damage
+  - +92 Strength
+  - +250 Maximum Life
+  - +26.0% Damage
+OCR Lines:
+  [0] NIGHT HORROR
+  [1] Bloodied Rare Sword
+  [2] 750 Item Power
+  [3] 261 Damage Per Second (
+  [4] -192)
+  [5] [190 - 286] Damage per Hit
+  [6] 1.10 Attacks per Second (Fast)
+  [7] +33.0% Critical Strike Damage
+  [8] ΓÇó +92 Strength
+  [9] +250 Maximum Life
+  [10] +26.0% Damage
+  [11] Feast: Every 40 Kills, reset 1 random
+  [12] Cooldown
+  [13] Empty Socket
+  [14] Equip
+  [15] + Link
+  [16] Sl IIFT
+  [17] Requires Level 60
+  [18] Sell Value: 10,749
+  [19] Durability: 100/100
+  [20] Tempers: 1/1
+
+ID: 2026-04-03T15-28-17-528Z
+Name: CHARACTE THE PENITENT'S ROYAL BONEBLADE
+Slot: Sword
+Type: Legendary
+Power: 750
+Affixes (6):
+  - +33.0% Critical Strike Damage
+  - +89 Strength
+  - +122 LifeOnKi11
+  - +28.0% Damage
+  - +43.0% Critical Strike Damage
+  - +35% Critical Strike Damage for 4
+OCR Lines:
+  [0] CHARACTE
+  [1] THE PENITENT'S
+  [2] ROYAL BONEBLADE
+  [3] Bloodied Legendary Sword
+  [4] 750 Item Power
+  [5] 261 Damage Per Second (
+  [6] -192
+  [7] [190 - 286] Damage per Hit
+  [8] 1.10 Attacks per Second (Fast)
+  [9] +33.0% Critical Strike Damage
+  [10] o +89 Strength
+  [11] +122 LifeOnKi11
+  [12] +28.0% Damage
+  [13] +43.0% Critical Strike Damage
+  [14] Feast: Every 25 Kills, gain Berserking
+  [15] for 3 seconds
+  [16] Spending Health on a Skill grants
+  [17] you 5.0% Critical Strike Chance and
+  [18] 35% Critical Strike Damage for 4
+  [19] seconds.
+  [20] Empty Socket
+  [21] Requires Level 60
+  [22] Lord of Hatred Item
+  [23] Sell Value: 27,947
+  [24] Durability: 100/100
+  [25] Scroll Down
+  [26] ΓÇómpers: 3/3
+  [27] Equip
+
+ID: 2026-04-03T15-28-19-574Z
+Name: STONE GATE
+Slot: Shield
+Type: Rare
+Power: 750
+Affixes (6):
+  - +41 % Blocked Damage Reduction
+  - +20.0% Block Chance
+  - +100% Main Hand Weapon Damage
+  - +95 Strength
+  - +266 Maximum Life
+  - +329 Poison Resistance
+OCR Lines:
+  [0] STONE GATE
+  [1] Bloodied Rare Shield
+  [2] 750 Item Power
+  [3] Toughness)
+  [4] 844 Armor (
+  [5] o
+  [6] 41 % Blocked Damage Reduction
+  [7] 20.0% Block Chance
+  [8] +100% Main Hand Weapon Damage
+  [9] +95 Strength
+  [10] +266 Maximum Life
+  [11] +329 Poison Resistance
+  [12] Rampage: +10% Resource Cost
+  [13] Reduction per Kill Streak Tier
+  [14] Requires Level 60
+  [15] Vessel of Hatred Item D/
+  [16] Sell Value: 10,749 ΓÇó
+  [17] Durability: 100/100
+  [18] Tempers: 1/1
+  [19] Equip
+
+ID: 2026-04-03T15-28-21-044Z
+Name: SHIELD OF LAGERA'S SOVEREIGNTY
+Slot: Shield
+Type: Legendary
+Power: 750
+Affixes (7):
+  - +41 % Blocked Damage Reduction
+  - +20.0% Block Chance
+  - +100% Main Hand Weapon Damage
+  - +94 Strength
+  - +250 Maximum Life
+  - +233 Armor
+  - +334 Lightning Resistance
+OCR Lines:
+  [0] BONESCALE
+  [1] SHIELD OF
+  [2] LAGERA'S
+  [3] SOVEREIGNTY
+  [4] Bloodied Legendary Shield
+  [5] 750 Item Power
+  [6] Toughness)
+  [7] 844 Armor (
+  [8] 41 % Blocked Damage Reduction
+  [9] 20.0% Block Chance
+  [10] +100% Main Hand Weapon Damage
+  [11] +94 Strength
+  [12] +250 Maximum Life
+  [13] +233 Armor
+  [14] +334 Lightning Resistance
+  [15] Rampage: +8% Attack Speed per Kill
+  [16] Streak Tier
+  [17] Your Disciple Skills deal 40.0%
+  [18] increased damage.
+  [19] Empty Socket
+  [20] Requires Level 60
+  [21] Lord of Hatred Item
+  [22] Sell Value: 25,797 ΓÇó
+  [23] Durability: 100/100
+  [24] Scroll Down
+  [25] ΓÇómpers: 3/3
+  [26] 'In Equip
+  [27] livr
+  [28] 1*
+
+ID: 2026-04-03T15-28-22-523Z
+Name: mYRmlD0N RETRIBUTION
+Slot: Shield
+Type: Rare
+Power: 750
+Affixes (6):
+  - +41 % Blocked Damage Reduction
+  - +20.0% Block Chance
+  - +100% Main Hand Weapon Damage
+  - +250 Maximum Life
+  - +326 Shadow Resistance
+  - +8.5% Cooldown Reduction
+OCR Lines:
+  [0] mYRmlD0N
+  [1] RETRIBUTION
+  [2] Bloodied Rare Shield
+  [3] 750 Item Power
+  [4] 844 Armor ( 2% Toughness)
+  [5] 41 % Blocked Damage Reduction
+  [6] 20.0% Block Chance
+  [7] +100% Main Hand Weapon Damage
+  [8] +250 Maximum Life
+  [9] +326 Shadow Resistance
+  [10] 8.5% Cooldown Reduction
+  [11] Rampage: +3% Maximum Life per
+  [12] Kill Streak Tier
+  [13] Empty Socket
+  [14] Requires Level 60
+  [15] Sell Value: 10,749
+  [16] Durability: 100/100
+  [17] Tempers: 1/1
+  [18] ΓÇóIn Equip
+
+ID: 2026-04-03T15-28-23-865Z
+Name: GARRISON LASH
+Slot: Shield
+Type: Rare
+Power: 750
+Affixes (7):
+  - +41 % Blocked Damage Reduction
+  - +20.0% Block Chance
+  - +100% Main Hand Weapon Damage
+  - +91 Life OnHit
+  - +6.0% Critical Strike Chance
+  - +11.0% Healing Received
+  - +342 Fire Resistance
+OCR Lines:
+  [0] GARRISON LASH
+  [1] Bloodied Rare Shield
+  [2] 750 Item Power
+  [3] Toughness)
+  [4] 844 Armor (
+  [5] - 7.8 %
+  [6] 41 % Blocked Damage Reduction
+  [7] 20.0% Block Chance
+  [8] +100% Main Hand Weapon Damage
+  [9] +91 Life OnHit
+  [10] +6.0% Critical Strike Chance
+  [11] +11.0% Healing Received
+  [12] +342 Fire Resistance
+  [13] Rampage: +10% Resource Cost
+  [14] Reduction per Kill Streak Tier
+  [15] Requires Level 60
+  [16] Sell Value: 10,749
+  [17] Durability: 100/100
+  [18] Tempers: 1/1
+  [19] 'II Equip
+  [20] + Link
+
+ID: 2026-04-03T15-28-26-047Z
+Name: CHARACTER a ELDER AEGIS OF INNER cmrn
+Slot: Shield
+Type: Legendary
+Power: 750
+Affixes (7):
+  - +41 % Blocked Damage Reduction
+  - +20.0% Block Chance
+  - +100% Main Hand Weapon Damage
+  - +266 Maximum Life
+  - +313 Life per 5 Seconds
+  - +88 Life On Hit
+  - +342 Physical Resistance
+OCR Lines:
+  [0] CHARACTER a
+  [1] ELDER AEGIS OF
+  [2] INNER cmrn
+  [3] Bloodied Legendary Shield
+  [4] 750 Item Power
+  [5] Toughness)
+  [6] 844 Armor (
+  [7] o
+  [8] 41 % Blocked Damage Reduction
+  [9] 20.0% Block Chance
+  [10] +100% Main Hand Weapon Damage
+  [11] +266 Maximum Life
+  [12] +313 Life per 5 Seconds
+  [13] +88 Life On Hit
+  [14] +342 Physical Resistance
+  [15] Rampage: +6% Lucky Hit Chance per
+  [16] Kill Streak Tier
+  [17] Deal 5.0% increased damage. Triple
+  [18] this bonus after standing still for 3
+  [19] seconds.
+  [20] Empty Socket
+  [21] Requires Level 60
+  [22] Vessel of Hatred Item D/
+  [23] Sell Value: 27,947 ΓÇó
+  [24] Durability: 100/100
+  [25] Tempers: 3/3
+  [26] 'In Equip
+  [27] st11VT
+  [28] + Droo
+  [29] CTRL
+
+ID: 2026-04-03T15-28-28-435Z
+Name: BRIff1STONE HELm
+Slot: Helm
+Type: Rare
+Power: 750
+Affixes (4):
+  - +94 Strength
+  - +272 Maximum Life
+  - +268 Life per 5 Seconds
+  - +340 Lightning Resistance
+OCR Lines:
+  [0] s & Materials
+  [1] BRIff1STONE HELm
+  [2] Bloodied Rare Helm
+  [3] 750 Item Power
+  [4] 1,125 Armor (
+  [5] +94 Strength
+  [6] Toughness)
+  [7] +272 Maximum Life
+  [8] +268 Life per 5 Seconds
+  [9] +340 Lightning Resistance
+  [10] Rampage: +10% Movement Speed
+  [11] per Kill Streak Tier
+  [12] Empty Socket
+  [13] Empty Socket
+  [14] Requires Level 60
+  [15] Sell Value: 12,898
+  [16] Durability: 100/100
+  [17] Tempers: 1/1
+  [18] Equip
+  [19] slllvr
+
+ID: 2026-04-03T15-28-30-140Z
+Name: :TER a WILDBOLT ARCHON HELm
+Slot: Helm
+Type: Legendary
+Power: 800
+Affixes (5):
+  - +115 Strength
+  - +486 Poison Resistance
+  - +10.5% Resource Cost Reduction
+  - +2 to Shield Charge
+  - +24,068 Scroll Down Equip
+OCR Lines:
+  [0] :TER a
+  [1] WILDBOLT
+  [2] ARCHON HELm
+  [3] Ancestral Bloodied
+  [4] Legendary Helm
+  [5] 800 Item Power
+  [6] 1,508 Armor (
+  [7] Toughness)
+  [8] o
+  [9] +115 Strength
+  [10] +486 Poison Resistance
+  [11] 10.5% Resource Cost Reduction
+  [12] +2 to Shield Charge
+  [13] Rampage: +100 Life On Hit per Kill
+  [14] Streak Tier
+  [15] Every 1.7 seconds, Distant enemies
+  [16] are Pulled In to you and take 10%
+  [17] increased damage for 3 seconds.
+  [18] This effect cannot occur while you
+  [19] are in Stealth.
+  [20] Empty Socket
+  [21] Requires Level 60
+  [22] Lord of Hatred Item
+  [23] Scroll Down
+  [24] 24,068
+  [25] Equip
+  [26] S111Vr
+  [27] + Drop
+  [28] CTRL
+  [29] Compare
+  [30] Mark as Junk
+
+ID: 2026-04-03T15-28-34-372Z
+Name: SOVEREIGN mAlL OF DAZZLING LIGHT
+Slot: Chest
+Type: Legendary
+Power: 750
+Affixes (4):
+  - +272 Maximum Life
+  - +2 Faith per Second
+  - +13.0% Healing Received
+  - +340 Lightning Resistance
+OCR Lines:
+  [0] Scroll Down
+  [1] Equip
+  [2] st11VT
+  [3] + Drop
+  [4] CTRL
+  [5] SHIFT
+  [6] Mark as Junk
+  [7] dzement marks
+  [8] SOVEREIGN mAlL
+  [9] OF DAZZLING
+  [10] LIGHT
+  [11] Bloodied Legendary Chest
+  [12] Armor
+  [13] 750 Item Power
+  [14] Toughness)
+  [15] 1,969 Armor (
+  [16] -21.8%
+  [17] +272 Maximum Life
+  [18] +2 Faith per Second
+  [19] +13.0% Healing Received
+  [20] +340 Lightning Resistance
+  [21] Rampage: +10% Resource Cost
+  [22] Reduction per Kill Streak Tier
+  [23] The first time you apply Judgement
+  [24] to an enemy, you Daze them for 1.0
+  [25] seconds.
+  [26] Empty Socket
+  [27] Empty Socket
+  [28] Requires Level 60
+  [29] an ene
+  [30] tred Item
+  [31] econds.
+
+ID: 2026-04-03T15-28-37-636Z
+Name: GAUNTLETS OF CELESTIAL STRIFE *
+Slot: Gloves
+Type: Legendary
+Power: 800
+Affixes (4):
+  - +108 Strength
+  - +424 Maximum Life
+  - +525 Armor
+  - +9.5% Attack Speed
+OCR Lines:
+  [0] ARCHON
+  [1] GAUNTLETS OF
+  [2] CELESTIAL
+  [3] STRIFE *
+  [4] Ancestral Bloodied
+  [5] Legendary Gloves
+  [6] 800 Item Power
+  [7] 754 Armor (+10.2% Toughness)
+  [8] ΓÇó +108 Strength
+  [9] +424 Maximum Life
+  [10] +525 Armor
+  [11] +9.5% Attack Speed
+  [12] Rampage: +10% Movement Speed
+  [13] per Kill Streak Tier
+  [14] While in Arbiter, kills grant 2.5%
+  [15] increased Vulnerable damage, up to
+  [16] a maximum of 123%.
+  [17] 'lires Level 60
+  [18] Scroll Down
+  [19] 'In Equip
+  [20] SIIIVT
+  [21] + Drop
+  [22] CTRL
+  [23] SIIIVT
+  [24] Mark as Junk
+  [25] Arbiter form grants 25% increased
+  [26] Movement Speed, Evade is replaced with an
+  [27] Angelic LeaD. and Wine Strikes atta
+
+ID: 2026-04-03T15-28-40-137Z
+Name: ARCHON GREAVES OF AUDACITY
+Slot: Boots
+Type: Legendary
+Power: 750
+Affixes (5):
+  - +94 Strength
+  - +255 Maximum Life
+  - +21.0% Movement Speed
+  - +3 to Spear of the Heavens
+  - +70 gen rity ipn
+OCR Lines:
+  [0] DE
+  [1] ARCHON GREAVES
+  [2] OF AUDACITY
+  [3] Bloodied Legendary Boots
+  [4] 750 Item Power
+  [5] 562 Armor (+2.9% Toughness)
+  [6] Evade Grants +100% Movement
+  [7] Speed for 1.5 Seconds
+  [8] +94 Strength
+  [9] +255 Maximum Life
+  [10] +21.0% Movement Speed
+  [11] +3 to Spear of the Heavens
+  [12] Rampage: +100 Life On Hit per Kill
+  [13] Streak Tier
+  [14] When there are at least 5 Close
+  [15] enemies, Stun them for 3 seconds.
+  [16] Can only occur once every 20
+  [17] seconds.
+  [18] Requires Level 60
+  [19] Lord of Hatred Item
+  [20] Sell Value: 15,048 ΓÇó
+  [21] Durability: 100/100
+  [22] Tempers: 3/3
+  [23] Equip
+  [24] + Link
+  [25] Sl IIFT
+  [26] Tit
+  [27] 70
+  [28] gen
+  [29] rity
+  [30] ipn
+
+ID: 2026-04-03T15-28-42-167Z
+Name: INFUSED DRIFTER'S PANTS OF RETTIEDIES
+Slot: Pants
+Type: Legendary
+Power: 750
+Affixes (2):
+  - +3 Faith per Second
+  - +12.3% Healing Received
+OCR Lines:
+  [0] INFUSED
+  [1] DRIFTER'S PANTS
+  [2] OF RETTIEDIES
+  [3] Bloodied Magic Pants
+  [4] 750 Item Power
+  [5] Toughness)
+  [6] 1,406 Armor (
+  [7] o
+  [8] +3 Faith per Second
+  [9] +12.3% Healing Received
+  [10] Rampage: +100 Life On Hit per Kill
+  [11] Streak Tier
+  [12] Empty Socket
+  [13] Requires Level 60
+  [14] Lord of Hatred Item
+  [15] Sell Value: 4,299 ΓÇó
+  [16] Durability: 100/100
+  [17] Equip
+  [18] + Link
+  [19] Slilvr
+
+ID: 2026-04-03T15-28-44-017Z
+Name: ARCHON FAULDS OF THE DISCIPLE
+Slot: Pants
+Type: Legendary
+Power: 750
+Affixes (5):
+  - +93 Strength
+  - +250 Maximum Life
+  - +2 Faith per Second
+  - +346 Physical Resistance
+  - +6 Mark as Junk
+OCR Lines:
+  [0] 24
+  [1] DEARAC
+  [2] No Title Selected
+  [3] ARCHON FAULDS
+  [4] OF THE DISCIPLE
+  [5] Bloodied Legendary Pants
+  [6] 750 Item Power
+  [7] Toughness)
+  [8] 1,406 Armor (
+  [9] +93 Strength
+  [10] +250 Maximum Life
+  [11] +2 Faith per Second
+  [12] +346 Physical Resistance
+  [13] Rampage: +8% Critical Strike Chance
+  [14] per Kill Streak Tier
+  [15] Your Disciple skills now Weaken
+  [16] enemies for 2.0 seconds.
+  [17] Requires Level 60
+  [18] Lord of Hatred Item
+  [19] Sell Value: 21,497 ΓÇó
+  [20] Durability: 100/100
+  [21] Tempers: 3/3
+  [22] Equip
+  [23] + Drop
+  [24] CTRL
+  [25] SIIIFT
+  [26] Mark as Junk
+  [27] 6
+
+ID: 2026-04-03T15-28-46-040Z
+Name: BLOOD-STAUNCH H cop OF HOLY PUNISHmENT
+Slot: Ring
+Type: Legendary
+Power: 750
+Affixes (5):
+  - +104 All Resist (
+  - +92 Strength
+  - +543 Life per 5 Seconds
+  - +10.0% Attack Speed
+  - +45.0% Overpower Damage
+OCR Lines:
+  [0] BLOOD-STAUNCH
+  [1] H cop OF HOLY
+  [2] PUNISHmENT
+  [3] Bloodied Legendary Ring
+  [4] 750 Item Power
+  [5] 104 All Resist (
+  [6] Toughness)
+  [7] o
+  [8] +92 Strength
+  [9] +543 Life per 5 Seconds
+  [10] +10.0% Attack Speed
+  [11] +45.0% Overpower Damage
+  [12] Hunger: 10% increased chance for
+  [13] Rampage Items during Kill Streaks
+  [14] Holy and Fire damage are increased
+  [15] by 50.0%.
+  [16] Empty Socket
+  [17] 'I' Equip
+  [18] + Link
+  [19] SHIFT
+  [20] Requires Level 60
+  [21] Lord of Hatred Item
+  [22] Sell Value: 27,947 ΓÇó
+  [23] Tempers: 3/3
+
+ID: 2026-04-03T15-28-48-383Z
+Name: CHARACTER a PROTECTING VULGAR CHAIN
+Slot: Amulet
+Type: Legendary
+Power: 750
+Affixes (5):
+  - +138 All Resist (025%
+  - +272 Maximum Life
+  - +90 Life On Hit
+  - +128LifeOnKi11
+  - +43 Resistance to All Elements
+OCR Lines:
+  [0] CHARACTER a
+  [1] PROTECTING
+  [2] VULGAR CHAIN
+  [3] Bloodied Legendary Amulet
+  [4] 750 Item Power
+  [5] 138 All Resist (025%
+  [6] Toughness)
+  [7] +272 Maximum Life
+  [8] +90 Life On Hit
+  [9] +128LifeOnKi11
+  [10] +43 Resistance to All Elements
+  [11] Hunger: 10% increased chance for
+  [12] Rampage Items during Kill Streaks
+  [13] When hit while not Healthy, you
+  [14] form a protective bubble that grants
+  [15] all Players inside Immune. The
+  [16] bubble lasts for 3.8 seconds and can
+  [17] only form once every 90 seconds.
+  [18] Empty Socket
+  [19] Requires Level 60
+  [20] Scroll Down
+  [21] _ 34,396
+  [22] Equip
+  [23] S111V'r
+  [24] + Drop
+  [25] CTRL
+  [26] Mark as Junk
+  [27] Healthy characters have more than 80% of
+
+ID: 2026-04-03T15-28-50-510Z
+Name: WILDBCLT ADVENTURER'S BOOTS
+Slot: Boots
+Type: Legendary
+Power: 750
+Affixes (5):
+  - +1.2 Seconds
+  - +89 Strength
+  - +122 LifeOnKi11
+  - +9.5% Fortify Generation
+  - +324 Cold Resistance
+OCR Lines:
+  [0] WILDBCLT
+  [1] ADVENTURER'S
+  [2] BOOTS
+  [3] Bloodied Legendary Boots
+  [4] 750 Item Power
+  [5] 562 Armor (
+  [6] Toughness)
+  [7] Attacks Reduce Evade's Cooldown by
+  [8] 1.2 Seconds
+  [9] o +89 Strength
+  [10] +122 LifeOnKi11
+  [11] +9.5% Fortify Generation
+  [12] +324 Cold Resistance
+  [13] Rampage: +10% Movement Speed
+  [14] per Kill Streak Tier
+  [15] Every 3.5 seconds, Distant enemies
+  [16] are Pulled In to you and take 10%
+  [17] increased damage for 3 seconds.
+  [18] This effect cannot occur while you
+  [19] are in Stealth.
+  [20] n nnuires Level 60
+  [21] Scroll Down
+  [22] "In Equip
+  [23] IIV'r
+  [24] + Drop
+  [25] CTRL
+  [26] S111Vr
+  [27] Mark as Junk
+
+ID: 2026-04-03T15-28-53-634Z
+Name: SOVEREIGN VATTIBRACES OF JACQUES' FERVOR
+Slot: Gloves
+Type: Legendary
+Power: 750
+Affixes (4):
+  - +98 Strength
+  - +255 Maximum Life
+  - +53.0% Overpower Damage
+  - +3 to Blessed Shield
+OCR Lines:
+  [0] ΓÇöNo Title Selected F
+  [1] SOVEREIGN
+  [2] VATTIBRACES OF
+  [3] JACQUES' FERVOR
+  [4] Bloodied Legendary Gloves
+  [5] 750 Item Power
+  [6] 562 Armor (+3.9% Toughness)
+  [7] ΓÇó +98 Strength
+  [8] +255 Maximum Life
+  [9] +53.0% Overpower Damage
+  [10] +3 to Blessed Shield
+  [11] Rampage: +8% Critical Strike Chance
+  [12] per Kill Streak Tier
+  [13] Each stack of Fervor grants you
+  [14] 15.0% bonus Critical Strike Damage.
+  [15] Requires Level 60
+  [16] Lord of Hatred Item
+  [17] Sell Value: 15,048 ΓÇó
+  [18] Durability: 100/100
+  [19] Tempers: 3/3
+  [20] Equip
+  [21] + Drop
+  [22] CTRL
+
+ID: 2026-04-03T15-28-55-592Z
+Name: kRACTER a WYRDSKIN
+Slot: Gloves
+Type: Unique
+Power: 750
+Affixes (4):
+  - +266 Maximum Life
+  - +8.8% Attack Speed
+  - +6.3% Critical Strike Chance
+  - +2 to Core Skills
+OCR Lines:
+  [0] kRACTER a
+  [1] WYRDSKIN
+  [2] Bloodied Unique Gloves
+  [3] 750 Item Power
+  [4] 562 Armor (+4.1% Toughness)
+  [5] +266 Maximum Life
+  [6] +8.8% Attack Speed
+  [7] +6.3% Critical Strike Chance
+  [8] +2 to Core Skills
+  [9] Rampage: +8% Critical Strike Chance
+  [10] per Kill Streak Tier
+  [11] Attacks apply Vulnerable to Distant
+  [12] Enemies, and Weakened to Close
+  [13] Enemies. You deal 26% increased
+  [14] damage to Enemies that are both
+  [15] Vulnerable and Weakened.
+  [16] Each touch dulls pain. Enemies feel their vigor
+  [17] unravel as the poison withers their marrow
+  [18] and drinks deep of their strength.
+  [19] Requires Level 60
+  [20] Scroll Down
+  [21] / ae Equipped
+  [22] Equip
+  [23] + Drop
+  [24] CTRL
+  [25] Compare
+  [26] Mark as Junk
+  [27] Vulnerable enemies take 20% increased
+  [28] damage.
+
+ID: 2026-04-03T15-28-57-477Z
+Name: Iterials VIRTUE BLATTIE
+Slot: Chest Armor
+Type: Rare
+Power: 750
+Affixes (4):
+  - +98 Strength
+  - +266 Maximum Life
+  - +245 Armor
+  - +330 Physical Resistance
+OCR Lines:
+  [0] Iterials
+  [1] VIRTUE BLATTIE
+  [2] Bloodied Rare Chest Armor
+  [3] 750 Item Power
+  [4] Toughness)
+  [5] 1,969 Armor (
+  [6] -21.2%
+  [7] +98 Strength
+  [8] +266 Maximum Life
+  [9] +245 Armor
+  [10] +330 Physical Resistance
+  [11] ΓÇó Rampage: +100 Life On Hit per Kill
+  [12] Streak Tier
+  [13] Empty Socket
+  [14] Requires Level 60
+  [15] Sell Value: 10,749 ΓÇó
+  [16] Durability: 100/100
+  [17] Tempers: 1/1
+  [18] Equip
+  [19] slllvr
+
+ID: 2026-04-03T15-28-59-646Z
+Name: ASSITTIILATION Doom ARTT10R
+Slot: Chest
+Type: Legendary
+Power: 750
+Affixes (4):
+  - +94 Strength
+  - +244 Maximum Life
+  - +344 Shadow Resistance
+  - +6.6% Resource Cost Reduction
+OCR Lines:
+  [0] ASSITTIILATION
+  [1] Doom ARTT10R
+  [2] Bloodied Legendary Chest
+  [3] Armor
+  [4] 750 Item Power
+  [5] Toughness)
+  [6] 1,969 Armor (
+  [7] -22.4%
+  [8] +94 Strength
+  [9] +244 Maximum Life
+  [10] +344 Shadow Resistance
+  [11] 6.6% Resource Cost Reduction
+  [12] Rampage: +6.0% Cooldown
+  [13] Reduction per Kill Streak Tier
+  [14] Gain 8% increased Dodge Chance.
+  [15] When you Dodge, Fortify for 2.00%
+  [16] of your Maximum Life.
+  [17] Empty Socket
+  [18] Empty Socket
+  [19] Equip
+  [20] S111Vr
+  [21] + Drop
+  [22] CTRL
+  [23] Compare
+  [24] Mark as Junk
+  [25] Requires Level 60
+  [26] Sell Value: 30,096 ΓÇó
+  [27] Durability: 100/100
+  [28] Tempers: 3/3
+
+ID: 2026-04-03T15-29-05-886Z
+Name: VIRTUE CHARGE
+Slot: Chest Armor
+Type: Rare
+Power: 750
+Affixes (4):
+  - +96 Strength
+  - +261 Maximum Life
+  - +349 Lightning Resistance
+  - +3 to Holy Light Aura
+OCR Lines:
+  [0] VIRTUE CHARGE
+  [1] Bloodied Rare Chest Armor
+  [2] 750 Item Power
+  [3] Toughness)
+  [4] 1,969 Armor (
+  [5] ΓÇö 22
+  [6] o +96 Strength
+  [7] +261 Maximum Life
+  [8] +349 Lightning Resistance
+  [9] +3 to Holy Light Aura
+  [10] ΓÇó Rampage: +10% Resource Cost
+  [11] Reduction per Kill Streak Tier
+  [12] Empty Socket
+  [13] Equip
+  [14] S111V'r
+  [15] + Drop
+  [16] CTRL
+  [17] Requires Level 60
+  [18] Lord of Hatred Item
+  [19] Sell Value: 10,749
+  [20] Durability: 100/100
+  [21] Tempers: 1/1
+
+ID: 2026-04-03T15-29-09-043Z
+Name: UNDYING SOVEREIGN mAlL *
+Slot: Chest Armor
+Type: Legendary
+Power: 800
+Affixes (6):
+  - +107 Strength o
+  - +685 Maximum Life
+  - +341 Armor
+  - +276 Thorns
+  - +2.3% Life. Double this bonus while
+  - +70 gen rity iprr
+OCR Lines:
+  [0] UNDYING
+  [1] SOVEREIGN
+  [2] mAlL *
+  [3] Ancestral Bloodied
+  [4] Legendary Chest Armor
+  [5] 800 Item Power
+  [6] 2,640 Armor (
+  [7] +107 Strength
+  [8] o
+  [9] Toughness)
+  [10] +685 Maximum Life
+  [11] +341 Armor
+  [12] +276 Thorns
+  [13] Rampage: +100 Life On Hit per Kill
+  [14] Streak Tier
+  [15] When you cast a Skill, you heal for
+  [16] 2.3% Life. Double this bonus while
+  [17] below 50% Life.
+  [18] No Tit
+  [19] Its 8
+  [20] 70
+  [21] gen
+  [22] rity
+  [23] iprr
+  [24] Empty Socket
+  [25] Equip
+  [26] s111Vr
+  [27] + Droo
+  [28] CTRL
+  [29] Requires Level 60
+  [30] Sell Value: 28,881
+  [31] Durability: 100/100
+  [32] Tempers: 4/4
+
+ID: 2026-04-03T15-29-11-235Z
+Name: EXCEPTIONAL ARff10R OF GLYNN'S ANVIL
+Slot: Chest
+Type: Legendary
+Power: 750
+Affixes (4):
+  - +95 Strength
+  - +272 Maximum Life
+  - +163 Thorns
+  - +332 Physical Resistance
+OCR Lines:
+  [0] EXCEPTIONAL
+  [1] ARff10R OF
+  [2] GLYNN'S ANVIL
+  [3] Bloodied Legendary Chest
+  [4] Armor
+  [5] 750 Item Power
+  [6] 1,969 Armor (
+  [7] +95 Strength
+  [8] Toughness)
+  [9] o
+  [10] +272 Maximum Life
+  [11] +163 Thorns
+  [12] +332 Physical Resistance
+  [13] Rampage: +3% Maximum Life per
+  [14] Kill Streak Tier
+  [15] Your maximum Resolve is increased
+  [16] by 2.
+  [17] Resolve increases your Damage
+  [18] Reduction by an additional 1%.
+  [19] Empty Socket
+  [20] Empty Socket
+  [21] Scroll Down
+  [22] Aires Level 60
+  [23] Equip
+  [24] + Drop
+  [25] CTRL
+  [26] Mark as Junk
+  [27] Resolve increases your Damage Reduction
+
+ID: 2026-04-03T15-29-13-188Z
+Name: APOSTLE'S Doom
+Slot: Chest
+Type: Legendary
+Power: 750
+Affixes (4):
+  - +95 Strength
+  - +130 Life On Kill
+  - +233 Armor
+  - +321 Cold Resistance
+OCR Lines:
+  [0] DEARAC
+  [1] APOSTLE'S Doom
+  [2] Bloodied Legendary Chest
+  [3] Armor
+  [4] 750 Item Power
+  [5] Toughness)
+  [6] 1,969 Armor (
+  [7] -26.8%
+  [8] +95 Strength
+  [9] +130 Life On Kill
+  [10] +233 Armor
+  [11] +321 Cold Resistance
+  [12] Rampage: +6% Lucky Hit Chance per
+  [13] Kill Streak Tier
+  [14] Each stack of Fervor grants you
+  [15] 10.0% bonus Healing Received from
+  [16] all sources.
+  [17] Empty Socket
+  [18] 'In Equip
+  [19] s111VΓÇór
+  [20] + Drop
+  [21] CTRL
+  [22] Compare
+  [23] Requires Level 60
+  [24] Lord of Hatred Item
+  [25] Sell Value: 25,797
+  [26] Durability: 100/100
+  [27] Tempers: 3/3
+
+ID: 2026-04-03T15-29-15-500Z
+Name: WILDBOLT Doom
+Slot: Chest
+Type: Legendary
+Power: 750
+Affixes (4):
+  - +255 Maximum Life
+  - +133 Life On Kill
+  - +248 Armor
+  - +50 Resistance to All Elements
+OCR Lines:
+  [0] WILDBOLT Doom
+  [1] Bloodied Legendary Chest
+  [2] Armor
+  [3] 750 Item Power
+  [4] Toughness)
+  [5] 1,969 Armor (
+  [6] -21.7%
+  [7] +255 Maximum Life
+  [8] +133 Life On Kill
+  [9] +248 Armor
+  [10] +50 Resistance to All Elements
+  [11] Rampage: +2% Strength per Kill
+  [12] Streak Tier
+  [13] Every 3.5 seconds, Distant enemies
+  [14] are Pulled In to you and take 10%
+  [15] increased damage for 3 seconds.
+  [16] This effect cannot occur while you
+  [17] are in Stealth.
+  [18] Requires Level 60
+  [19] Sell Value: 23,647 ΓÇó
+  [20] Scroll Down
+  [21] 1 empers.ΓÇó 3/3
+  [22] Equip
+  [23] IIVr
+  [24] + Drop
+  [25] CTRL
+  [26] Compare
+  [27] Mark as Junk
+  [28] Stealthed characters cannot be directly
+
+ID: 2026-04-03T15-29-17-259Z
+Name: BONEWEAVE HELm OF THE PROTECTOR *
+Slot: Helm
+Type: Legendary
+Power: 800
+Affixes (4):
+  - +284 Thorns
+  - +16.0% Healing Received
+  - +468 Fire Resistance
+  - +13.2% Cooldown Reduction
+OCR Lines:
+  [0] BONEWEAVE
+  [1] HELm OF THE
+  [2] PROTECTOR *
+  [3] Ancestral Bloodied
+  [4] Legendary Helm
+  [5] 800 Item Power
+  [6] 1,508 Armor (
+  [7] Toughness)
+  [8] o
+  [9] +284 Thorns
+  [10] +16.0% Healing Received
+  [11] +468 Fire Resistance
+  [12] 13.2% Cooldown Reduction
+  [13] Rampage: +8% Attack Speed per Kill
+  [14] Streak Tier
+  [15] Damaging an Elite enemy grants you
+  [16] a Barrier absorbing up to 4,718
+  [17] damage for 10 seconds. This effect
+  [18] can only happen once every 20
+  [19] seconds.
+  [20] Empty Socket
+  [21] Requires Level 60
+  [22] Upgrades an Aspect in the Codex of Power
+  [23] on salvage
+  [24] Scroll Down
+  [25] 'In Equip
+  [26] SIIIVT
+  [27] + Drop
+  [28] CTRL
+  [29] SLIIVT
+  [30] Mark as Junk
+
+ID: 2026-04-03T15-29-19-077Z
+Name: Doom CASQUE OF THE PRUDENT HEART
+Slot: Helm
+Type: Legendary
+Power: 750
+Affixes (4):
+  - +96 Strength
+  - +250 Life per 5 Seconds
+  - +15.8% Healing Received
+  - +343 Lightning Resistance
+OCR Lines:
+  [0] Doom CASQUE
+  [1] OF THE PRUDENT
+  [2] HEART
+  [3] Bloodied Legendary Helm
+  [4] 750 Item Power
+  [5] 1,125 Armor (
+  [6] ΓÇó +96 Strength
+  [7] Toughness)
+  [8] o
+  [9] +250 Life per 5 Seconds
+  [10] +15.8% Healing Received
+  [11] +343 Lightning Resistance
+  [12] Rampage: +2% Strength per Kill
+  [13] Streak Tier
+  [14] After being damaged for at least 20%
+  [15] of your Maximum Life at once, you
+  [16] become Immune for 2.5 seconds.
+  [17] Can only occur once every 20
+  [18] seconds.
+  [19] Requires Level 60
+  [20] Sell Value: 19,348 ΓÇó
+  [21] Durability: 100/100
+  [22] Tempers: 3/3
+  [23] 'I' Equip
+  [24] s111Vr
+  [25] + Drop
+  [26] CTRL
+  [27] Compare
+  [28] Mark as Junk
+
+ID: 2026-04-03T15-29-21-590Z
+Name: TOOTH-AND-NAIL HELm OF SWIFTNESS
+Slot: Helm
+Type: Legendary
+Power: 750
+Affixes (2):
+  - +244 Maximum Life
+  - +8.1% Cooldown Reduction
+OCR Lines:
+  [0] VIGOROUS
+  [1] TOOTH-AND-NAIL
+  [2] HELm OF
+  [3] SWIFTNESS
+  [4] Bloodied Magic Helm
+  [5] 750 Item Power
+  [6] 1,125 Armor (
+  [7] Toughness)
+  [8] -10.9%
+  [9] +244 Maximum Life
+  [10] 8.1% Cooldown Reduction
+  [11] ΓÇó Rampage: +6.0% Cooldown
+  [12] Reduction per Kill Streak Tier
+  [13] Requires Level 60
+  [14] Vessel of Hatred Item D/
+  [15] Sell Value: 8,599 ΓÇó
+  [16] Durability: 100/100
+  [17] Equip
+  [18] st11V'r
+  [19] CTRL
+
+ID: 2026-04-03T15-29-23-644Z
+Name: Doom CASQUE OF VERDANT RESTORATION
+Slot: Helm
+Type: Legendary
+Power: 750
+Affixes (4):
+  - +244 Maximum Life
+  - +130 Life On Kill
+  - +324 Cold Resistance
+  - +8.1% Cooldown Reduction
+OCR Lines:
+  [0] Doom CASQUE
+  [1] OF VERDANT
+  [2] RESTORATION
+  [3] Bloodied Legendary Helm
+  [4] 750 Item Power
+  [5] 1,125 Armor (
+  [6] Toughness)
+  [7] +244 Maximum Life
+  [8] +130 Life On Kill
+  [9] +324 Cold Resistance
+  [10] 8.1% Cooldown Reduction
+  [11] Rampage: +10% Movement Speed
+  [12] per Kill Streak Tier
+  [13] * Thoms damage heals you for 0.20%
+  [14] of your Maximum Life.
+  [15] Requires Level 60
+  [16] Lord of Hatred Item
+  [17] Sell Value: 21,497
+  [18] Durability: 100/100
+  [19] Tempers: 3/3
+  [20] Equip
+  [21] s111VΓÇór
+  [22] CTRL
+
+ID: 2026-04-03T15-29-25-754Z
+Name: HELm OF THE DEFLECTING BARRIER
+Slot: Helm
+Type: Legendary
+Power: 750
+Affixes (4):
+  - +165 Thorns
+  - +2 Faith per Second
+  - +48 Resistance to All Elements
+  - +5.4% Resource Cost Reduction
+OCR Lines:
+  [0] BONEWEAVE
+  [1] HELm OF THE
+  [2] DEFLECTING
+  [3] BARRIER
+  [4] Bloodied Legendary Helm
+  [5] 750 Item Power
+  [6] 1,125 Armor (
+  [7] -14.5%
+  [8] Toughness)
+  [9] +165 Thorns
+  [10] +2 Faith per Second
+  [11] +48 Resistance to All Elements
+  [12] 5.4% Resource Cost Reduction
+  [13] Rampage: +2% Strength per Kill
+  [14] Streak Tier
+  [15] * You have a 5.0% chance after taking
+  [16] direct damage to gain a Barrier equal
+  [17] to 20% of your Maximum Life for 10
+  [18] seconds. This chance is doubled
+  [19] against Distant enemies.
+  [20] Empty Socket
+  [21] Empty Socket
+  [22] Requires Level 60
+  [23] of Hatred Item
+  [24] Scroll Down
+  [25] Equip
+  [26] SIIIVT
+  [27] + Drop
+  [28] CTRL
+  [29] Compare
+  [30] Mark as Junk
+
+ID: 2026-04-03T15-29-28-250Z
+Name: ELUDING BONEWEAVE H ELITI * *
+Slot: Helm
+Type: Legendary
+Power: 800
+Affixes (4):
+  - +182 Strength
+  - +431 Maximum Life
+  - +225 Life On Kill
+  - +8 Maximum Resource
+OCR Lines:
+  [0] ELUDING
+  [1] BONEWEAVE
+  [2] H ELITI * *
+  [3] Ancestral Bloodied
+  [4] Legendary Helm
+  [5] 800 Item Power
+  [6] 1,508 Armor (
+  [7] Toughness)
+  [8] o
+  [9] +182 Strength
+  [10] +431 Maximum Life
+  [11] +225 Life On Kill
+  [12] +8 Maximum Resource
+  [13] Rampage: +9% Lucky Hit Chance per
+  [14] Kill Streak Tier
+  [15] Becoming Injured while Crowd
+  [16] Controlled grants you Unstoppable
+  [17] for 4 seconds. This effect has a 25
+  [18] second Cooldown.
+  [19] Requires Level 60
+  [20] Value: 24,068
+  [21] Scroll Down
+  [22] 100/100
+  [23] Equip
+  [24] S111Vr
+  [25] + Drop
+  [26] CTRL
+  [27] S111Vr
+  [28] Mark as Junk
+  [29] Injured characters have less than 35% of
+  [30] their Life.
