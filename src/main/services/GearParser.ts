@@ -41,7 +41,8 @@ const GEAR_SLOTS = [
   'Crossbow',
   'Bow',
   'Polearm',
-  'Staff'
+  'Staff',
+  'Chest'
 ].sort((a, b) => b.length - a.length)
 
 /** Item type keywords that appear before the slot name */
@@ -399,6 +400,15 @@ export function parseTooltip(lines: string[]): ScannedGearPiece {
 
     // Skip lines that just repeat the type keyword
     if (ITEM_TYPES.some((t) => line.includes(t.keyword))) continue
+
+    // Skip Base Armor, Weapon Damage, and UI Comparison difference lines
+    // Comparisons often look like "-21.2%", "-192)", or "Toughness)"
+    // Base stats often look like "1,969 Armor (", "[190 - 286] Damage per Hit"
+    if (/^(?:[\d.,]+\s*Armor\b(?!.*[+×x*]))/i.test(line)) continue
+    if (/(?:Damage Per Second)|(?:Damage per Hit)|(?:Attacks per Second)/i.test(line)) continue
+    if (/(?:Toughness\))|(?:^-\d)|(?:^\[\d+)/i.test(line)) continue
+    // Also skip split off comparisons like "-192)"
+    if (/^-\d+[.,]?\d*[%]?\)?$/.test(line.replace(/\s+/g, ''))) continue
 
     // Strip leading bullet characters (·, •, ◆, etc.) that D4 uses before affixes
     let cleanLine = line.replace(BULLET_REGEX, '')

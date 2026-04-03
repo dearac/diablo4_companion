@@ -237,4 +237,28 @@ describe('GearParser', () => {
     expect(result.itemName).not.toMatch(/^CHAR\b/)
     expect(result.itemName).toContain('DAWN FIRE')
   })
+
+  // ---- Bug fix: Live UI comparison skips and separated slots ----
+
+  it('should identify Chest when separated from Armor and ignore base stats / comparison text', () => {
+    const lines = [
+      'ASSITTIILATION Doom ARIT10R',
+      'Bloodied Legendary Chest',
+      'Armor',
+      '750 Item Power',
+      'Toughness)',
+      '1,969 Armor (',
+      '-22.4%',
+      '+94 Strength',
+      '+244 Maximum Life'
+    ]
+    const result = parseTooltip(lines)
+    expect(result.slot).toBe('Chest') // normalized out of scope here; wait, parseTooltip returns raw slot!
+    expect(result.affixes.length).toBe(2)
+    expect(result.affixes).toContain('+94 Strength')
+    expect(result.affixes).toContain('+244 Maximum Life')
+    expect(result.affixes.some((a) => a.includes('Armor ('))).toBe(false)
+    expect(result.affixes.some((a) => a.includes('Toughness'))).toBe(false)
+    expect(result.affixes.some((a) => a.includes('-22.4%'))).toBe(false)
+  })
 })

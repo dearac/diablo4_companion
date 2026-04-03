@@ -41,6 +41,7 @@ const OFFHAND_SLOTS = new Set(['Shield', 'Focus', 'Totem'])
  * @returns The canonical slot name used in build data
  */
 export function normalizeSlot(ocrSlot: string): string {
+  if (ocrSlot === 'Chest') return 'Chest Armor'
   if (WEAPON_SLOTS.has(ocrSlot)) return 'Weapon'
   if (OFFHAND_SLOTS.has(ocrSlot)) return 'Offhand'
   // "Ring" stays as "Ring" — disambiguation happens at store level
