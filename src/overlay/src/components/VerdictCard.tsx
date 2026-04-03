@@ -31,7 +31,7 @@ function VerdictCard({ result, onDismiss }: VerdictCardProps): React.JSX.Element
   const [isVisible, setIsVisible] = useState(false)
   const [debugMode, setDebugMode] = useState(false)
 
-  /** Slide in when result arrives, auto-dismiss after 10s */
+  /** Slide in when result arrives */
   useEffect(() => {
     if (!result) {
       setIsVisible(false)
@@ -41,11 +41,11 @@ function VerdictCard({ result, onDismiss }: VerdictCardProps): React.JSX.Element
     // Trigger entrance animation
     const showTimeout = setTimeout(() => setIsVisible(true), 50)
 
-    // Auto-dismiss after 10 seconds
+    // Keep it up for 60 seconds (basically staying on the gear)
     const dismissTimeout = setTimeout(() => {
       setIsVisible(false)
       setTimeout(onDismiss, 300) // Wait for exit animation
-    }, 10000)
+    }, 60000)
 
     return (): void => {
       clearTimeout(showTimeout)
@@ -137,11 +137,10 @@ function VerdictCard({ result, onDismiss }: VerdictCardProps): React.JSX.Element
         ))}
         {verdict.aspectComparison && (
           <div
-            className={`verdict-card__affix ${
-              verdict.aspectComparison.hasMatch
-                ? 'verdict-card__affix--matched'
-                : 'verdict-card__affix--missing'
-            }`}
+            className={`verdict-card__affix ${verdict.aspectComparison.hasMatch
+              ? 'verdict-card__affix--matched'
+              : 'verdict-card__affix--missing'
+              }`}
           >
             <span className="verdict-card__affix-icon">
               {verdict.aspectComparison.hasMatch ? '✅' : '❌'}

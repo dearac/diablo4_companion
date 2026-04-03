@@ -8,7 +8,7 @@ import type { ScanVerdict, ParsedAffix } from '../../shared/types'
  * It listens for 'scan-result' IPC events and draws absolute-positioned
  * geometric shapes over the parsed affixes based on their bounding boxes.
  */
-export function OverlayApp() {
+export function OverlayApp(): React.JSX.Element | null {
   const [verdict, setVerdict] = useState<ScanVerdict | null>(null)
   const [displayBounds, setDisplayBounds] = useState<{ x: number; y: number } | null>(null)
   const [show, setShow] = useState(false)
@@ -31,11 +31,8 @@ export function OverlayApp() {
             setDisplayBounds(data.bounds)
           }
           setShow(true)
-
-          // Auto-hide the shapes after 6 seconds
-          setTimeout(() => {
-            setShow(false)
-          }, 6000)
+        } else {
+          setShow(false)
         }
       }
     )
@@ -45,9 +42,15 @@ export function OverlayApp() {
       setShow(false)
     })
 
+    // Listen for automatic mouse-move dismissal
+    const unsubscribeMouseMoveHide = window.electron.ipcRenderer.on('hide-overlay', () => {
+      setShow(false)
+    })
+
     return () => {
       unsubscribeResult()
       unsubscribeHide()
+      unsubscribeMouseMoveHide()
     }
   }, [])
 
@@ -57,8 +60,29 @@ export function OverlayApp() {
     .map((a: ParsedAffix) => a.bbox?.x)
     .filter((n: number | undefined) => typeof n === 'number') as number[]
 
-  // Find the leftmost X coordinate of all affixes so they form a perfect vertical column
-  const minAffixX = validXs.length > 0 ? Math.min(...validXs) : undefined
+  // Find the leftmost X coordinate of the MAIN cluster of affixes.
+  // This prevents a single false-positive background text from ruining the alignment of all dots.
+  let minAffixX: number | undefined = undefined
+  if (validXs.length > 0) {
+    // Sort the Xs and look for the largest cluster (within a 20px threshold)
+    validXs.sort((a, b) => a - b)
+    let bestCluster: number[] = []
+
+    for (let i = 0; i < validXs.length; i++) {
+      const cluster = [validXs[i]]
+      for (let j = i + 1; j < validXs.length; j++) {
+        if (validXs[j] - validXs[i] <= 20) {
+          cluster.push(validXs[j])
+        }
+      }
+      if (cluster.length > bestCluster.length) {
+        bestCluster = cluster
+      }
+    }
+
+    // Use the minimum of the best cluster
+    minAffixX = bestCluster.length > 0 ? Math.min(...bestCluster) : validXs[0]
+  }
 
   return (
     <div style={{ width: '100vw', height: '100vh', pointerEvents: 'none' }}>

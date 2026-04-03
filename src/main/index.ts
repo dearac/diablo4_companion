@@ -823,6 +823,8 @@ function registerGlobalHotkeys(): void {
   const hotkeys = hotkeyService.getAllHotkeys()
   const status: Record<string, boolean> = {}
 
+  let mouseWatchInterval: NodeJS.Timeout | null = null
+
   try {
     // Toggle show/hide — hides the entire window so the game is visible,
     // then brings it back as always-on-top when pressed again.
@@ -869,6 +871,24 @@ function registerGlobalHotkeys(): void {
               error: result.error,
               bounds: activeBounds
             })
+            
+            if (result.verdict) {
+              if (mouseWatchInterval) clearInterval(mouseWatchInterval)
+              const startCursor = screen.getCursorScreenPoint()
+              mouseWatchInterval = setInterval(() => {
+                const curr = screen.getCursorScreenPoint()
+                const dist = Math.max(
+                  Math.abs(curr.x - startCursor.x),
+                  Math.abs(curr.y - startCursor.y)
+                )
+                // If mouse moves more than 40px away, the user probably closed the tooltip or moved to another item
+                if (dist > 40) {
+                  overlayWindow?.webContents.send('hide-overlay')
+                  if (mouseWatchInterval) clearInterval(mouseWatchInterval)
+                  mouseWatchInterval = null
+                }
+              }, 150)
+            }
           }
         } catch (err) {
           console.error('[Scan] Hotkey scan failed:', err)
